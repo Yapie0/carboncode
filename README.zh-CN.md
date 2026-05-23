@@ -15,6 +15,14 @@ cd path/to/project
 carboncode
 ```
 
+Windows PowerShell 运行 `npm` 命令时，如果提示 `npm.ps1` 被禁止执行，请改用 `npm.cmd`，例如：
+
+```powershell
+npm.cmd install
+npm.cmd run dev
+npm.cmd run verify
+```
+
 短命令：
 
 ```bash
