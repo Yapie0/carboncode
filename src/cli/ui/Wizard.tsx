@@ -726,9 +726,9 @@ function mcpItems(): SelectItem<string>[] {
   });
 }
 
-function placeholderFor(entry: CatalogEntry): string {
-  if (entry.name === "filesystem") return "e.g. /tmp/carboncode-sandbox";
-  if (entry.name === "sqlite") return "e.g. ./notes.sqlite";
+export function placeholderFor(entry: CatalogEntry): string {
+  if (entry.name === "filesystem") return t("wizard.mcpArgsFilesystemPlaceholder");
+  if (entry.name === "sqlite") return t("wizard.mcpArgsSqlitePlaceholder");
   return entry.userArgs ?? "";
 }
 

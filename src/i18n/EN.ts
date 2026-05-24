@@ -464,6 +464,8 @@ export const EN: TranslationSchema = {
     mcpArgsRequiredParam: "Required parameter: ",
     mcpArgsEmpty: "{name} needs a value — got an empty string.",
     mcpArgsNotADir: "{path} exists but is not a directory.",
+    mcpArgsFilesystemPlaceholder: "e.g. /tmp/carboncode-sandbox",
+    mcpArgsSqlitePlaceholder: "e.g. ./notes.sqlite",
     reviewTitle: "Ready to save",
     reviewLabelApiKey: "API key",
     reviewLabelLanguage: "Language",

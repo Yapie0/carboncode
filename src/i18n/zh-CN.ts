@@ -450,6 +450,8 @@ export const zhCN: TranslationSchema = {
     mcpArgsRequiredParam: "必填参数：",
     mcpArgsEmpty: "{name} 需要一个值 — 不能为空。",
     mcpArgsNotADir: "{path} 存在但不是目录。",
+    mcpArgsFilesystemPlaceholder: "例如：/tmp/carboncode-sandbox",
+    mcpArgsSqlitePlaceholder: "例如：./notes.sqlite",
     reviewTitle: "确认保存",
     reviewLabelApiKey: "API key",
     reviewLabelLanguage: "语言",

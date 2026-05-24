@@ -3,7 +3,7 @@
 import { render } from "ink-testing-library";
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { Wizard, buildSpec, validateDeepSeekApiKey } from "../src/cli/ui/Wizard.js";
+import { Wizard, buildSpec, placeholderFor, validateDeepSeekApiKey } from "../src/cli/ui/Wizard.js";
 import { setLanguageRuntime } from "../src/i18n/index.js";
 import { parseMcpSpec } from "../src/mcp/spec.js";
 
@@ -63,6 +63,32 @@ describe("Wizard — first-launch language picker", () => {
     expect(out).toContain("English");
     expect(out).toContain("简体中文");
     unmount();
+  });
+});
+
+describe("Wizard — localized MCP argument placeholders", () => {
+  afterEach(() => {
+    setLanguageRuntime("EN");
+  });
+
+  it("localizes filesystem and sqlite placeholders in zh-CN", () => {
+    setLanguageRuntime("zh-CN");
+
+    expect(
+      placeholderFor({ name: "filesystem", command: "npx", args: [], userArgs: "<dir>" }),
+    ).toBe("例如：/tmp/carboncode-sandbox");
+    expect(placeholderFor({ name: "sqlite", command: "npx", args: [], userArgs: "<db>" })).toBe(
+      "例如：./notes.sqlite",
+    );
+  });
+
+  it("keeps filesystem and sqlite placeholders in EN", () => {
+    expect(
+      placeholderFor({ name: "filesystem", command: "npx", args: [], userArgs: "<dir>" }),
+    ).toBe("e.g. /tmp/carboncode-sandbox");
+    expect(placeholderFor({ name: "sqlite", command: "npx", args: [], userArgs: "<db>" })).toBe(
+      "e.g. ./notes.sqlite",
+    );
   });
 });
 
