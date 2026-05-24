@@ -280,6 +280,7 @@ export interface TranslationSchema {
   wizard: {
     languageTitle: string;
     languageSubtitle: string;
+    languageDetectedHint: string;
     welcomeTitle: string;
     apiKeyPrompt: string;
     apiKeyGetOne: string;

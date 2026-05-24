@@ -415,6 +415,7 @@ export const zhCN: TranslationSchema = {
   wizard: {
     languageTitle: "选择语言",
     languageSubtitle: "已根据系统语言自动选中。之后可用 /language 切换。",
+    languageDetectedHint: "（已检测）",
     welcomeTitle: "欢迎使用 Carbon Code。",
     apiKeyPrompt: "粘贴你的 DeepSeek API key 开始使用。",
     apiKeyGetOne: "在此获取：https://platform.deepseek.com/api_keys",

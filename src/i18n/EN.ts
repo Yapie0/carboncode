@@ -426,6 +426,7 @@ export const EN: TranslationSchema = {
   wizard: {
     languageTitle: "Choose your language",
     languageSubtitle: "Detected from your system locale. Switch later via /language.",
+    languageDetectedHint: "(detected)",
     welcomeTitle: "Welcome to Carbon Code.",
     apiKeyPrompt: "Paste your DeepSeek API key to get started.",
     apiKeyGetOne: "Get one at: https://platform.deepseek.com/api_keys",

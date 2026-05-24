@@ -401,7 +401,7 @@ function LanguageStep({
   const items: SelectItem<LanguageCode>[] = getSupportedLanguages().map((code) => ({
     value: code,
     label: LANGUAGE_LABELS[code],
-    hint: code === detectSystemLanguage() ? "(detected)" : undefined,
+    hint: code === detectSystemLanguage() ? t("wizard.languageDetectedHint") : undefined,
   }));
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>

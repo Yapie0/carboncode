@@ -62,6 +62,8 @@ describe("Wizard — first-launch language picker", () => {
     expect(out).toContain("选择语言");
     expect(out).toContain("English");
     expect(out).toContain("简体中文");
+    expect(out).toContain("（已检测）");
+    expect(out).not.toContain("(detected)");
     unmount();
   });
 });
