@@ -3,7 +3,13 @@
 import { render } from "ink-testing-library";
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { Wizard, buildSpec, validateDeepSeekApiKey } from "../src/cli/ui/Wizard.js";
+import {
+  Wizard,
+  buildSpec,
+  mcpArgsNoteFor,
+  mcpArgsSummaryFor,
+  validateDeepSeekApiKey,
+} from "../src/cli/ui/Wizard.js";
 import { setLanguageRuntime } from "../src/i18n/index.js";
 import { parseMcpSpec } from "../src/mcp/spec.js";
 
@@ -63,6 +69,26 @@ describe("Wizard — first-launch language picker", () => {
     expect(out).toContain("English");
     expect(out).toContain("简体中文");
     unmount();
+  });
+});
+
+describe("Wizard — localized MCP argument copy", () => {
+  afterEach(() => {
+    setLanguageRuntime("EN");
+  });
+
+  it("localizes the filesystem argument step copy in zh-CN", () => {
+    setLanguageRuntime("zh-CN");
+    const entry = {
+      name: "filesystem",
+      summary: "read/write/search files inside a sandboxed directory",
+      package: "@modelcontextprotocol/server-filesystem",
+      userArgs: "<dir>",
+      note: "the directory is a hard sandbox — the server refuses access outside it",
+    };
+
+    expect(mcpArgsSummaryFor(entry)).toBe("在沙盒目录内读写和搜索文件");
+    expect(mcpArgsNoteFor(entry)).toBe("该目录是严格沙盒，服务器会拒绝访问目录外的内容");
   });
 });
 

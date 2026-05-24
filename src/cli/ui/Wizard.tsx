@@ -549,6 +549,8 @@ function McpArgsStep({
 }) {
   const [value, setValue] = useState("");
   const [pendingCreate, setPendingCreate] = useState<string | null>(null);
+  const summary = mcpArgsSummaryFor(entry);
+  const note = mcpArgsNoteFor(entry);
 
   useInput((input, key) => {
     if (!pendingCreate) return;
@@ -597,10 +599,10 @@ function McpArgsStep({
   return (
     <StepFrame title={t("wizard.mcpArgsTitle", { name: entry.name })} step={2} total={3}>
       <Box flexDirection="column">
-        <Text>{entry.summary}</Text>
-        {entry.note ? (
+        <Text>{summary}</Text>
+        {note ? (
           <Box marginTop={1}>
-            <Text dimColor>{entry.note}</Text>
+            <Text dimColor>{note}</Text>
           </Box>
         ) : null}
         <Box marginTop={1}>
@@ -724,6 +726,16 @@ function mcpItems(): SelectItem<string>[] {
       hint: hintParts.join(" · "),
     };
   });
+}
+
+export function mcpArgsSummaryFor(entry: CatalogEntry): string {
+  if (entry.name === "filesystem") return t("wizard.mcpArgsFilesystemSummary");
+  return entry.summary;
+}
+
+export function mcpArgsNoteFor(entry: CatalogEntry): string | undefined {
+  if (entry.name === "filesystem") return t("wizard.mcpArgsFilesystemNote");
+  return entry.note;
 }
 
 function placeholderFor(entry: CatalogEntry): string {

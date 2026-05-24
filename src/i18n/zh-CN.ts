@@ -450,6 +450,8 @@ export const zhCN: TranslationSchema = {
     mcpArgsRequiredParam: "必填参数：",
     mcpArgsEmpty: "{name} 需要一个值 — 不能为空。",
     mcpArgsNotADir: "{path} 存在但不是目录。",
+    mcpArgsFilesystemSummary: "在沙盒目录内读写和搜索文件",
+    mcpArgsFilesystemNote: "该目录是严格沙盒，服务器会拒绝访问目录外的内容",
     reviewTitle: "确认保存",
     reviewLabelApiKey: "API key",
     reviewLabelLanguage: "语言",
