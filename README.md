@@ -17,6 +17,13 @@ cd path/to/project
 carboncode
 ```
 
+On Windows PowerShell, if `npm` fails with a script execution policy error, use
+`npm.cmd` instead:
+
+```powershell
+npm.cmd install -g @carboncode/cli
+```
+
 Short command:
 
 ```bash
