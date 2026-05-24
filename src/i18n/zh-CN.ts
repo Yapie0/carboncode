@@ -240,7 +240,7 @@ export const zhCN: TranslationSchema = {
   },
   code: {
     workspaceConflict:
-      "⚠ 工作区包含另一个智能体平台的文件 ({platforms})。Carbon Code Code 可能会将其作为项目内容读取；如果不是您想要的，请使用 --dir <your-project> 重新启动。\n",
+      "⚠ 工作区包含另一个智能体平台的文件 ({platforms})。Carbon Code 可能会将其作为项目内容读取；如果不是您想要的，请使用 --dir <your-project> 重新启动。\n",
     systemAppendEmpty: "--system-append 为空 — 不会追加任何提示文本\n",
     systemAppendFileReadError: '错误：无法读取 --system-append-file "{filePath}"：{errorDetails}\n',
   },

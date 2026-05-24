@@ -59,6 +59,14 @@ describe("Carbon broad Reasonix import", () => {
     expect(t("mcpLifecycle.failedSetupHint")).toContain("`carboncode setup`");
   });
 
+  test("high-visibility zh-CN guidance does not duplicate Carbon Code branding", () => {
+    setLanguageRuntime("zh-CN");
+    expect(t("code.workspaceConflict", { platforms: "AGENTS.md" })).toContain("Carbon Code");
+    expect(t("code.workspaceConflict", { platforms: "AGENTS.md" })).not.toContain(
+      "Carbon Code Code",
+    );
+  });
+
   test("protocol-facing runtime identities are Carbon-branded", () => {
     const acp = readFileSync(resolve("src/cli/commands/acp.ts"), "utf8");
     const mcpClient = readFileSync(resolve("src/mcp/client.ts"), "utf8");
