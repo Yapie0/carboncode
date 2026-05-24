@@ -438,6 +438,20 @@ export const zhCN: TranslationSchema = {
       "github-light": "GitHub 浅色",
       "high-contrast": "高对比度（无障碍）",
     },
+    presetDescriptions: {
+      auto: {
+        headline: "困难轮次从 flash 升级到 pro",
+        cost: "默认 · 大多数轮次使用 flash · 需要时才启用 pro",
+      },
+      flash: {
+        headline: "始终使用 v4-flash",
+        cost: "最便宜 · 可预测 · 仍可用 /pro 临时提升一轮",
+      },
+      pro: {
+        headline: "始终使用 v4-pro",
+        cost: "约 3 倍 flash（5/31 折扣）/ 原价约 12 倍 · 适合困难的多轮工作",
+      },
+    },
     reviewLabelTheme: "主题",
     presetTitle: "选择预设",
     mcpTitle: "Carbon Code 要为你接入哪些 MCP 服务器？",

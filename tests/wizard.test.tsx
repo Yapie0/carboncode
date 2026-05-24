@@ -3,7 +3,7 @@
 import { render } from "ink-testing-library";
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { Wizard, buildSpec, validateDeepSeekApiKey } from "../src/cli/ui/Wizard.js";
+import { Wizard, buildSpec, presetItems, validateDeepSeekApiKey } from "../src/cli/ui/Wizard.js";
 import { setLanguageRuntime } from "../src/i18n/index.js";
 import { parseMcpSpec } from "../src/mcp/spec.js";
 
@@ -63,6 +63,24 @@ describe("Wizard — first-launch language picker", () => {
     expect(out).toContain("English");
     expect(out).toContain("简体中文");
     unmount();
+  });
+});
+
+describe("Wizard — localized preset descriptions", () => {
+  afterEach(() => {
+    setLanguageRuntime("EN");
+  });
+
+  it("shows preset descriptions in zh-CN when runtime language is Simplified Chinese", () => {
+    setLanguageRuntime("zh-CN");
+    const items = presetItems();
+
+    expect(items.map((item) => item.label)).toEqual([
+      "auto — 困难轮次从 flash 升级到 pro",
+      "flash — 始终使用 v4-flash",
+      "pro — 始终使用 v4-pro",
+    ]);
+    expect(items.map((item) => item.hint).join("\n")).not.toContain("hard turns");
   });
 });
 

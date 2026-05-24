@@ -451,6 +451,20 @@ export const EN: TranslationSchema = {
       "github-light": "GitHub light",
       "high-contrast": "Accessibility",
     },
+    presetDescriptions: {
+      auto: {
+        headline: "flash → pro on hard turns",
+        cost: "default · ~96% turns stay on flash · pro kicks in only when needed",
+      },
+      flash: {
+        headline: "v4-flash always",
+        cost: "cheapest · predictable · /pro still works for a one-turn bump",
+      },
+      pro: {
+        headline: "v4-pro always",
+        cost: "~3× flash (5/31 discount) / ~12× full price · for hard multi-turn work",
+      },
+    },
     reviewLabelTheme: "Theme",
     presetTitle: "Pick a preset",
     mcpTitle: "Which MCP servers should Carbon Code wire up for you?",

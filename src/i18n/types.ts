@@ -306,6 +306,7 @@ export interface TranslationSchema {
     themeSampleHeading: string;
     themeFooter: string;
     themeCaption: Record<string, string>;
+    presetDescriptions: Record<"auto" | "flash" | "pro", { headline: string; cost: string }>;
     reviewTitle: string;
     reviewLabelApiKey: string;
     reviewLabelLanguage: string;

@@ -36,7 +36,6 @@ import {
 import type { LanguageCode } from "../../i18n/types.js";
 import { type CatalogEntry, MCP_CATALOG } from "../../mcp/catalog.js";
 import { MultiSelect, type SelectItem, SingleSelect } from "./Select.js";
-import { PRESET_DESCRIPTIONS } from "./presets.js";
 import { ThemeProvider, useTheme } from "./theme/context.js";
 import { type ThemeName, listThemeNames } from "./theme/tokens.js";
 
@@ -705,11 +704,11 @@ function SummaryLine({ label, value }: { label: string; value: string }) {
   );
 }
 
-function presetItems(): SelectItem<PresetName>[] {
+export function presetItems(): SelectItem<PresetName>[] {
   return (["auto", "flash", "pro"] as const).map((name) => ({
     value: name as PresetName,
-    label: `${name} — ${PRESET_DESCRIPTIONS[name].headline}`,
-    hint: PRESET_DESCRIPTIONS[name].cost,
+    label: `${name} — ${t(`wizard.presetDescriptions.${name}.headline`)}`,
+    hint: t(`wizard.presetDescriptions.${name}.cost`),
   }));
 }
 
