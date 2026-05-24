@@ -7,6 +7,8 @@ Carbon Code is aimed at personal developer workflows: open a repository, let the
 agent read and search the codebase, review planned edits, approve shell commands,
 run validation, and keep a concise session trail.
 
+Simplified Chinese documentation: [README.zh-CN.md](README.zh-CN.md)
+
 ## Install
 
 Requires Node.js 22 or newer.
