@@ -59,6 +59,18 @@ describe("Carbon broad Reasonix import", () => {
     expect(t("mcpLifecycle.failedSetupHint")).toContain("`carboncode setup`");
   });
 
+  test("zh-CN slash model feedback uses localized labels", () => {
+    setLanguageRuntime("zh-CN");
+
+    expect(t("handlers.model.modelSet", { id: "deepseek-v4-flash" })).toContain("模型 →");
+    expect(t("handlers.model.modelNotInCatalog", { id: "x", list: "a, b" })).toContain("模型 →");
+    expect(t("handlers.model.presetAuto")).toContain("预设 → auto");
+    expect(t("handlers.model.presetFlash")).toContain("预设 → flash");
+    expect(t("handlers.model.presetPro")).toContain("预设 → pro");
+    expect(t("handlers.model.presetAuto")).toContain("deepseek-v4-flash");
+    expect(t("handlers.model.presetAuto")).toContain("deepseek-v4-pro");
+  });
+
   test("protocol-facing runtime identities are Carbon-branded", () => {
     const acp = readFileSync(resolve("src/cli/commands/acp.ts"), "utf8");
     const mcpClient = readFileSync(resolve("src/mcp/client.ts"), "utf8");
