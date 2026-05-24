@@ -3,7 +3,13 @@
 import { render } from "ink-testing-library";
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { Wizard, buildSpec, presetItems, validateDeepSeekApiKey } from "../src/cli/ui/Wizard.js";
+import {
+  Wizard,
+  buildSpec,
+  mcpItems,
+  presetItems,
+  validateDeepSeekApiKey,
+} from "../src/cli/ui/Wizard.js";
 import { setLanguageRuntime } from "../src/i18n/index.js";
 import { parseMcpSpec } from "../src/mcp/spec.js";
 
@@ -81,6 +87,28 @@ describe("Wizard — localized preset descriptions", () => {
       "pro — 始终使用 v4-pro",
     ]);
     expect(items.map((item) => item.hint).join("\n")).not.toContain("hard turns");
+  });
+});
+
+describe("Wizard — localized MCP catalog descriptions", () => {
+  afterEach(() => {
+    setLanguageRuntime("EN");
+  });
+
+  it("shows MCP catalog summaries and notes in zh-CN", () => {
+    setLanguageRuntime("zh-CN");
+    const items = mcpItems();
+    const filesystem = items.find((item) => item.value === "filesystem");
+    const github = items.find((item) => item.value === "github");
+
+    expect(filesystem?.hint).toContain("在沙箱目录内读取、写入和搜索文件");
+    expect(filesystem?.hint).toContain("需要你提供 <dir>");
+    expect(filesystem?.hint).toContain("服务器会拒绝访问目录外的路径");
+    expect(github?.hint).toContain("读取 issues、PR 和代码搜索");
+    expect(github?.hint).toContain("启动前请在环境变量中设置 GITHUB_PERSONAL_ACCESS_TOKEN");
+    expect(items.map((item) => item.hint).join("\n")).not.toContain(
+      "read/write/search files inside a sandboxed directory",
+    );
   });
 });
 

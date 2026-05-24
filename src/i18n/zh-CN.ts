@@ -452,6 +452,27 @@ export const zhCN: TranslationSchema = {
         cost: "约 3 倍 flash（5/31 折扣）/ 原价约 12 倍 · 适合困难的多轮工作",
       },
     },
+    mcpCatalog: {
+      filesystem: {
+        summary: "在沙箱目录内读取、写入和搜索文件",
+        note: "该目录是严格沙箱 — 服务器会拒绝访问目录外的路径",
+      },
+      memory: {
+        summary: "跨会话保存持久化键值记忆",
+      },
+      github: {
+        summary: "读取 issues、PR 和代码搜索（需要 GITHUB_PERSONAL_ACCESS_TOKEN）",
+        note: "启动前请在环境变量中设置 GITHUB_PERSONAL_ACCESS_TOKEN",
+      },
+      puppeteer: {
+        summary: "浏览器自动化 — 截图、点击、输入",
+        note: "首次运行会下载 Chromium（约 200 MB）",
+      },
+      everything: {
+        summary: "官方测试服务器 — 覆盖所有 MCP 功能",
+        note: "适合调试 Carbon Code 设置",
+      },
+    },
     reviewLabelTheme: "主题",
     presetTitle: "选择预设",
     mcpTitle: "Carbon Code 要为你接入哪些 MCP 服务器？",

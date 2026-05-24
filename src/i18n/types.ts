@@ -307,6 +307,10 @@ export interface TranslationSchema {
     themeFooter: string;
     themeCaption: Record<string, string>;
     presetDescriptions: Record<"auto" | "flash" | "pro", { headline: string; cost: string }>;
+    mcpCatalog: Record<
+      "filesystem" | "memory" | "github" | "puppeteer" | "everything",
+      { summary: string; note?: string }
+    >;
     reviewTitle: string;
     reviewLabelApiKey: string;
     reviewLabelLanguage: string;

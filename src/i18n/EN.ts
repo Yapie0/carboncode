@@ -465,6 +465,27 @@ export const EN: TranslationSchema = {
         cost: "~3× flash (5/31 discount) / ~12× full price · for hard multi-turn work",
       },
     },
+    mcpCatalog: {
+      filesystem: {
+        summary: "read/write/search files inside a sandboxed directory",
+        note: "the directory is a hard sandbox — the server refuses access outside it",
+      },
+      memory: {
+        summary: "persistent key-value memory across sessions",
+      },
+      github: {
+        summary: "read issues, PRs, code search (needs GITHUB_PERSONAL_ACCESS_TOKEN)",
+        note: "set GITHUB_PERSONAL_ACCESS_TOKEN in your env before spawning",
+      },
+      puppeteer: {
+        summary: "browser automation — take screenshots, click, type",
+        note: "downloads Chromium on first run (~200 MB)",
+      },
+      everything: {
+        summary: "official test server — exercises every MCP feature",
+        note: "useful for debugging your Carbon Code setup",
+      },
+    },
     reviewLabelTheme: "Theme",
     presetTitle: "Pick a preset",
     mcpTitle: "Which MCP servers should Carbon Code wire up for you?",

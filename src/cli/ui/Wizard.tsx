@@ -596,10 +596,10 @@ function McpArgsStep({
   return (
     <StepFrame title={t("wizard.mcpArgsTitle", { name: entry.name })} step={2} total={3}>
       <Box flexDirection="column">
-        <Text>{entry.summary}</Text>
-        {entry.note ? (
+        <Text>{mcpCatalogSummary(entry)}</Text>
+        {mcpCatalogNote(entry) ? (
           <Box marginTop={1}>
-            <Text dimColor>{entry.note}</Text>
+            <Text dimColor>{mcpCatalogNote(entry)}</Text>
           </Box>
         ) : null}
         <Box marginTop={1}>
@@ -712,17 +712,27 @@ export function presetItems(): SelectItem<PresetName>[] {
   }));
 }
 
-function mcpItems(): SelectItem<string>[] {
+export function mcpItems(): SelectItem<string>[] {
   return MCP_CATALOG.map((entry) => {
-    const hintParts: string[] = [entry.summary];
+    const hintParts: string[] = [mcpCatalogSummary(entry)];
     if (entry.userArgs) hintParts.push(t("wizard.mcpUserArgsHint", { arg: entry.userArgs }));
-    if (entry.note) hintParts.push(entry.note);
+    const note = mcpCatalogNote(entry);
+    if (note) hintParts.push(note);
     return {
       value: entry.name,
       label: entry.name,
       hint: hintParts.join(" · "),
     };
   });
+}
+
+function mcpCatalogSummary(entry: CatalogEntry): string {
+  return t(`wizard.mcpCatalog.${entry.name}.summary`);
+}
+
+function mcpCatalogNote(entry: CatalogEntry): string | undefined {
+  if (!entry.note) return undefined;
+  return t(`wizard.mcpCatalog.${entry.name}.note`);
 }
 
 function placeholderFor(entry: CatalogEntry): string {
