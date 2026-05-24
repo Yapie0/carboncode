@@ -244,7 +244,7 @@ export const EN: TranslationSchema = {
   },
   code: {
     workspaceConflict:
-      "⚠ workspace contains another agent platform's files ({platforms}). Carbon Code Code may read them as project content; relaunch with --dir <your-project> if that's not what you want.\n",
+      "⚠ workspace contains another agent platform's files ({platforms}). Carbon Code may read them as project content; relaunch with --dir <your-project> if that's not what you want.\n",
     systemAppendEmpty: "--system-append is empty — no prompt text will be appended\n",
     systemAppendFileReadError:
       'Error: cannot read --system-append-file "{filePath}": {errorDetails}\n',
