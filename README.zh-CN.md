@@ -5,6 +5,8 @@
 Carbon Code 面向个人开发者工作流：进入一个仓库，让智能体读取和搜索代码、规划
 修改、展示 diff、在执行 shell 命令前请求确认、按需运行验证，并输出简洁结果。
 
+English documentation: [README.md](README.md)
+
 ## 安装
 
 要求 Node.js 22 或更新版本。
