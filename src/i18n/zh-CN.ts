@@ -731,6 +731,10 @@ export const zhCN: TranslationSchema = {
       titleStarted: "▸ 正在命名会话…",
       titleFailed: "▸ 会话命名失败：{reason}",
     },
+    theme: {
+      saved: "主题已保存：{theme}\n下次启动时生效：{active}",
+      unknownTheme: "未知主题：{theme}\n可用主题：{available}",
+    },
     admin: {
       doctorNeedsTui: "/doctor 需要 TUI 上下文（postDoctor 已连接）。",
       doctorRunning: "⚕ 健康检查 — 正在运行…",

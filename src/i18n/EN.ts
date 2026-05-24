@@ -761,6 +761,10 @@ export const EN: TranslationSchema = {
       titleStarted: "▸ naming session…",
       titleFailed: "▸ session title failed: {reason}",
     },
+    theme: {
+      saved: "theme saved: {theme}\nactive on next launch: {active}",
+      unknownTheme: "unknown theme: {theme}\navailable: {available}",
+    },
     admin: {
       doctorNeedsTui: "/doctor needs a TUI context (postDoctor wired).",
       doctorRunning: "⚕ Doctor — running health checks…",

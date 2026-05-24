@@ -1244,6 +1244,7 @@ describe("handleSlash", () => {
     });
 
     afterEach(() => {
+      setLanguageRuntime("EN");
       process.env.HOME = originalHome;
       process.env.USERPROFILE = originalUserProfile;
       if (originalTheme === undefined) {
@@ -1273,9 +1274,25 @@ describe("handleSlash", () => {
       expect(loadTheme()).toBe("auto");
     });
 
+    it("localizes theme feedback in zh-CN", () => {
+      setLanguageRuntime("zh-CN");
+      const r = handleSlash("theme", ["light"], makeLoop());
+      expect(r.info).toContain("主题已保存：light");
+      expect(r.info).toContain("下次启动时生效：light");
+      expect(loadTheme()).toBe("light");
+    });
+
     it("rejects unknown theme names", () => {
       const r = handleSlash("theme", ["solarized"], makeLoop());
       expect(r.info).toMatch(/unknown theme: solarized/);
+      expect(loadTheme()).toBeUndefined();
+    });
+
+    it("localizes unknown theme names in zh-CN", () => {
+      setLanguageRuntime("zh-CN");
+      const r = handleSlash("theme", ["solarized"], makeLoop());
+      expect(r.info).toContain("未知主题：solarized");
+      expect(r.info).toContain("可用主题：auto");
       expect(loadTheme()).toBeUndefined();
     });
   });
