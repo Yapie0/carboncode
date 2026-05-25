@@ -17,7 +17,10 @@ const theme: SlashHandler = (args) => {
   }
 
   saveTheme(next);
-  const active = resolveThemePreference(next, process.env.REASONIX_THEME);
+  const active = resolveThemePreference(
+    next,
+    process.env.CARBONCODE_THEME ?? process.env.REASONIX_THEME,
+  );
   return { info: `theme saved: ${next}\nactive on next launch: ${active}` };
 };
 

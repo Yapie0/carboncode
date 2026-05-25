@@ -294,10 +294,10 @@ export interface AppProps {
  * Throttle interval in ms. 50ms —20Hz —slow enough that cursor-up
  * repaints on winpty/MINTTY/ConEmu/tmux don't leave half-drawn frames,
  * fast enough that streaming text still reads as continuous. Override
- * via `REASONIX_FLUSH_MS` if you want 60Hz on a terminal you trust.
+ * via `CARBONCODE_FLUSH_MS` if you want 60Hz on a terminal you trust.
  */
 const FLUSH_INTERVAL_MS = (() => {
-  const raw = process.env.REASONIX_FLUSH_MS;
+  const raw = process.env.CARBONCODE_FLUSH_MS ?? process.env.REASONIX_FLUSH_MS;
   if (!raw) return 50;
   const parsed = Number(raw);
   if (!Number.isFinite(parsed) || parsed < 16 || parsed > 1000) return 50;
@@ -393,7 +393,7 @@ export function App(props: AppProps): React.ReactElement {
     [props.session],
   );
   const [themeName, setThemeName] = React.useState<ThemeName>(() =>
-    resolveThemePreference(loadTheme(), process.env.REASONIX_THEME),
+    resolveThemePreference(loadTheme(), process.env.CARBONCODE_THEME ?? process.env.REASONIX_THEME),
   );
   const statusBar = React.useMemo((): StatusBarConfig => {
     const cfg = readConfig().statusBar ?? {};
@@ -2535,7 +2535,10 @@ function AppInner({
   const handleQQThemePick = useCallback(
     (target: ThemeChoice): string => {
       saveTheme(target);
-      const active = resolveThemePreference(target, process.env.REASONIX_THEME);
+      const active = resolveThemePreference(
+        target,
+        process.env.CARBONCODE_THEME ?? process.env.REASONIX_THEME,
+      );
       setThemeName(active);
       return `theme saved: ${target}\nactive now: ${active}`;
     },
@@ -4282,7 +4285,7 @@ function AppInner({
                       saveTheme(outcome.value);
                       const active = resolveThemePreference(
                         outcome.value,
-                        process.env.REASONIX_THEME,
+                        process.env.CARBONCODE_THEME ?? process.env.REASONIX_THEME,
                       );
                       setThemeName(active);
                       log.pushInfo(`theme saved: ${outcome.value}\n  active now: ${active}`);

@@ -473,7 +473,7 @@ export const zhCN: TranslationSchema = {
     footer: "↑↓ 选择 · ⏎ 确认 · Esc 取消",
     currentPref: "当前偏好",
     activeNow: "当前生效",
-    autoDesc: "使用 REASONIX_THEME 或默认主题",
+    autoDesc: "使用 CARBONCODE_THEME 或默认主题",
   },
   planFlow: {
     approveCardTitle: "确认计划",

@@ -90,23 +90,25 @@ function resolveDashboardPort(
     : undefined;
 }
 
-/** Resolution order: flag → REASONIX_DASHBOARD_HOST env → config.dashboard.host → undefined (server defaults to 127.0.0.1). */
+/** Resolution order: flag → CARBONCODE_DASHBOARD_HOST env → legacy REASONIX_DASHBOARD_HOST env → config.dashboard.host → undefined (server defaults to 127.0.0.1). */
 function resolveDashboardHost(
   flagValue: string | undefined,
   noConfig: boolean,
 ): string | undefined {
   const fromFlag = flagValue?.trim();
   if (fromFlag) return fromFlag;
-  const fromEnv = process.env.REASONIX_DASHBOARD_HOST?.trim();
+  const fromEnv =
+    process.env.CARBONCODE_DASHBOARD_HOST?.trim() ?? process.env.REASONIX_DASHBOARD_HOST?.trim();
   if (fromEnv) return fromEnv;
   if (noConfig) return undefined;
   const fromCfg = readConfig().dashboard?.host;
   return typeof fromCfg === "string" && fromCfg.trim() ? fromCfg.trim() : undefined;
 }
 
-/** Resolution order: REASONIX_DASHBOARD_TOKEN env → config.dashboard.token → undefined (server mints a fresh per-boot token). Min 16 chars; shorter values are dropped with a warning to avoid trivially-guessable tokens. */
+/** Resolution order: CARBONCODE_DASHBOARD_TOKEN env → legacy REASONIX_DASHBOARD_TOKEN env → config.dashboard.token → undefined (server mints a fresh per-boot token). Min 16 chars; shorter values are dropped with a warning to avoid trivially-guessable tokens. */
 function resolveDashboardToken(noConfig: boolean): string | undefined {
-  const fromEnv = process.env.REASONIX_DASHBOARD_TOKEN?.trim();
+  const fromEnv =
+    process.env.CARBONCODE_DASHBOARD_TOKEN?.trim() ?? process.env.REASONIX_DASHBOARD_TOKEN?.trim();
   const fromCfg = noConfig ? undefined : readConfig().dashboard?.token?.trim();
   const candidate = fromEnv || fromCfg;
   if (!candidate) return undefined;

@@ -1231,21 +1231,29 @@ describe("handleSlash", () => {
     let tempHome: string;
     let originalHome: string | undefined;
     let originalUserProfile: string | undefined;
+    let originalCarbonTheme: string | undefined;
     let originalTheme: string | undefined;
 
     beforeEach(() => {
       tempHome = mkdtempSync(join(tmpdir(), "reasonix-theme-slash-"));
       originalHome = process.env.HOME;
       originalUserProfile = process.env.USERPROFILE;
+      originalCarbonTheme = process.env.CARBONCODE_THEME;
       originalTheme = process.env.REASONIX_THEME;
       process.env.HOME = tempHome;
       process.env.USERPROFILE = tempHome;
+      process.env.CARBONCODE_THEME = "github-dark";
       process.env.REASONIX_THEME = "github-dark";
     });
 
     afterEach(() => {
       process.env.HOME = originalHome;
       process.env.USERPROFILE = originalUserProfile;
+      if (originalCarbonTheme === undefined) {
+        process.env.CARBONCODE_THEME = undefined;
+      } else {
+        process.env.CARBONCODE_THEME = originalCarbonTheme;
+      }
       if (originalTheme === undefined) {
         process.env.REASONIX_THEME = undefined;
       } else {
@@ -1270,6 +1278,16 @@ describe("handleSlash", () => {
     it("persists auto so env can resolve the active theme", () => {
       const r = handleSlash("theme", ["auto"], makeLoop());
       expect(r.info).toMatch(/active on next launch: github-dark/);
+      expect(loadTheme()).toBe("auto");
+    });
+
+    it("prefers CARBONCODE_THEME over legacy REASONIX_THEME", () => {
+      process.env.CARBONCODE_THEME = "tokyo-night";
+      process.env.REASONIX_THEME = "github-light";
+
+      const r = handleSlash("theme", ["auto"], makeLoop());
+
+      expect(r.info).toMatch(/active on next launch: tokyo-night/);
       expect(loadTheme()).toBe("auto");
     });
 

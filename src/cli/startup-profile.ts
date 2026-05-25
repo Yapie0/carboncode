@@ -9,7 +9,7 @@ const marks: PhaseMark[] = [];
 let dumped = false;
 
 function envFlag(): boolean {
-  const v = process.env.REASONIX_PROFILE_STARTUP;
+  const v = process.env.CARBONCODE_PROFILE_STARTUP ?? process.env.REASONIX_PROFILE_STARTUP;
   return v === "1" || v === "true" || v === "yes";
 }
 
@@ -36,7 +36,7 @@ export function dumpStartupProfile(stream: NodeJS.WriteStream = process.stderr):
     prev = m.t;
   }
   lines.push(
-    `─── ${Math.round(totalMs)}ms total · last phase ${marks[marks.length - 1]!.name} · set REASONIX_PROFILE_STARTUP=0 to silence`,
+    `─── ${Math.round(totalMs)}ms total · last phase ${marks[marks.length - 1]!.name} · set CARBONCODE_PROFILE_STARTUP=0 to silence`,
   );
   stream.write(`${lines.join("\n")}\n`);
 }

@@ -19,19 +19,25 @@ function makeSink(): { stream: NodeJS.WriteStream; output: () => string } {
 }
 
 describe("startup-profile", () => {
-  const original = process.env.REASONIX_PROFILE_STARTUP;
+  const originalCarbon = process.env.CARBONCODE_PROFILE_STARTUP;
+  const originalReasonix = process.env.REASONIX_PROFILE_STARTUP;
 
   beforeEach(() => {
     _resetForTests();
   });
 
   afterEach(() => {
-    if (original === undefined) Reflect.deleteProperty(process.env, "REASONIX_PROFILE_STARTUP");
-    else process.env.REASONIX_PROFILE_STARTUP = original;
+    if (originalCarbon === undefined)
+      Reflect.deleteProperty(process.env, "CARBONCODE_PROFILE_STARTUP");
+    else process.env.CARBONCODE_PROFILE_STARTUP = originalCarbon;
+    if (originalReasonix === undefined)
+      Reflect.deleteProperty(process.env, "REASONIX_PROFILE_STARTUP");
+    else process.env.REASONIX_PROFILE_STARTUP = originalReasonix;
     _resetForTests();
   });
 
   it("is disabled by default — markPhase + dumpStartupProfile are no-ops", () => {
+    Reflect.deleteProperty(process.env, "CARBONCODE_PROFILE_STARTUP");
     Reflect.deleteProperty(process.env, "REASONIX_PROFILE_STARTUP");
     expect(isStartupProfileEnabled()).toBe(false);
     markPhase("a");
@@ -43,15 +49,24 @@ describe("startup-profile", () => {
 
   it("recognizes 1 / true / yes as enable values", () => {
     for (const v of ["1", "true", "yes"]) {
-      process.env.REASONIX_PROFILE_STARTUP = v;
+      process.env.CARBONCODE_PROFILE_STARTUP = v;
       expect(isStartupProfileEnabled()).toBe(true);
     }
-    process.env.REASONIX_PROFILE_STARTUP = "0";
+    process.env.CARBONCODE_PROFILE_STARTUP = "0";
     expect(isStartupProfileEnabled()).toBe(false);
   });
 
-  it("emits a formatted profile when enabled, with cumulative + delta per phase", () => {
+  it("prefers CARBONCODE_PROFILE_STARTUP over legacy REASONIX_PROFILE_STARTUP", () => {
+    process.env.CARBONCODE_PROFILE_STARTUP = "0";
     process.env.REASONIX_PROFILE_STARTUP = "1";
+    expect(isStartupProfileEnabled()).toBe(false);
+
+    Reflect.deleteProperty(process.env, "CARBONCODE_PROFILE_STARTUP");
+    expect(isStartupProfileEnabled()).toBe(true);
+  });
+
+  it("emits a formatted profile when enabled, with cumulative + delta per phase", () => {
+    process.env.CARBONCODE_PROFILE_STARTUP = "1";
     markPhase("first");
     markPhase("second");
     markPhase("third");
@@ -64,10 +79,11 @@ describe("startup-profile", () => {
     expect(out).toContain("third");
     expect(out).toMatch(/total/);
     expect(out).toMatch(/last phase third/);
+    expect(out).toContain("CARBONCODE_PROFILE_STARTUP=0");
   });
 
   it("dumpStartupProfile is idempotent — second call is silent", () => {
-    process.env.REASONIX_PROFILE_STARTUP = "1";
+    process.env.CARBONCODE_PROFILE_STARTUP = "1";
     markPhase("only");
     const sink1 = makeSink();
     dumpStartupProfile(sink1.stream);
@@ -80,14 +96,14 @@ describe("startup-profile", () => {
   });
 
   it("emits nothing when enabled but no phases were marked", () => {
-    process.env.REASONIX_PROFILE_STARTUP = "1";
+    process.env.CARBONCODE_PROFILE_STARTUP = "1";
     const sink = makeSink();
     dumpStartupProfile(sink.stream);
     expect(sink.output()).toBe("");
   });
 
   it("each line shows ms + phase name + (+delta) suffix", () => {
-    process.env.REASONIX_PROFILE_STARTUP = "1";
+    process.env.CARBONCODE_PROFILE_STARTUP = "1";
     markPhase("alpha");
     markPhase("beta");
     const sink = makeSink();
