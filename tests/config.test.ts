@@ -30,6 +30,7 @@ import {
   removeProjectPathAllowed,
   removeProjectShellAllowed,
   resolveSemanticEmbeddingConfig,
+  resolveThemeEnv,
   resolveThemePreference,
   saveApiKey,
   saveBaseUrl,
@@ -49,6 +50,8 @@ describe("config", () => {
   const originalEnv = process.env.DEEPSEEK_API_KEY;
   const originalCarbonSearch = process.env.CARBONCODE_SEARCH;
   const originalSearch = process.env.REASONIX_SEARCH;
+  const originalCarbonTheme = process.env.CARBONCODE_THEME;
+  const originalReasonixTheme = process.env.REASONIX_THEME;
   const originalBaseUrl = process.env.DEEPSEEK_BASE_URL;
 
   beforeEach(() => {
@@ -60,6 +63,10 @@ describe("config", () => {
     delete process.env.CARBONCODE_SEARCH;
     // biome-ignore lint/performance/noDelete: same reason
     delete process.env.REASONIX_SEARCH;
+    // biome-ignore lint/performance/noDelete: same reason
+    delete process.env.CARBONCODE_THEME;
+    // biome-ignore lint/performance/noDelete: same reason
+    delete process.env.REASONIX_THEME;
     // biome-ignore lint/performance/noDelete: same reason
     delete process.env.DEEPSEEK_BASE_URL;
   });
@@ -89,6 +96,18 @@ describe("config", () => {
       delete process.env.DEEPSEEK_BASE_URL;
     } else {
       process.env.DEEPSEEK_BASE_URL = originalBaseUrl;
+    }
+    if (originalCarbonTheme === undefined) {
+      // biome-ignore lint/performance/noDelete: same reason
+      delete process.env.CARBONCODE_THEME;
+    } else {
+      process.env.CARBONCODE_THEME = originalCarbonTheme;
+    }
+    if (originalReasonixTheme === undefined) {
+      // biome-ignore lint/performance/noDelete: same reason
+      delete process.env.REASONIX_THEME;
+    } else {
+      process.env.REASONIX_THEME = originalReasonixTheme;
     }
   });
 
@@ -445,6 +464,23 @@ describe("config", () => {
     expect(resolveThemePreference(undefined, "tokyo-night")).toBe("tokyo-night");
     expect(resolveThemePreference("github-dark", "github-light")).toBe("github-dark");
     expect(resolveThemePreference("auto", "unknown")).toBe("github-light");
+  });
+
+  it("resolveThemePreference prefers CARBONCODE_THEME over the legacy REASONIX_THEME", () => {
+    process.env.CARBONCODE_THEME = "tokyo-night";
+    process.env.REASONIX_THEME = "github-dark";
+
+    expect(resolveThemeEnv()).toBe("tokyo-night");
+    expect(resolveThemePreference("auto")).toBe("tokyo-night");
+  });
+
+  it("resolveThemePreference keeps REASONIX_THEME as a legacy fallback", () => {
+    // biome-ignore lint/performance/noDelete: this test exercises the fallback branch.
+    delete process.env.CARBONCODE_THEME;
+    process.env.REASONIX_THEME = "github-dark";
+
+    expect(resolveThemeEnv()).toBe("github-dark");
+    expect(resolveThemePreference(undefined)).toBe("github-dark");
   });
 
   it("saveTheme doesn't clobber other persisted fields", () => {

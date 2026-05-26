@@ -487,7 +487,7 @@ export const EN: TranslationSchema = {
     footer: "↑↓ pick · ⏎ confirm · esc cancel",
     currentPref: "current preference",
     activeNow: "active now",
-    autoDesc: "use REASONIX_THEME or default",
+    autoDesc: "use CARBONCODE_THEME or default",
   },
   planFlow: {
     approveCardTitle: "Approve plan",
