@@ -1,4 +1,4 @@
-/** Cross-platform URL opener; no-op under CI / when REASONIX_NO_OPEN is set. */
+/** Cross-platform URL opener; no-op under CI / when CARBONCODE_NO_OPEN is set. */
 
 import { spawn } from "node:child_process";
 import { platform } from "node:os";
@@ -10,7 +10,7 @@ export interface OpenUrlResult {
 
 export function openUrl(url: string): OpenUrlResult {
   if (process.env.CI) return { opened: false, reason: "ci" };
-  if (process.env.REASONIX_NO_OPEN) return { opened: false, reason: "disabled" };
+  if (process.env.CARBONCODE_NO_OPEN) return { opened: false, reason: "disabled" };
 
   const os = platform();
   let cmd: string;
