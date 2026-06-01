@@ -87,7 +87,12 @@ export async function handleSessions(
 
   // Single-session detail / switch / delete. URL-decode in case the name
   // had spaces / CJK (sanitizeName allows them).
-  const name = decodeURIComponent(rest[0]!);
+  let name: string;
+  try {
+    name = decodeURIComponent(rest[0]!);
+  } catch {
+    return { status: 400, body: { error: "invalid session name encoding" } };
+  }
   const path = sessionPath(name);
   const currentName = ctx.getSessionName?.() ?? null;
 
