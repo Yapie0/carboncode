@@ -287,7 +287,7 @@ export const zhCN: TranslationSchema = {
       argsHint: "[name]",
     },
     memory: {
-      description: "显示 / 管理固定记忆（CARBON.md + ~/.carboncode/CARBON.md）",
+      description: "显示 / 管理固定记忆（AGENTS.md/CARBON.md + ~/.carboncode/memory）",
       argsHint: "[list|show <name>|forget <name>|clear <scope> confirm]",
     },
     agents: {
