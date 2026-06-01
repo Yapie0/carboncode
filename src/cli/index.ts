@@ -13,6 +13,7 @@ import { installProxyIfConfigured } from "../net/proxy.js";
 import { escalationContract } from "../prompt-fragments.js";
 import { startCpuProfile, stopAndSaveCpuProfile } from "./cpu-prof.js";
 import { resolveDashboardHost, resolveDashboardToken } from "./dashboard-options.js";
+import { parseNonNegativeIntegerOption, parsePositiveIntegerOption } from "./number-options.js";
 import { resolveBareCommandMode, resolveContinueFlag, resolveDefaults } from "./resolve.js";
 import { markPhase } from "./startup-profile.js";
 
@@ -390,7 +391,7 @@ program
 program
   .command("prune-sessions")
   .description(t("cli.pruneSessions"))
-  .option("--days <n>", t("ui.pruneDaysHint"), (v) => Number.parseInt(v, 10))
+  .option("--days <n>", t("ui.pruneDaysHint"), parsePositiveIntegerOption)
   .option("--dry-run", t("ui.pruneDryRunHint"))
   .action(async (opts) => {
     const { pruneSessionsCommand } = await import("./commands/prune-sessions.js");
@@ -401,8 +402,8 @@ program
   .command("events <name>")
   .description(t("cli.events"))
   .option("--type <type>", t("ui.eventTypeHint"))
-  .option("--since <id>", t("ui.eventSinceHint"), (v) => Number.parseInt(v, 10))
-  .option("--tail <n>", t("ui.eventTailHint"), (v) => Number.parseInt(v, 10))
+  .option("--since <id>", t("ui.eventSinceHint"), parseNonNegativeIntegerOption)
+  .option("--tail <n>", t("ui.eventTailHint"), parsePositiveIntegerOption)
   .option("--json", t("ui.jsonHint"))
   .option("--projection", t("ui.projectionHint"))
   .action(async (name: string, opts) => {
@@ -421,8 +422,8 @@ program
   .command("replay <transcript>")
   .description(t("cli.replay"))
   .option("--print", t("ui.printHint"))
-  .option("--head <n>", t("ui.headHint"), (v) => Number.parseInt(v, 10))
-  .option("--tail <n>", t("ui.tailHint"), (v) => Number.parseInt(v, 10))
+  .option("--head <n>", t("ui.headHint"), parsePositiveIntegerOption)
+  .option("--tail <n>", t("ui.tailHint"), parsePositiveIntegerOption)
   .action(async (transcript: string, opts) => {
     const { replayCommand } = await import("./commands/replay.js");
     await replayCommand({
@@ -462,8 +463,8 @@ mcp
   .option("--json", t("ui.jsonHintCatalog"))
   .option("--local", t("ui.mcpLocalHint"))
   .option("--refresh", t("ui.mcpRefreshHint"))
-  .option("--limit <n>", t("ui.mcpLimitHint"), (v) => Number.parseInt(v, 10))
-  .option("--pages <n>", t("ui.mcpPagesHint"), (v) => Number.parseInt(v, 10))
+  .option("--limit <n>", t("ui.mcpLimitHint"), parsePositiveIntegerOption)
+  .option("--pages <n>", t("ui.mcpPagesHint"), parsePositiveIntegerOption)
   .option("--all", t("ui.mcpAllHint"))
   .action(async (opts) => {
     try {
@@ -487,8 +488,8 @@ mcp
   .description(t("ui.mcpSearchDescription"))
   .option("--json", t("ui.jsonHintCatalog"))
   .option("--refresh", t("ui.mcpRefreshHint"))
-  .option("--limit <n>", t("ui.mcpLimitHint"), (v) => Number.parseInt(v, 10))
-  .option("--max-pages <n>", t("ui.mcpMaxPagesHint"), (v) => Number.parseInt(v, 10))
+  .option("--limit <n>", t("ui.mcpLimitHint"), parsePositiveIntegerOption)
+  .option("--max-pages <n>", t("ui.mcpMaxPagesHint"), parsePositiveIntegerOption)
   .action(async (query: string, opts) => {
     try {
       const { mcpSearchCommand } = await import("./commands/mcp.js");
@@ -509,7 +510,7 @@ mcp
   .command("install <name>")
   .description(t("ui.mcpInstallDescription"))
   .option("--refresh", t("ui.mcpRefreshHint"))
-  .option("--max-pages <n>", t("ui.mcpMaxPagesHint"), (v) => Number.parseInt(v, 10))
+  .option("--max-pages <n>", t("ui.mcpMaxPagesHint"), parsePositiveIntegerOption)
   .action(async (name: string, opts) => {
     try {
       const { mcpInstallCommand } = await import("./commands/mcp.js");
