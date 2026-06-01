@@ -924,7 +924,7 @@ export const zhCN: TranslationSchema = {
       proUsage:
         "用法：/pro       为下一轮启用 pro（一次性，自动解除）\n       /pro off  在下一轮前取消启用状态",
       proArmed:
-        "▸ /pro 已启用 — 您的下一条消息将在 {model} 上运行，无论预设如何。一轮后自动解除。使用 /preset max 进行持久切换。",
+        "▸ /pro 已启用 — 您的下一条消息将在 {model} 上运行，无论预设如何。一轮后自动解除。使用 /preset pro 进行持久切换。",
       budgetNoCap:
         "未设置会话预算 — Carbon Code 将持续运行直到您停止。使用以下方式设置：/budget <usd>   （例如 /budget 5）",
       budgetStatus: "预算：${spent} / ${cap}（{pct}%）· /budget off 清除，/budget <usd> 更改",

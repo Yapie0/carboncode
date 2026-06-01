@@ -966,7 +966,7 @@ export const EN: TranslationSchema = {
       proUsage:
         "usage: /pro       arm pro for the next turn (one-shot, auto-disarms after)\n       /pro off  cancel armed state before the next turn",
       proArmed:
-        "▸ /pro armed — your NEXT message runs on {model} regardless of preset. Auto-disarms after one turn. Use /preset max for a persistent switch.",
+        "▸ /pro armed — your NEXT message runs on {model} regardless of preset. Auto-disarms after one turn. Use /preset pro for a persistent switch.",
       budgetNoCap:
         "no session budget set — Carbon Code will keep going until you stop it. Set one with: /budget <usd>   (e.g. /budget 5)",
       budgetStatus:

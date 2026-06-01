@@ -13,8 +13,8 @@ const FEATURES = [
     title: { zh: 'V4 双档位', en: 'V4 two-tier' },
     en: 'Flash by default · /pro on demand',
     desc: {
-      zh: '默认 DeepSeek V4 Flash 跑日常迭代控成本，/pro 单回合切到 DeepSeek V4 Pro，/preset max 整个 session 走 Pro。',
-      en: 'DeepSeek V4 Flash by default for cheap iteration; `/pro` lifts a single turn to DeepSeek V4 Pro; `/preset max` makes the whole session run on Pro.',
+      zh: '默认 DeepSeek V4 Flash 跑日常迭代控成本，/pro 单回合切到 DeepSeek V4 Pro，/preset pro 整个 session 走 Pro。',
+      en: 'DeepSeek V4 Flash by default for cheap iteration; `/pro` lifts a single turn to DeepSeek V4 Pro; `/preset pro` makes the whole session run on Pro.',
     },
   },
   {
