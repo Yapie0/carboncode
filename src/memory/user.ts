@@ -1,4 +1,4 @@
-/** User-private memory pinned into the immutable prefix; distinct from committable CARBON.md. */
+/** User-private memory pinned into the immutable prefix; distinct from committable AGENTS.md / CARBON.md. */
 
 import { createHash } from "node:crypto";
 import {
