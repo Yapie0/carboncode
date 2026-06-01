@@ -14,7 +14,7 @@ export interface FileDiff {
   status: "added" | "deleted" | "modified";
 }
 
-function parseGitDiff(stdout: string): FileDiff[] {
+export function parseGitDiff(stdout: string): FileDiff[] {
   const files: FileDiff[] = [];
   // Split on diff --git headers
   const blocks = stdout.split(/\ndiff --git /).filter(Boolean);
@@ -29,12 +29,12 @@ function parseGitDiff(stdout: string): FileDiff[] {
     const patchContent = block;
 
     // Count additions/deletions
-    const additions = (patchContent.match(/^\+/gm) || []).length;
-    const deletions = (patchContent.match(/^-/gm) || []).length;
+    const additions = (patchContent.match(/^\+(?!\+\+)/gm) || []).length;
+    const deletions = (patchContent.match(/^-(?!--)/gm) || []).length;
 
     // Determine status
-    const isNew = /^new file mode/.test(patchContent);
-    const isDeleted = /^deleted file mode/.test(patchContent);
+    const isNew = /^new file mode/m.test(patchContent);
+    const isDeleted = /^deleted file mode/m.test(patchContent);
     const status = isNew ? "added" : isDeleted ? "deleted" : "modified";
 
     files.push({
