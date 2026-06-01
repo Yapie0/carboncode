@@ -65,7 +65,7 @@ export function checkAuth(
         status: 403,
         body: JSON.stringify({
           error:
-            "mutation requires X-Carboncode-Token header (CSRF defence — query token alone is rejected for POST/DELETE).",
+            "mutation requires X-Carboncode-Token header (CSRF defence; query token alone is rejected for POST/DELETE).",
         }),
       };
     }
@@ -125,7 +125,7 @@ export async function dispatch(
     const fail = checkAuth(req, expectedToken, false);
     if (fail) {
       res.writeHead(fail.status, { "content-type": "text/plain" });
-      res.end("unauthorized — open the URL printed by /dashboard, including ?token=…");
+      res.end("unauthorized: open the URL printed by /dashboard, including ?token=...");
       return;
     }
     const html = renderIndexHtml(expectedToken, ctx.mode);
@@ -220,7 +220,7 @@ export function startDashboardServer(
       const url = `http://${host}:${finalPort}/?token=${token}`;
       if (!LOOPBACK_HOSTS.has(host)) {
         process.stderr.write(
-          `▲ Dashboard bound to ${host}:${finalPort} (non-loopback). The URL token is the only auth — keep it secret.\n`,
+          `WARNING: Dashboard bound to ${host}:${finalPort} (non-loopback). The URL token is the only auth; keep it secret.\n`,
         );
       }
 

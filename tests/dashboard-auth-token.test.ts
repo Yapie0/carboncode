@@ -8,6 +8,10 @@ function req(url: string, headers: Record<string, string> = {}): IncomingMessage
   return { url, headers } as IncomingMessage;
 }
 
+function isAscii(text: string): boolean {
+  return [...text].every((ch) => ch.charCodeAt(0) <= 0x7f);
+}
+
 describe("dashboard auth token headers", () => {
   it("accepts X-Carboncode-Token for mutations", () => {
     expect(
@@ -24,6 +28,7 @@ describe("dashboard auth token headers", () => {
 
     expect(result?.status).toBe(403);
     expect(result?.body).toContain("X-Carboncode-Token");
+    expect(isAscii(result?.body ?? "")).toBe(true);
   });
 
   it("accepts query tokens for reads", () => {

@@ -16,6 +16,10 @@ function ctx(dir: string) {
   };
 }
 
+function isAscii(text: string): boolean {
+  return [...text].every((ch) => ch.charCodeAt(0) <= 0x7f);
+}
+
 describe("startDashboardServer host + token (#968)", () => {
   let dir: string;
   let handle: DashboardServerHandle | undefined;
@@ -36,7 +40,9 @@ describe("startDashboardServer host + token (#968)", () => {
   it("defaults to 127.0.0.1 when no host is given and emits no LAN warning", async () => {
     handle = await startDashboardServer(ctx(dir), { token: TOKEN });
     expect(handle.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/\?token=/);
-    const warnings = writeSpy.mock.calls.map((c) => String(c[0])).filter((s) => s.includes("▲"));
+    const warnings = writeSpy.mock.calls
+      .map((c) => String(c[0]))
+      .filter((s) => s.includes("Dashboard bound"));
     expect(warnings).toEqual([]);
   });
 
@@ -49,15 +55,21 @@ describe("startDashboardServer host + token (#968)", () => {
   it("binds 0.0.0.0 when requested and prints a stderr warning", async () => {
     handle = await startDashboardServer(ctx(dir), { token: TOKEN, host: "0.0.0.0" });
     expect(handle.url).toMatch(/^http:\/\/0\.0\.0\.0:\d+\/\?token=/);
-    const warnings = writeSpy.mock.calls.map((c) => String(c[0])).filter((s) => s.includes("▲"));
+    const warnings = writeSpy.mock.calls
+      .map((c) => String(c[0]))
+      .filter((s) => s.includes("Dashboard bound"));
     expect(warnings.length).toBe(1);
+    expect(warnings[0]).toMatch(/^WARNING:/);
     expect(warnings[0]).toContain("non-loopback");
     expect(warnings[0]).toContain("token");
+    expect(isAscii(warnings[0] ?? "")).toBe(true);
   });
 
   it("does not warn for ::1 or localhost (still loopback)", async () => {
     handle = await startDashboardServer(ctx(dir), { token: TOKEN, host: "localhost" });
-    const warnings = writeSpy.mock.calls.map((c) => String(c[0])).filter((s) => s.includes("▲"));
+    const warnings = writeSpy.mock.calls
+      .map((c) => String(c[0]))
+      .filter((s) => s.includes("Dashboard bound"));
     expect(warnings).toEqual([]);
   });
 });
