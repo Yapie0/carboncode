@@ -34,6 +34,7 @@ function transcriptSummary(path: string): void {
   if (!existsSync(path)) {
     console.error(`no such transcript: ${path}`);
     process.exit(1);
+    return;
   }
   const lines = readFileSync(path, "utf8").split(/\r?\n/).filter(Boolean);
   let assistantTurns = 0;
