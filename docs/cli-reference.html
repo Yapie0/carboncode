@@ -346,6 +346,10 @@
                   <td>Abort the current model turn (typed alternative to Esc)</td>
                 </tr>
                 <tr>
+                  <td><code>/btw &lt;question&gt;</code></td>
+                  <td>Ask a side question without changing the main conversation</td>
+                </tr>
+                <tr>
                   <td><code>/copy</code></td>
                   <td>Open vim/tmux-style copy mode — <code>j</code>/<code>k</code> navigate, <code>v</code> select, <code>y</code> yank to clipboard. The right answer for SSH / mosh / tmux where drag-select can't extend past the viewport</td>
                 </tr>
@@ -370,6 +374,14 @@
                 <tr>
                   <td><code>/theme &lt;name&gt;</code></td>
                   <td>Show or persist terminal theme. Bare opens picker</td>
+                </tr>
+                <tr>
+                  <td><code>/config</code></td>
+                  <td>Open configuration guidance and current config paths</td>
+                </tr>
+                <tr>
+                  <td><code>/vim [on|off]</code></td>
+                  <td>Toggle vim-style input editing</td>
                 </tr>
               </tbody>
             </table>
@@ -398,6 +410,18 @@
                   <td>Health check (api / config / api-reach / index / hooks / project)</td>
                 </tr>
                 <tr>
+                  <td><code>/terminal-setup</code></td>
+                  <td>Show terminal integration setup help</td>
+                </tr>
+                <tr>
+                  <td><code>/output-style [default|explanatory|learning]</code></td>
+                  <td>Switch response style</td>
+                </tr>
+                <tr>
+                  <td><code>/statusline [minimal|default|full]</code></td>
+                  <td>Switch status line density</td>
+                </tr>
+                <tr>
                   <td><code>/keys</code></td>
                   <td>Keyboard + mouse + copy/paste reference</td>
                 </tr>
@@ -424,12 +448,20 @@
                   <td>Browse / fetch MCP prompts</td>
                 </tr>
                 <tr>
-                  <td><code>/memory [list|show|forget|clear]</code></td>
+                  <td><code>/memory [for &lt;path&gt;|list|show|forget|clear]</code></td>
                   <td>Manage pinned memory (AGENTS.md / CARBON.md + <code>~/.carboncode/memory</code>)</td>
                 </tr>
                 <tr>
-                  <td><code>/skill [list|show|new|&lt;name&gt;]</code></td>
+                  <td><code>/skill [list|paths|show|new|&lt;name&gt;]</code></td>
                   <td>List / run / scaffold user skills</td>
+                </tr>
+                <tr>
+                  <td><code>/agents [list|show|new]</code> (<code>/agent</code>)</td>
+                  <td>Manage project agents</td>
+                </tr>
+                <tr>
+                  <td><code>/qq &lt;connect|status|disconnect&gt;</code></td>
+                  <td>Connect, inspect, or disconnect the QQ channel</td>
                 </tr>
               </tbody>
             </table>
@@ -441,12 +473,28 @@
                   <td><code>/sessions</code></td>
                   <td>List saved sessions (current marked with ▸)</td>
                 </tr>
+                <tr>
+                  <td><code>/resume</code></td>
+                  <td>Resume a saved session</td>
+                </tr>
+                <tr>
+                  <td><code>/export [json]</code></td>
+                  <td>Export the current conversation</td>
+                </tr>
+                <tr>
+                  <td><code>/title</code> (<code>/retitle</code>)</td>
+                  <td>Rename the current session</td>
+                </tr>
               </tbody>
             </table>
 
             <h3 data-i18n="sl.h.code">Code mode</h3>
             <table class="cmd-table">
               <tbody>
+                <tr>
+                  <td><code>/review [ref]</code></td>
+                  <td>Review the working tree or a git ref</td>
+                </tr>
                 <tr>
                   <td><code>/init [force]</code></td>
                   <td>Scan project, synthesize a baseline <code>CARBON.md</code></td>
@@ -498,6 +546,10 @@
                 <tr>
                   <td><code>/cwd &lt;path&gt;</code> (<code>/sandbox</code>)</td>
                   <td>Switch the workspace root mid-session</td>
+                </tr>
+                <tr>
+                  <td><code>/add-dir [path]</code></td>
+                  <td>Add another directory to the current workspace</td>
                 </tr>
               </tbody>
             </table>
