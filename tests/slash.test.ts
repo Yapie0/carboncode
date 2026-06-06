@@ -256,6 +256,13 @@ describe("handleSlash", () => {
     expect(r.info).toMatch(/pro/);
   });
 
+  it("/pro persistent switch hint points to the current pro preset", () => {
+    setLanguageRuntime("EN");
+    const r = handleSlash("pro", [], makeLoop());
+    expect(r.info).toContain("/preset pro");
+    expect(r.info).not.toContain("/preset max");
+  });
+
   it("/help mentions sessions", () => {
     const r = handleSlash("help", [], makeLoop());
     expect(r.info).toMatch(/\/sessions/);

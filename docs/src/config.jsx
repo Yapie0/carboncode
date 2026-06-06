@@ -212,7 +212,7 @@ Only focus on the code touched by this diff — don't go off-topic.`,
         lang: 'shell',
         code: `# Reasoning depth + model
 › /pro                # next turn on DeepSeek V4 Pro
-› /preset max         # whole session on Pro
+› /preset pro         # whole session on Pro
 › /effort high        # think harder
 
 # Edit approval
