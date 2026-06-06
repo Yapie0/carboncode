@@ -111,7 +111,7 @@
 
     "mod.title": "Module layout",
     "mod.note":
-      "Files kept small by design: the largest module under <code>cli/ui/</code> is 2K lines (App.tsx), every handler under <code>slash/handlers/</code> is ≤200 lines, every hook under <code>cli/ui/</code> is ≤310 lines. Adding a new slash command means editing one handler file and one registry line.",
+      "Files kept small by design: the largest module under <code>cli/ui/</code> is 2K lines (App.tsx), every handler under <code>slash/handlers/</code> is ≤200 lines, every hook under <code>cli/ui/</code> is ≤310 lines. Adding a new slash command means updating its handler, registry entry, localized help copy, and any public command reference that surfaces the slash list.",
 
     "evo.title": "Design evolution",
 
@@ -231,7 +231,7 @@
 
     "mod.title": "模块布局",
     "mod.note":
-      "文件故意保持精简：<code>cli/ui/</code> 下最大的模块是 2K 行（App.tsx），<code>slash/handlers/</code> 下每个 handler ≤200 行，<code>cli/ui/</code> 下每个 hook ≤310 行。新增斜杠命令只需改一个 handler 文件和一行注册。",
+      "文件故意保持精简：<code>cli/ui/</code> 下最大的模块是 2K 行（App.tsx），<code>slash/handlers/</code> 下每个 handler ≤200 行，<code>cli/ui/</code> 下每个 hook ≤310 行。新增斜杠命令需要同步更新 handler、注册表、本地化帮助文案，以及任何公开展示斜杠列表的命令参考。",
 
     "evo.title": "设计演进",
 
