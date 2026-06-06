@@ -26,6 +26,11 @@ describe("session title generation", () => {
     ).toBe("修复-会话-损坏");
   });
 
+  it("rejects titles that do not contain usable slug text", () => {
+    expect(makeSessionNameFromTitle("___", { exists: () => false })).toBeNull();
+    expect(makeSessionNameFromTitle("---", { exists: () => false })).toBeNull();
+  });
+
   it("only auto-names default first-turn sessions that have not been named before", () => {
     expect(shouldAutoNameSession("default-20260517123456", {}, 1)).toBe(true);
     expect(shouldAutoNameSession("default-20260517123456", {}, 2)).toBe(false);
