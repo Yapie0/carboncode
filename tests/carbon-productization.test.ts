@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterAll, describe, expect, test } from "vitest";
+import { SLASH_COMMANDS } from "../src/cli/ui/slash/commands.js";
 import { codeSystemBase } from "../src/code/prompt.js";
 import { getLanguage, setLanguageRuntime, t } from "../src/i18n/index.js";
 
@@ -248,6 +249,16 @@ describe("Carbon broad Reasonix import", () => {
       expect(content, file).not.toMatch(/\breasonix\b/);
       expect(content, file).not.toMatch(/\bReasonix\b/);
       expect(content, file).not.toContain("~/.reasonix");
+    }
+  });
+
+  test("CLI reference documents every registered slash command", () => {
+    const markdown = readFileSync(resolve("docs/CLI-REFERENCE.md"), "utf8");
+    const html = readFileSync(resolve("docs/cli-reference.html"), "utf8");
+
+    for (const { cmd } of SLASH_COMMANDS) {
+      expect(markdown, `docs/CLI-REFERENCE.md missing /${cmd}`).toContain(`/${cmd}`);
+      expect(html, `docs/cli-reference.html missing /${cmd}`).toContain(`/${cmd}`);
     }
   });
 

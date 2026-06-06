@@ -84,6 +84,7 @@ Type `/` mid-chat to open the picker. Aliases shown in parentheses. Code-mode-on
 | `/retry` | Truncate and resend your last message — fresh sample |
 | `/compact` | Fold older turns into a summary (cache-safe). Auto-fires at 50% ctx; this is the manual trigger |
 | `/stop` | Abort the current model turn (typed alternative to Esc) |
+| `/btw <question>` | Ask a side question without changing the main conversation |
 | `/copy` | Open vim/tmux-style copy mode — `j`/`k` navigate, `v` select, `y` yank to clipboard. The right answer for SSH / mosh / tmux where drag-select can't extend past the viewport |
 
 ### Setup
@@ -94,6 +95,8 @@ Type `/` mid-chat to open the picker. Aliases shown in parentheses. Code-mode-on
 | `/model <id>` | Switch DeepSeek model id. Bare opens picker |
 | `/language <EN\|zh-CN>` (`/lang`) | Switch the runtime language |
 | `/theme <name>` | Show or persist terminal theme. Bare opens picker |
+| `/config` | Open configuration guidance and current config paths |
+| `/vim [on\|off]` | Toggle vim-style input editing |
 
 ### Info
 
@@ -106,6 +109,8 @@ Type `/` mid-chat to open the picker. Aliases shown in parentheses. Code-mode-on
 | `/stats` | Cross-session cost dashboard (today / week / month / all-time) |
 | `/statusline <minimal\|default\|full>` | Persist status-bar density. `full` shows the most fields; restart the TUI after changing it |
 | `/doctor` | Health check (api / config / api-reach / index / hooks / project) |
+| `/terminal-setup` | Show terminal integration setup help |
+| `/output-style [default\|explanatory\|learning]` | Switch response style |
 | `/keys` | Keyboard + mouse + copy/paste reference |
 | `/feedback` | Open a GitHub issue with diagnostic info copied to clipboard |
 
@@ -116,19 +121,27 @@ Type `/` mid-chat to open the picker. Aliases shown in parentheses. Code-mode-on
 | `/mcp` | Open the MCP hub (live + marketplace tabs) |
 | `/resource [uri]` | Browse / read MCP resources |
 | `/prompt [name]` | Browse / fetch MCP prompts |
-| `/memory [list\|show\|forget\|clear]` | Manage pinned memory (AGENTS.md / CARBON.md + `~/.carboncode/memory`) |
-| `/skill [list\|show\|new\|<name>]` | List / run / scaffold user skills |
+| `/memory [for <path>\|list\|show\|forget\|clear]` | Manage pinned memory (AGENTS.md / CARBON.md + `~/.carboncode/memory`) |
+| `/skill [list\|paths\|show\|new\|<name>]` | List / run / scaffold user skills |
+| `/mwh [list\|installed\|search <query>\|show <id>\|install <id>\|check\|update\|root]` | Browse and install reusable Middlewave Hub modules |
+| `/agents [list\|show\|new]` (`/agent`) | Manage project agents |
+| `/qq <connect\|status\|disconnect>` | Connect, inspect, or disconnect the QQ channel |
+| `/collab [agent]` | Enter local collaboration mode and print a prompt for another coding agent |
 
 ### Session
 
 | Command | What it does |
 |---|---|
 | `/sessions` | List saved sessions (current marked with ▸) |
+| `/resume` | Resume a saved session |
+| `/export [json]` | Export the current conversation |
+| `/title` (`/retitle`) | Rename the current session |
 
 ### Code mode
 
 | Command | What it does |
 |---|---|
+| `/review [ref]` | Review the working tree or a git ref |
 | `/init [force]` | Scan project, synthesize a baseline `CARBON.md` |
 | `/apply [N\|N,M\|N-M]` | Commit pending edit blocks to disk (subset selection supported) |
 | `/discard [N\|N,M\|N-M]` | Drop pending edits without writing |
@@ -142,6 +155,7 @@ Type `/` mid-chat to open the picker. Aliases shown in parentheses. Code-mode-on
 | `/checkpoint [name\|list\|forget]` | Snapshot every file the session has touched |
 | `/restore <name\|id>` | Roll back to a named checkpoint |
 | `/cwd <path>` (`/sandbox`) | Switch the workspace root mid-session |
+| `/add-dir [path]` | Add another directory to the current workspace |
 
 ### Jobs (code mode)
 
