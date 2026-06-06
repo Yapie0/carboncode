@@ -13,13 +13,15 @@ export async function handleCheckpointRestore(
   const rootDir = ctx.getCurrentCwd?.();
   if (!rootDir) return { status: 400, body: { error: "no active workspace" } };
 
-  let parsed: { id?: string };
+  let parsed: { id?: unknown };
   try {
     parsed = JSON.parse(body);
   } catch {
     return { status: 400, body: { error: "invalid JSON" } };
   }
-  if (!parsed.id) return { status: 400, body: { error: "missing id" } };
+  if (typeof parsed.id !== "string" || !parsed.id) {
+    return { status: 400, body: { error: "missing id" } };
+  }
 
   const result: RestoreResult = restoreCheckpoint(rootDir, parsed.id);
   return { status: 200, body: result };
