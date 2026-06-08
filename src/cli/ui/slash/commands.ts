@@ -128,6 +128,14 @@ export const SLASH_COMMANDS: readonly SlashCommandSpec[] = [
       "bare → last turn's spend (Usage card); with text → estimate cost of sending it next (worst-case + likely-cache)",
   },
   {
+    cmd: "pricing",
+    group: "info",
+    argsHint: "[open]",
+    summary:
+      "show the pricing table Carbon Code uses, config override example, and official reference page",
+    argCompleter: ["open"],
+  },
+  {
     cmd: "context",
     group: "info",
     summary: "show context-window breakdown (system / tools / log / input)",

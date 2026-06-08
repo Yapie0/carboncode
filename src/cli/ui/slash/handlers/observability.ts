@@ -1,7 +1,19 @@
 import { release } from "node:os";
-import { loadRateLimit, loadTheme, loadThemeEnv, resolveThemePreference } from "@/config.js";
+import {
+  defaultConfigPath,
+  loadPricingOverride,
+  loadRateLimit,
+  loadTheme,
+  loadThemeEnv,
+  resolveThemePreference,
+} from "@/config.js";
 import { getLanguage, t } from "@/i18n/index.js";
-import { DEEPSEEK_CONTEXT_TOKENS, DEFAULT_CONTEXT_TOKENS, pricingFor } from "@/telemetry/stats.js";
+import {
+  DEEPSEEK_CONTEXT_TOKENS,
+  DEEPSEEK_PRICING,
+  DEFAULT_CONTEXT_TOKENS,
+  pricingFor,
+} from "@/telemetry/stats.js";
 import { countTokensBounded } from "@/tokenizer.js";
 import { VERSION } from "@/version.js";
 import { writeClipboard } from "../../clipboard.js";
@@ -229,6 +241,50 @@ function estimateCost(userText: string, loop: import("@/loop.js").CacheFirstLoop
   return { info: lines.join("\n") };
 }
 
+const DEEPSEEK_PRICING_URL = "https://api-docs.deepseek.com/quick_start/pricing";
+
+const pricing: SlashHandler = (args, loop) => {
+  const wantsOpen = args[0]?.toLowerCase() === "open";
+  const current = pricingFor(loop.model);
+  const overrides = loadPricingOverride();
+  const override = overrides[loop.model];
+  const opened = wantsOpen ? openUrl(DEEPSEEK_PRICING_URL) : undefined;
+  const source =
+    override && Object.keys(override).length > 0
+      ? t("handlers.observability.pricingSourceOverride")
+      : DEEPSEEK_PRICING[loop.model]
+        ? t("handlers.observability.pricingSourceBuiltIn")
+        : t("handlers.observability.pricingSourceMissing");
+
+  const lines = [
+    t("handlers.observability.pricingTitle", { model: loop.model }),
+    current
+      ? t("handlers.observability.pricingCurrent", {
+          hit: current.inputCacheHit,
+          miss: current.inputCacheMiss,
+          output: current.output,
+          source,
+        })
+      : t("handlers.observability.pricingMissing", { model: loop.model }),
+    t("handlers.observability.pricingFormula"),
+    t("handlers.observability.pricingReference", { url: DEEPSEEK_PRICING_URL }),
+    t("handlers.observability.pricingOverrideIntro", { path: defaultConfigPath() }),
+    `  "pricingOverride": {`,
+    `    "${loop.model}": { "inputCacheHit": 0.0028, "inputCacheMiss": 0.14, "output": 0.28 }`,
+    "  }",
+  ];
+  if (wantsOpen) {
+    lines.push(
+      opened?.opened
+        ? t("handlers.observability.pricingOpened")
+        : t("handlers.observability.pricingOpenFailed", { reason: opened?.reason ?? "unknown" }),
+    );
+  } else {
+    lines.push(t("handlers.observability.pricingOpenHint"));
+  }
+  return { info: lines.join("\n") };
+};
+
 const feedback: SlashHandler = (_args, loop, ctx) => {
   const themeName = resolveThemePreference(loadTheme(), loadThemeEnv());
   const diagnostic = buildFeedbackDiagnostic({
@@ -276,5 +332,6 @@ export const handlers: Record<string, SlashHandler> = {
   status,
   compact,
   cost,
+  pricing,
   feedback,
 };

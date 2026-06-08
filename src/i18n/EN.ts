@@ -332,6 +332,11 @@ export const EN: TranslationSchema = {
     "terminal-setup": { description: "detect your terminal and suggest shell-integration tweaks" },
     "output-style": { description: "reply verbosity: default / explanatory / learning" },
     statusline: { description: "status-bar density preset: minimal / default / full" },
+    pricing: {
+      description:
+        "show model pricing used for cost math, config override example, and official reference page",
+      argsHint: "[open]",
+    },
     config: { description: "show every current setting + the command to change each" },
     vim: { description: "toggle vim editing in the composer (NORMAL/INSERT)" },
     context: { description: "show context-window breakdown (system / tools / log / input)" },
@@ -1056,6 +1061,20 @@ export const EN: TranslationSchema = {
         "  worst case (full miss): {input} input + ~{output} output ({avg} avg) ≈ {total}",
       costLikely: "  likely ({pct}% session cache hit): {input} input + ~{output} output ≈ {total}",
       costLikelyCold: "  likely: matches worst case until cache fills (no completed turns yet)",
+      pricingTitle: "pricing for {model}",
+      pricingCurrent:
+        "  USD / 1M tokens: cache-hit input {hit}, cache-miss input {miss}, output {output} ({source})",
+      pricingMissing: '  no pricing table for "{model}" yet; cost will be shown as zero.',
+      pricingFormula:
+        "  formula: (cacheHitTokens*hit + cacheMissTokens*miss + completionTokens*output) / 1,000,000",
+      pricingReference: "  reference: {url}",
+      pricingOverrideIntro: "  override in {path}:",
+      pricingSourceBuiltIn: "built-in table",
+      pricingSourceOverride: "config override",
+      pricingSourceMissing: "missing table",
+      pricingOpenHint: "  run /pricing open to open the reference page.",
+      pricingOpened: "  opened the reference page in your browser.",
+      pricingOpenFailed: "  could not open the reference page: {reason}",
       statusModel: "  model   {model}",
       statusFlags: "  flags   stream={stream} · effort={effort}",
       statusCtx: "  ctx     {bar} {used}/{max} ({pct}%)",

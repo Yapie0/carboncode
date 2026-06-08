@@ -7,7 +7,7 @@ import { render } from "ink";
 import React, { useEffect } from "react";
 import { describe, expect, it } from "vitest";
 import { SlashSuggestions } from "../src/cli/ui/SlashSuggestions.js";
-import { StatusRow } from "../src/cli/ui/layout/StatusRow.js";
+import { StatusRow, resolveRuntimeStatusBarConfig } from "../src/cli/ui/layout/StatusRow.js";
 import type { SlashCommandSpec } from "../src/cli/ui/slash.js";
 import { AgentStoreProvider, useAgentStore } from "../src/cli/ui/state/provider.js";
 import type { AgentState, SessionInfo } from "../src/cli/ui/state/state.js";
@@ -108,6 +108,18 @@ describe.skip("StatusRow — turn cost currency", () => {
 });
 
 describe("StatusRow — statusBar config toggles", () => {
+  it("runtime default shows turn, session cost, and context usage", () => {
+    expect(resolveRuntimeStatusBarConfig({})).toMatchObject({
+      showSessionCost: true,
+      showTurnCost: true,
+      showCtxUsage: true,
+    });
+  });
+
+  it("runtime config can explicitly hide session cost", () => {
+    expect(resolveRuntimeStatusBarConfig({ showSessionCost: false }).showSessionCost).toBe(false);
+  });
+
   async function renderStatusRowWithConfig(
     overrides: Partial<AgentState["status"]>,
     config: Partial<import("../src/cli/ui/layout/StatusRow.js").StatusBarConfig>,

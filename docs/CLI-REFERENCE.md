@@ -42,6 +42,33 @@ Run `carboncode --help` (or any subcommand with `--help`) for the full flag list
 | `--no-alt-screen` | Render to scrollback instead of the alt-screen buffer (preserves chat in shell history; legacy mode, can ghost on resize) |
 | `--no-mouse` | Disable DECSET 1007 (alternate-scroll); wheel reverts to native terminal scroll |
 
+### Local development via `npm run dev`
+
+`npm run dev` executes `tsx src/cli/index.ts`. When passing Carbon Code flags or
+subcommands through npm, put them after npm's `--` separator. Without the
+separator, npm treats flags such as `--setup` or `-c` as npm options instead of
+Carbon Code arguments.
+
+| Goal | Command |
+|---|---|
+| Start the source TUI normally | `npm run dev` |
+| Re-run setup / update API key | `npm run dev -- setup` |
+| Continue the latest bare code session | `npm run dev -- -c` |
+| Resume the latest code session explicitly | `npm run dev -- code -r` |
+| Start chat and continue the latest chat session | `npm run dev -- chat -c` |
+| Resume a named chat session | `npm run dev -- chat --session <name> -r` |
+| Show cross-session usage stats | `npm run dev -- stats` |
+
+For direct execution without npm's argument separator, use
+`npx tsx src/cli/index.ts ...`, for example `npx tsx src/cli/index.ts setup`.
+
+Session defaults differ slightly by entrypoint:
+
+- Bare `carboncode` / `npm run dev` starts a fresh code session after setup.
+- Bare `-c` / `--continue` resumes the most recent session for the workspace.
+- `code -r` resumes the latest project-scoped code session.
+- `chat -c` continues the most recently touched chat session; `chat --session <name> -r` resumes a specific named session.
+
 ---
 
 ## Slash commands
@@ -74,8 +101,10 @@ Type `/` mid-chat to open the picker. Aliases shown in parentheses. Code-mode-on
 |---|---|
 | `/status` | Current model, flags, context, session |
 | `/cost [text]` | Bare → last turn's spend; with text → estimate cost of sending it next |
+| `/pricing [open]` | Show the pricing table used for cost math, override example, and official DeepSeek pricing reference |
 | `/context` | Context-window breakdown (system / tools / log / input) |
 | `/stats` | Cross-session cost dashboard (today / week / month / all-time) |
+| `/statusline <minimal\|default\|full>` | Persist status-bar density. `full` shows the most fields; restart the TUI after changing it |
 | `/doctor` | Health check (api / config / api-reach / index / hooks / project) |
 | `/keys` | Keyboard + mouse + copy/paste reference |
 | `/feedback` | Open a GitHub issue with diagnostic info copied to clipboard |
@@ -158,6 +187,12 @@ Type `/` mid-chat to open the picker. Aliases shown in parentheses. Code-mode-on
 | `PgUp` / `PgDn` | Scroll chat history a page at a time. While plan details are expanded, scroll the bounded detail window |
 | `End` | Jump chat to the most recent line |
 
+If a model turn is already running, the prompt remains editable. Pressing
+`Enter` queues the next user message; queued messages are sent FIFO as soon as
+the current turn finishes. Remote confirmation replies, such as QQ approval
+messages, may bypass the normal queue when they are needed to unblock an active
+pause gate.
+
 ### Edit-gate (code mode)
 
 | Key | What it does |
@@ -165,6 +200,65 @@ Type `/` mid-chat to open the picker. Aliases shown in parentheses. Code-mode-on
 | `y` / `n` | Accept / drop pending edits in the review modal |
 | `Shift+Tab` | Toggle review ↔ AUTO (persisted across sessions) |
 | `u` | Undo the last auto-applied batch (within the 5s banner) |
+
+Edit-gate modes:
+
+- `review`: edits queue for `/apply` or `y`; shell commands still require approval unless allowlisted.
+- `auto`: edits apply immediately; shell commands still require approval unless allowlisted.
+- `yolo`: edits and shell gates are skipped. Use only inside a sandbox or disposable workspace.
+
+The selected mode is persisted in `~/.carboncode/config.json`. Use `/mode yolo`
+inside the TUI to enter yolo mode; for ACP sessions use `carboncode acp --yolo`.
+
+---
+
+## Setup, API keys, and usage
+
+Run `carboncode setup` to re-run the setup wizard and replace a saved DeepSeek
+API key. In local source mode, run `npm run dev -- setup`; `npm run dev --setup`
+is an npm option and will not invoke Carbon Code setup.
+
+Configuration is stored in `~/.carboncode/config.json`. `DEEPSEEK_API_KEY` can
+also be exported for a temporary override.
+
+Cost visibility:
+
+- The bottom status bar shows the latest turn cost as `turn`.
+- The same bottom bar shows cumulative current-session cost as `session` after at least one completed turn unless `showSessionCost` is explicitly disabled.
+- Context usage is separate from cost and appears as `ctx` / context, for example `26% · 258K/1000K`.
+- `/cost` shows the most recent turn's detailed usage card, or estimates a draft prompt if text is supplied.
+- `/pricing` shows the current model's USD-per-1M-token price table, the exact cost formula, and a `pricingOverride` example for `~/.carboncode/config.json`.
+- `/pricing open` opens the DeepSeek official pricing reference page. Carbon Code does not rely on a provider pricing API at runtime; it uses built-in rates plus local overrides.
+- `/stats` / `carboncode stats` summarizes usage across sessions.
+- `/statusline full` enables the densest bottom bar preset; restart the TUI after changing it.
+
+Cost math uses model provider token usage returned by the chat completion response:
+
+```text
+(promptCacheHitTokens * inputCacheHit
+ + promptCacheMissTokens * inputCacheMiss
+ + completionTokens * output) / 1_000_000
+```
+
+All price values are USD per 1M tokens. To adjust rates manually:
+
+```json
+{
+  "pricingOverride": {
+    "deepseek-v4-flash": {
+      "inputCacheHit": 0.0028,
+      "inputCacheMiss": 0.14,
+      "output": 0.28
+    }
+  }
+}
+```
+
+Code-mode delivery contract:
+
+- For code changes, Carbon Code's prompt instructs the agent to inspect, patch, verify, then summarize.
+- The agent should run the narrowest relevant test, typecheck, lint, build, or smoke command it can identify before final delivery.
+- Final replies should include the validation commands that were run, or explicitly say why validation could not be run.
 
 ---
 

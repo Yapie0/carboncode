@@ -44,6 +44,21 @@ const DEFAULT_STATUS_BAR_CONFIG: StatusBarConfig = {
   showFeedbackHint: true,
 };
 
+export function resolveRuntimeStatusBarConfig(cfg: Partial<StatusBarConfig> = {}): StatusBarConfig {
+  return {
+    showMode: cfg.showMode === true,
+    showPreset: cfg.showPreset === true,
+    showSessionInfo: cfg.showSessionInfo === true,
+    showBalance: cfg.showBalance === true,
+    showSessionCost: cfg.showSessionCost !== false,
+    showTurnCost: cfg.showTurnCost !== false,
+    showCacheHit: cfg.showCacheHit === true,
+    showCtxUsage: cfg.showCtxUsage !== false,
+    showVersion: cfg.showVersion === true,
+    showFeedbackHint: cfg.showFeedbackHint === true,
+  };
+}
+
 export function StatusRow({
   statusBar = DEFAULT_STATUS_BAR_CONFIG,
 }: { statusBar?: StatusBarConfig }): React.ReactElement {

@@ -12,12 +12,14 @@ import { buildCodeToolset } from "../src/code/setup.js";
 describe("buildCodeToolset", () => {
   let savedKey: string | undefined;
   let tmpRoot: string;
+  let tmpConfig: string;
 
   beforeEach(() => {
     savedKey = process.env.DEEPSEEK_API_KEY;
     // biome-ignore lint/performance/noDelete: setting to "undefined" string would mask test
     delete process.env.DEEPSEEK_API_KEY;
     tmpRoot = mkdtempSync(join(tmpdir(), "reasonix-code-setup-"));
+    tmpConfig = join(tmpRoot, "config.json");
   });
 
   afterEach(async () => {
@@ -26,13 +28,13 @@ describe("buildCodeToolset", () => {
   });
 
   it("builds without DEEPSEEK_API_KEY set", async () => {
-    const toolset = await buildCodeToolset({ rootDir: tmpRoot });
+    const toolset = await buildCodeToolset({ rootDir: tmpRoot, configPath: tmpConfig });
     expect(toolset.tools.size).toBeGreaterThan(0);
     await toolset.jobs.shutdown();
   });
 
   it("asks before running builtin shell commands in code sessions", async () => {
-    const toolset = await buildCodeToolset({ rootDir: tmpRoot });
+    const toolset = await buildCodeToolset({ rootDir: tmpRoot, configPath: tmpConfig });
     try {
       const calls: unknown[] = [];
       const out = await toolset.tools.dispatch(

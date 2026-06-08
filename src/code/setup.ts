@@ -28,6 +28,8 @@ import { registerWebTools } from "../tools/web.js";
 
 export interface CodeToolsetOpts {
   rootDir: string;
+  /** Internal/test hook: read Carbon config from this path instead of the user's home config. */
+  configPath?: string;
   /** Fired after `install_skill` writes a new skill — desktop wires this to push a fresh `$skills` event so the sidebar updates without a tab reload. */
   onSkillInstalled?: SkillInstalledHook;
   /** Fired after `run_background` / `stop_job` mutate the JobRegistry — desktop pushes a fresh `$jobs` event so the popover updates without waiting for poll. */
@@ -104,11 +106,11 @@ export async function buildCodeToolset(opts: CodeToolsetOpts): Promise<CodeTools
 
   const applyRoots = (): void => {
     registerFilesystemTools(tools, { rootDir: primaryRoot, additionalRoots });
-    const cfg = readConfig();
+    const cfg = readConfig(opts.configPath);
     registerShellTools(tools, {
       rootDir: primaryRoot,
-      extraAllowed: () => loadProjectShellAllowed(primaryRoot),
-      allowAll: () => loadEditMode() === "yolo",
+      extraAllowed: () => loadProjectShellAllowed(primaryRoot, opts.configPath),
+      allowAll: () => loadEditMode(opts.configPath) === "yolo",
       requireApprovalForBuiltin: true,
       jobs,
       onJobsChanged: opts.onJobsChanged,
@@ -120,7 +122,7 @@ export async function buildCodeToolset(opts: CodeToolsetOpts): Promise<CodeTools
     registerScaffoldTools(tools, { projectRoot: primaryRoot });
     registerSkillTools(tools, {
       projectRoot: primaryRoot,
-      customSkillPaths: loadResolvedSkillPaths(primaryRoot),
+      customSkillPaths: loadResolvedSkillPaths(primaryRoot, opts.configPath),
       onSkillInstalled: opts.onSkillInstalled,
       subagentRunner: async (skill, task, signal) => {
         if (!subagentClient) subagentClient = new DeepSeekClient({ baseUrl: loadBaseUrl() });
@@ -181,10 +183,10 @@ export async function buildCodeToolset(opts: CodeToolsetOpts): Promise<CodeTools
   registerPlanTool(tools);
   registerChoiceTool(tools);
   registerTodoTool(tools);
-  if (searchEnabled()) {
+  if (searchEnabled(opts.configPath)) {
     registerWebTools(tools, {
-      webSearchEngine: webSearchEngine(),
-      webSearchEndpoint: webSearchEndpoint(),
+      webSearchEngine: webSearchEngine(opts.configPath),
+      webSearchEndpoint: webSearchEndpoint(opts.configPath),
     });
   }
 

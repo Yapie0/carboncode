@@ -529,6 +529,7 @@ describe("handleSlash", () => {
     for (const required of [
       "help",
       "status",
+      "pricing",
       "preset",
       "model",
       "language",
@@ -555,12 +556,13 @@ describe("handleSlash", () => {
     // Case-insensitive.
     expect(suggestSlashCommands("HE").map((s) => s.cmd)).toEqual(["help"]);
     // Empty prefix returns the full non-advanced release list, including code commands.
-    expect(suggestSlashCommands("", true)).toHaveLength(52);
+    expect(suggestSlashCommands("", true)).toHaveLength(53);
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("add-dir");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("vim");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("agents");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("config");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("statusline");
+    expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("pricing");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("resume");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("export");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("logs");
@@ -628,6 +630,21 @@ describe("handleSlash", () => {
     it("is surfaced by suggestSlashCommands", () => {
       const names = suggestSlashCommands("sta").map((s) => s.cmd);
       expect(names).toContain("stats");
+    });
+  });
+
+  describe("/pricing", () => {
+    it("prints the current pricing table, formula, and override path", () => {
+      const r = handleSlash("pricing", [], makeLoop());
+      expect(r.info).toMatch(/pricing for/);
+      expect(r.info).toMatch(/USD \/ 1M tokens/);
+      expect(r.info).toMatch(/pricingOverride/);
+      expect(r.info).toMatch(/api-docs\.deepseek\.com\/quick_start\/pricing/);
+    });
+
+    it("is surfaced by suggestSlashCommands", () => {
+      const names = suggestSlashCommands("pri").map((s) => s.cmd);
+      expect(names).toContain("pricing");
     });
   });
 

@@ -162,7 +162,7 @@ import { ConversationViewport } from "./layout/ConversationViewport.js";
 import { InputAreaWithHistoryHint } from "./layout/InputAreaWithHistoryHint.js";
 import { LiveExpandContext } from "./layout/LiveExpandContext.js";
 import { ModeStatusBar } from "./layout/LiveRows.js";
-import { StatusRow } from "./layout/StatusRow.js";
+import { StatusRow, resolveRuntimeStatusBarConfig } from "./layout/StatusRow.js";
 import type { StatusBarConfig } from "./layout/StatusRow.js";
 import { ViewportBudgetProvider } from "./layout/viewport-budget.js";
 import { formatLoopStatus } from "./loop.js";
@@ -398,19 +398,7 @@ export function App(props: AppProps): React.ReactElement {
     resolveThemePreference(loadTheme(), loadThemeEnv()),
   );
   const statusBar = React.useMemo((): StatusBarConfig => {
-    const cfg = readConfig().statusBar ?? {};
-    return {
-      showMode: cfg.showMode === true,
-      showPreset: cfg.showPreset === true,
-      showSessionInfo: cfg.showSessionInfo === true,
-      showBalance: cfg.showBalance === true,
-      showSessionCost: cfg.showSessionCost === true,
-      showTurnCost: cfg.showTurnCost !== false,
-      showCacheHit: cfg.showCacheHit === true,
-      showCtxUsage: cfg.showCtxUsage !== false,
-      showVersion: cfg.showVersion === true,
-      showFeedbackHint: cfg.showFeedbackHint === true,
-    };
+    return resolveRuntimeStatusBarConfig(readConfig().statusBar ?? {});
   }, []);
   return (
     <ThemeProvider name={themeName}>
@@ -991,8 +979,18 @@ function AppInner({
   // the resumed session's meta; mirror them into summary state so the
   // StatusRow doesn't keep showing the prior session's cost until the next turn.
   useEffect(() => {
-    setSummary(loop.stats.summary());
-  }, [loop]);
+    const s = loop.stats.summary();
+    setSummary(s);
+    agentStore.dispatch({
+      type: "session.update",
+      patch: {
+        cost: s.lastTurnCostUsd,
+        sessionCost: s.totalCostUsd,
+        cacheHit: s.cacheHitRatio,
+        ...(s.lastPromptTokens > 0 ? { promptTokens: s.lastPromptTokens } : {}),
+      },
+    });
+  }, [loop, agentStore]);
 
   const generateCurrentSessionTitle = useCallback(
     async (seed?: { userText?: string; assistantText?: string; auto?: boolean }) => {
