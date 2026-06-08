@@ -54,9 +54,7 @@ export function StatusRow({
   const hasTurn = status.cost > 0;
   const hasSession = status.sessionCost > 0;
   const hasBalance = typeof status.balance === "number";
-  const showWallet =
-    cols >= WALLET_MIN_COLS &&
-    ((hasSession && statusBar.showSessionCost) || (hasBalance && statusBar.showBalance));
+  const showWallet = cols >= WALLET_MIN_COLS && hasBalance && statusBar.showBalance;
   const segments: Array<{ key: string; node: React.ReactNode }> = [];
 
   if (statusBar.showMode) {
@@ -98,6 +96,21 @@ export function StatusRow({
       ),
     });
   }
+  if (hasSession && statusBar.showSessionCost) {
+    segments.push({
+      key: "sessionCost",
+      node: (
+        <>
+          <Text bold color={TONE.accent}>
+            {"Σ "}
+          </Text>
+          <Text bold color={FG.body}>
+            {`${formatCost(status.sessionCost, status.balanceCurrency, 2)} ${t("statusBar.session")}`}
+          </Text>
+        </>
+      ),
+    });
+  }
   if (statusBar.showCacheHit) {
     segments.push({
       key: "cache",
@@ -129,15 +142,7 @@ export function StatusRow({
   if (showWallet) {
     segments.push({
       key: "wallet",
-      node: (
-        <WalletPill
-          sessionCostUsd={status.sessionCost}
-          balance={status.balance}
-          currency={status.balanceCurrency}
-          showSessionCost={statusBar.showSessionCost}
-          showBalance={statusBar.showBalance}
-        />
-      ),
+      node: <WalletPill balance={status.balance} currency={status.balanceCurrency} />,
     });
   }
   if (statusBar.showVersion && cols >= VERSION_MIN_COLS) {
@@ -257,45 +262,24 @@ function McpLoadingPill({
 }
 
 function WalletPill({
-  sessionCostUsd,
   balance,
   currency,
-  showSessionCost,
-  showBalance: showBalanceCfg,
 }: {
-  sessionCostUsd: number;
   balance?: number;
   currency?: string;
-  showSessionCost: boolean;
-  showBalance: boolean;
 }): React.ReactElement {
-  const showSpent = showSessionCost && sessionCostUsd > 0;
-  const showBalanceLine = showBalanceCfg && typeof balance === "number";
+  const balanceValue = balance ?? 0;
   return (
     <>
       <Text color={FG.meta} wrap="truncate">
         {"⛁ "}
       </Text>
-      {showSpent && (
-        <Text
-          color={FG.body}
-        >{`${formatCost(sessionCostUsd, currency, 2)} ${t("statusBar.spent")}`}</Text>
-      )}
-      {showSpent && showBalanceLine && (
-        <Text color={FG.meta} wrap="truncate">
-          {"  /  "}
-        </Text>
-      )}
-      {showBalanceLine && (
-        <Text bold color={balanceColor(balance, currency)} wrap="truncate">
-          {formatBalance(balance, currency, { fractionDigits: 2 })}
-        </Text>
-      )}
-      {showBalanceLine && (
-        <Text color={FG.faint} wrap="truncate">
-          {t("statusBar.left")}
-        </Text>
-      )}
+      <Text bold color={balanceColor(balanceValue, currency)} wrap="truncate">
+        {formatBalance(balanceValue, currency, { fractionDigits: 2 })}
+      </Text>
+      <Text color={FG.faint} wrap="truncate">
+        {t("statusBar.left")}
+      </Text>
     </>
   );
 }

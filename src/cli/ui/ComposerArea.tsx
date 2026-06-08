@@ -7,6 +7,7 @@ import { Box, Text } from "ink";
 import React from "react";
 
 import type { EditMode } from "../../config.js";
+import { t } from "../../i18n/index.js";
 import type { JobRegistry } from "../../tools/jobs.js";
 
 import { AtMentionSuggestions } from "./AtMentionSuggestions.js";
@@ -39,6 +40,7 @@ export interface ComposerAreaProps {
   input: string;
   setInput: (next: string) => void;
   busy: boolean;
+  queuedSubmitCount: number;
   onSubmit: (raw: string) => Promise<void>;
   onHistoryPrev: () => void;
   onHistoryNext: () => void;
@@ -94,6 +96,7 @@ export const ComposerArea: React.FC<ComposerAreaProps> = React.memo(
     input,
     setInput,
     busy,
+    queuedSubmitCount,
     onSubmit,
     onHistoryPrev,
     onHistoryNext,
@@ -139,13 +142,21 @@ export const ComposerArea: React.FC<ComposerAreaProps> = React.memo(
           value={input}
           onChange={setInput}
           onSubmit={onSubmit}
-          disabled={busy}
           onHistoryPrev={onHistoryPrev}
           onHistoryNext={onHistoryNext}
           onOpenExternalEditor={onOpenExternalEditor}
           onCursorChange={onCursorChange}
           vimEnabled={vimEnabled}
         />
+        {busy || queuedSubmitCount > 0 ? (
+          <Box>
+            <Text color={FG.faint}>
+              {queuedSubmitCount > 0
+                ? t("composer.queueActive", { count: queuedSubmitCount })
+                : t("composer.queueHint")}
+            </Text>
+          </Box>
+        ) : null}
         {activeLoop ? <LoopStatusRow loop={activeLoop} /> : null}
         {jobs ? (
           <ModeStatusBar

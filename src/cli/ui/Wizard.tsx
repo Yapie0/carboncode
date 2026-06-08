@@ -109,8 +109,32 @@ export function Wizard({
   }));
   const [error, setError] = useState<string | null>(null);
 
-  useInput((_input, key) => {
+  const goBack = () => {
+    setError(null);
+    if (step === "theme") {
+      setPreviewTheme(data.theme);
+      setStep("language");
+    } else if (step === "apiKey") {
+      setPreviewTheme(data.theme);
+      setStep("theme");
+    } else if (step === "preset") {
+      setStep(existingApiKey && !forceApiKeyStep ? "theme" : "apiKey");
+    } else if (step === "mcp") {
+      setStep("preset");
+    } else if (step === "mcpArgs") {
+      setStep("mcp");
+    } else if (step === "review") {
+      const needsArgs = data.selectedCatalog.some((name) => CATALOG_BY_NAME.get(name)?.userArgs);
+      setStep(needsArgs ? "mcpArgs" : "mcp");
+    }
+  };
+
+  useInput((input, key) => {
     if (key.escape && step !== "saved" && onCancel) onCancel();
+    const ctrlBack = key.ctrl && input.toLowerCase() === "b";
+    const selectionStepBackspace =
+      key.backspace && step !== "language" && step !== "apiKey" && step !== "mcpArgs";
+    if ((ctrlBack || selectionStepBackspace) && step !== "saved") goBack();
   });
 
   const content = (() => {
@@ -169,7 +193,7 @@ export function Wizard({
             }}
           />
           <Box marginTop={1}>
-            <Text dimColor>{t("wizard.selectFooter")}</Text>
+            <Text dimColor>{t("wizard.selectFooterBack")}</Text>
           </Box>
         </StepFrame>
       );
@@ -332,25 +356,38 @@ function ThemeStep({
     }
   });
 
+  const bg = theme.surface.bg;
+  const sampleBg = theme.surface.bgElev;
+
   return (
     <Box flexDirection="column" borderStyle="round" borderColor={theme.tone.brand} paddingX={1}>
-      <Text bold color={theme.tone.brand}>
+      <Text bold color={theme.tone.brand} backgroundColor={bg}>
         {t("wizard.themeTitle")}
       </Text>
       <Box marginTop={1}>
-        <Text dimColor>{t("wizard.themeSubtitle")}</Text>
+        <Text color={theme.fg.sub} backgroundColor={bg}>
+          {t("wizard.themeSubtitle")}
+        </Text>
       </Box>
       <Box marginTop={1} flexDirection="column">
         {THEME_NAMES.map((name, i) => (
           <Box key={name}>
-            <Text color={i === index ? theme.tone.brand : undefined}>
+            <Text color={i === index ? theme.tone.brand : theme.fg.body} backgroundColor={bg}>
               {i === index ? "❯ " : "  "}
             </Text>
-            <Text bold={i === index} color={i === index ? theme.fg.strong : theme.fg.body}>
+            <Text
+              bold={i === index}
+              color={i === index ? theme.fg.strong : theme.fg.body}
+              backgroundColor={bg}
+            >
               {name}
             </Text>
-            <Text color={theme.fg.meta}>{" — "}</Text>
-            <Text color={theme.fg.meta}>{t(`wizard.themeCaption.${name}`)}</Text>
+            <Text color={theme.fg.meta} backgroundColor={bg}>
+              {" — "}
+            </Text>
+            <Text color={theme.fg.meta} backgroundColor={bg}>
+              {t(`wizard.themeCaption.${name}`)}
+            </Text>
           </Box>
         ))}
       </Box>
@@ -361,30 +398,58 @@ function ThemeStep({
         borderColor={theme.fg.faint}
         paddingX={1}
       >
-        <Text color={theme.fg.meta}>{t("wizard.themeSampleHeading")}</Text>
+        <Text color={theme.fg.meta} backgroundColor={sampleBg}>
+          {t("wizard.themeSampleHeading")}
+        </Text>
         <Box marginTop={1}>
-          <Text color={theme.tone.accent}>{"◆ "}</Text>
-          <Text color={theme.tone.accent}>{t("wizard.themeSampleReasoning")}</Text>
+          <Text color={theme.tone.accent} backgroundColor={sampleBg}>
+            {"◆ "}
+          </Text>
+          <Text color={theme.tone.accent} backgroundColor={sampleBg}>
+            {t("wizard.themeSampleReasoning")}
+          </Text>
         </Box>
         <Box>
-          <Text color={theme.tone.info}>{"▣ "}</Text>
-          <Text color={theme.fg.body}>{"fs.readFile("}</Text>
-          <Text color={theme.tone.ok}>{'"main.ts"'}</Text>
-          <Text color={theme.fg.body}>{")"}</Text>
+          <Text color={theme.tone.info} backgroundColor={sampleBg}>
+            {"▣ "}
+          </Text>
+          <Text color={theme.fg.body} backgroundColor={sampleBg}>
+            {"fs.readFile("}
+          </Text>
+          <Text color={theme.tone.ok} backgroundColor={sampleBg}>
+            {'"main.ts"'}
+          </Text>
+          <Text color={theme.fg.body} backgroundColor={sampleBg}>
+            {")"}
+          </Text>
         </Box>
         <Box>
-          <Text color={theme.fg.meta}>~/project/main.ts:42</Text>
+          <Text color={theme.fg.meta} backgroundColor={sampleBg}>
+            ~/project/main.ts:42
+          </Text>
         </Box>
         <Box marginTop={1}>
-          <Text color={theme.tone.ok}>ok</Text>
-          <Text color={theme.fg.faint}>{" · "}</Text>
-          <Text color={theme.tone.warn}>warn</Text>
-          <Text color={theme.fg.faint}>{" · "}</Text>
-          <Text color={theme.tone.err}>err</Text>
+          <Text color={theme.tone.ok} backgroundColor={sampleBg}>
+            ok
+          </Text>
+          <Text color={theme.fg.faint} backgroundColor={sampleBg}>
+            {" · "}
+          </Text>
+          <Text color={theme.tone.warn} backgroundColor={sampleBg}>
+            warn
+          </Text>
+          <Text color={theme.fg.faint} backgroundColor={sampleBg}>
+            {" · "}
+          </Text>
+          <Text color={theme.tone.err} backgroundColor={sampleBg}>
+            err
+          </Text>
         </Box>
       </Box>
       <Box marginTop={1}>
-        <Text dimColor>{t("wizard.themeFooter")}</Text>
+        <Text color={theme.fg.sub} backgroundColor={bg}>
+          {t("wizard.themeFooter")}
+        </Text>
       </Box>
     </Box>
   );
@@ -528,6 +593,9 @@ function ApiKeyStep({
           <Text dimColor>{t("wizard.apiKeyPreview", { redacted: redactKey(value) })}</Text>
         </Box>
       ) : null}
+      <Box marginTop={1}>
+        <Text dimColor>{t("wizard.apiKeyFooter")}</Text>
+      </Box>
     </Box>
   );
 }
@@ -675,6 +743,9 @@ function McpArgsStep({
             <Text color={TONE.err}>{error}</Text>
           </Box>
         ) : null}
+        <Box marginTop={1}>
+          <Text dimColor>{t("wizard.mcpArgsFooter")}</Text>
+        </Box>
       </Box>
     </StepFrame>
   );

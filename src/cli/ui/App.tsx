@@ -766,7 +766,14 @@ function AppInner({
   // handleSubmit directly because it early-returns on `busy === true`,
   // so we abort the in-flight turn and let the effect below fire the
   // submit once busy clears.
-  const [queuedSubmit, setQueuedSubmit] = useState<string | null>(null);
+  const [queuedSubmits, setQueuedSubmits] = useState<string[]>([]);
+  const queuedSubmitsRef = useRef<string[]>([]);
+  const enqueueSubmit = useCallback((text: string) => {
+    const next = [...queuedSubmitsRef.current, text];
+    queuedSubmitsRef.current = next;
+    setQueuedSubmits(next);
+    return next.length;
+  }, []);
   // Ctrl+P/Ctrl+N recall over a turn-local prompt history. We don't
   // persist to disk —the session log already keeps the messages, and
   // cross-session bash-style recall would need per-project scoping.
@@ -2573,7 +2580,7 @@ function AppInner({
     log,
     isRawModeSupported,
     setRawMode,
-    setQueuedSubmit,
+    setQueuedSubmit: enqueueSubmit,
     qqSubmitRef,
     qqErrorRef,
     sessionName: session,
@@ -2601,9 +2608,6 @@ function AppInner({
       if (!incoming) return;
       let { text, fromQQ } = incoming;
       if (incoming.handled) {
-        return;
-      }
-      if (busy || submittingRef.current) {
         return;
       }
       // Cancel-on-user-input: any user-typed submit cancels an active
@@ -2654,6 +2658,14 @@ function AppInner({
           const chosen = matches[slashSelected] ?? matches[0];
           if (chosen) text = `/${chosen.cmd}`;
         }
+      }
+
+      if (busy || submittingRef.current) {
+        const queuedCount = enqueueSubmit(text);
+        setInput("");
+        resetCursor();
+        log.pushInfo(t("composer.queueActive", { count: queuedCount }));
+        return;
       }
 
       setInput("");
@@ -3367,6 +3379,7 @@ function AppInner({
     },
     [
       busy,
+      enqueueSubmit,
       codeApply,
       codeDiscard,
       codeHistory,
@@ -3528,14 +3541,25 @@ function AppInner({
   // handleSubmit while the turn is still "busy" so the blocked
   // pauseGate.ask() can be resolved from the remote reply.
   useEffect(() => {
-    if (queuedSubmit === null) return;
-    const canBypassBusy = qq.canBypassBusy(queuedSubmit);
-    if ((!busy && !submittingRef.current) || canBypassBusy) {
-      const text = queuedSubmit;
-      setQueuedSubmit(null);
+    if (queuedSubmits.length === 0) return;
+    const bypassIndex =
+      busy || submittingRef.current
+        ? queuedSubmits.findIndex((text) => qq.canBypassBusy(text))
+        : -1;
+    if (!busy && !submittingRef.current) {
+      const text = queuedSubmits[0]!;
+      const next = queuedSubmits.slice(1);
+      queuedSubmitsRef.current = next;
+      setQueuedSubmits(next);
+      void handleSubmit(text);
+    } else if (bypassIndex >= 0) {
+      const text = queuedSubmits[bypassIndex]!;
+      const next = queuedSubmits.filter((_, i) => i !== bypassIndex);
+      queuedSubmitsRef.current = next;
+      setQueuedSubmits(next);
       void handleSubmit(text);
     }
-  }, [busy, queuedSubmit, handleSubmit, qq]);
+  }, [busy, queuedSubmits, handleSubmit, qq]);
 
   /**
    * PlanConfirm callback. Three outcomes, all ending with a synthetic
@@ -4522,6 +4546,7 @@ function AppInner({
                     input={input}
                     setInput={setInput}
                     busy={busy}
+                    queuedSubmitCount={queuedSubmits.length}
                     onSubmit={handleSubmit}
                     onHistoryPrev={handleHistoryPrev}
                     onHistoryNext={handleHistoryNext}

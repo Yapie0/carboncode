@@ -302,6 +302,7 @@ export interface TranslationSchema {
     apiKeyRejected: string;
     apiKeyCheckFailed: string;
     apiKeyPreview: string;
+    apiKeyFooter: string;
     presetTitle: string;
     mcpTitle: string;
     mcpUserArgsHint: string;
@@ -317,6 +318,7 @@ export interface TranslationSchema {
     mcpArgsSqlitePlaceholder: string;
     mcpArgsFilesystemSummary: string;
     mcpArgsFilesystemNote: string;
+    mcpArgsFooter: string;
     themeTitle: string;
     themeSubtitle: string;
     themeSampleHeading: string;
@@ -341,6 +343,7 @@ export interface TranslationSchema {
     savedTitle: string;
     savedFooter: string;
     selectFooter: string;
+    selectFooterBack: string;
     stepCounter: string;
     exitHint: string;
     apiKeyPlaceholder: string;
@@ -417,6 +420,7 @@ export interface TranslationSchema {
   };
   statusBar: {
     turn: string;
+    session: string;
     cache: string;
     spent: string;
     left: string;
@@ -455,6 +459,8 @@ export interface TranslationSchema {
   composer: {
     placeholder: string;
     waitingForResponse: string;
+    queueHint: string;
+    queueActive: string;
     hintSend: string;
     hintNewline: string;
     hintClear: string;

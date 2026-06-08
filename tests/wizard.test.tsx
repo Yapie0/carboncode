@@ -17,6 +17,10 @@ import {
 import { setLanguageRuntime } from "../src/i18n/index.js";
 import { parseMcpSpec } from "../src/mcp/spec.js";
 
+async function nextFrame(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 describe("shouldAutoOpenKeyHelp — auto-open the DeepSeek key page", () => {
   it("opens on a genuine first run: no saved key + real TTY", () => {
     expect(shouldAutoOpenKeyHelp(false, true)).toBe(true);
@@ -89,6 +93,30 @@ describe("Wizard — first-launch language picker", () => {
     expect(out).toContain("简体中文");
     expect(out).toContain("（已检测）");
     expect(out).not.toContain("(detected)");
+    unmount();
+  });
+
+  it("allows setup steps to go back with Ctrl+B and Backspace", async () => {
+    const { lastFrame, stdin, unmount } = render(
+      <Wizard existingApiKey="sk-valid1234567890" onComplete={() => {}} />,
+    );
+
+    stdin.write("\r");
+    await nextFrame();
+    expect(lastFrame() ?? "").toContain("Choose a theme");
+
+    stdin.write("\r");
+    await nextFrame();
+    expect(lastFrame() ?? "").toContain("Pick a preset");
+
+    stdin.write("\x02");
+    await nextFrame();
+    expect(lastFrame() ?? "").toContain("Choose a theme");
+
+    stdin.write("\x7f");
+    await nextFrame();
+    expect(lastFrame() ?? "").toContain("Choose your language");
+
     unmount();
   });
 });

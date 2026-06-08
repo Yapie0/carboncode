@@ -173,31 +173,31 @@ describe("StatusRow — statusBar config toggles", () => {
     expect(text).not.toContain("/feedback");
   });
 
-  it("both showBalance and showSessionCost false drops wallet pill", async () => {
+  it("showSessionCost=false hides session cost", async () => {
     const text = await renderStatusRowWithConfig(
       { cost: 0, sessionCost: 0.01, balance: 5 } as any,
-      { showBalance: false, showSessionCost: false },
+      { showSessionCost: false },
     );
-    expect(text).not.toContain("⛁");
+    expect(text).not.toContain("session");
   });
 
-  it("showBalance=false still shows session cost in wallet", async () => {
+  it("showBalance=false still shows standalone session cost", async () => {
     const text = await renderStatusRowWithConfig(
       { cost: 0, sessionCost: 0.01, balance: 5 } as any,
       { showBalance: false, showSessionCost: true },
     );
-    expect(text).toContain("⛁");
-    expect(text).toContain("spent");
+    expect(text).toContain("session");
     expect(text).not.toContain("left");
   });
 
-  it("default config (all true) shows balance and session cost in wallet", async () => {
+  it("default config (all true) shows balance and standalone session cost", async () => {
     const text = await renderStatusRowWithConfig(
       { cost: 0, sessionCost: 0.01, balance: 10, balanceCurrency: "USD" } as any,
       {},
     );
     expect(text).toContain("⛁");
-    expect(text).toContain("spent");
+    expect(text).toContain("$0.01 session");
+    expect(text).toContain("left");
   });
 
   // TODO(#flaky): same dash-row race as the skipped 'turn cost currency'
