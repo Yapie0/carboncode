@@ -59,6 +59,11 @@ export interface SlashResult {
     /** Total archives at the time of the lookup; helps the user navigate. */
     total: number;
   };
+  /** Start file-based collaboration polling in the active TUI session. */
+  collab?: {
+    agent: string;
+    root: string;
+  };
 }
 
 export interface SlashContext {
@@ -70,6 +75,8 @@ export interface SlashContext {
   codeHistory?: () => string;
   codeShowEdit?: (args: readonly string[]) => string;
   codeRoot?: string;
+  /** Current session collaboration root. Usually <current workspace>/.carboncode/collab. */
+  collabRoot?: string;
   pendingEditCount?: number;
   mcpServers?: McpServerSummary[];
   /** Absent → tests context; `/memory` MUST reply "root unknown" rather than silently reading wrong dir. */

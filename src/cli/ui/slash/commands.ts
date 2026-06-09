@@ -237,6 +237,14 @@ export const SLASH_COMMANDS: readonly SlashCommandSpec[] = [
     argCompleter: "skills",
   },
   {
+    cmd: "mwh",
+    group: "extend",
+    argsHint: "[list|installed|search <query>|show <id>|install <id>|check|update|root]",
+    summary:
+      "browse reusable Middlewave Hub modules; install stores references under .carboncode/mwh",
+    aliases: ["middlewave"],
+  },
+  {
     cmd: "qq",
     group: "extend",
     argsHint: "<connect|status|disconnect>",
@@ -258,6 +266,13 @@ export const SLASH_COMMANDS: readonly SlashCommandSpec[] = [
       "scan the project and synthesize a baseline CARBON.md (model writes; review with /apply). `force` overwrites an existing file.",
     contextual: "code",
     argCompleter: ["force"],
+  },
+  {
+    cmd: "collab",
+    group: "extend",
+    argsHint: "[agent]",
+    summary:
+      "enter local collaboration mode and print a prompt for Codex, Claude Code, or another agent",
   },
   {
     cmd: "apply",

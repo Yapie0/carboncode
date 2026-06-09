@@ -331,6 +331,14 @@ export const zhCN: TranslationSchema = {
     config: { description: "查看所有当前设置及对应的修改命令" },
     vim: { description: "切换输入框的 vim 编辑模式（NORMAL/INSERT）" },
     context: { description: "显示上下文窗口分解（系统 / 工具 / 日志 / 输入）" },
+    collab: {
+      description: "进入本地协作模式，并打印可复制给 Codex、Claude Code 或其他 agent 的对接提示词",
+      argsHint: "[agent]",
+    },
+    mwh: {
+      description: "浏览可复用 Middlewave Hub 模块，并安装本地参考实现",
+      argsHint: "[list|search|show|install]",
+    },
     retry: { description: "截断并重发您的最后一条消息（重新采样）" },
     compact: {
       description: "缩小日志中过大的工具结果和工具调用参数；上限为 tokens，默认 4000",

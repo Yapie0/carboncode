@@ -1,5 +1,5 @@
 import { defaultConfigPath, readConfig, writeConfig } from "../../config.js";
-import { MCP_CATALOG, mcpCommandFor } from "../../mcp/catalog.js";
+import { MCP_CATALOG, buildCatalogSpec, mcpCommandFor } from "../../mcp/catalog.js";
 import {
   type FetchProgress,
   fetchSmitheryDetail,
@@ -98,7 +98,8 @@ export async function mcpListCommand(opts: McpListOptions = {}): Promise<void> {
     console.log("Bundled MCP servers (offline catalog):");
     console.log("");
     for (const entry of MCP_CATALOG) {
-      console.log(`  ${pad(entry.name, 12)} ${entry.summary}`);
+      const displayName = entry.name === "mwh" ? "MiddlewaveHub" : entry.name;
+      console.log(`  ${pad(displayName, 14)} ${entry.summary}`);
       console.log(`               ${mcpCommandFor(entry)}`);
       if (entry.note) console.log(`               · ${entry.note}`);
       console.log("");
@@ -244,6 +245,15 @@ export async function mcpInstallCommand(name: string, opts: McpInstallOptions = 
     process.exit(1);
   }
 
+  const localEntry = MCP_CATALOG.find(
+    (entry) =>
+      entry.name === target || (entry.name === "mwh" && target.toLowerCase() === "middlewavehub"),
+  );
+  if (localEntry?.kind === "builtin") {
+    installCatalogSpec("MiddlewaveHub", buildCatalogSpec(localEntry, [process.cwd()]));
+    return;
+  }
+
   const handle = await openRegistry({ noCache: opts.refresh, onProgress: progressToStderr });
   const lower = target.toLowerCase();
   const filter = (e: RegistryEntry): boolean => {
@@ -312,6 +322,22 @@ export async function mcpInstallCommand(name: string, opts: McpInstallOptions = 
       `           (edit ${defaultConfigPath()} — values merge over process.env at spawn)`,
     );
   }
+  console.log("");
+  console.log(
+    "Use it:  carboncode chat   (or `carboncode code`) — the server will be bridged automatically.",
+  );
+}
+
+function installCatalogSpec(displayName: string, spec: string): void {
+  const cfg = readConfig();
+  const existing = cfg.mcp ?? [];
+  if (existing.includes(spec)) {
+    console.log(`Already installed: ${spec}`);
+    return;
+  }
+  writeConfig({ ...cfg, mcp: [...existing, spec] });
+  console.log(`Installed: ${displayName}`);
+  console.log(`  spec:    ${spec}`);
   console.log("");
   console.log(
     "Use it:  carboncode chat   (or `carboncode code`) — the server will be bridged automatically.",

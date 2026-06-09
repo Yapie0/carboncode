@@ -30,6 +30,12 @@ const skill: SlashHandler = (args, _loop, ctx) => {
     return { info: t("handlers.skill.newCreated", { name, path: result.path }) };
   }
 
+  if (sub === "hub" || sub === "skillhub") {
+    return {
+      info: "SkillHub has moved to Middlewave Hub. Use `/mwh`, `/mwh search <query>`, `/mwh show <id>`, or `/mwh install <id>`. Use `/skill middlewave-hub` for the agent-facing MWH usage guide.",
+    };
+  }
+
   if (sub === "paths") {
     const action = (args[1] ?? "list").toLowerCase();
     if (action === "add") {

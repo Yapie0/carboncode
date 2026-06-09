@@ -21,11 +21,13 @@
 import { readFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { buildCodeToolset } from "../../code/setup.js";
+import { initCollab, renderCollabConnectPrompt, resolveInboxRoot } from "../../collab/inbox.js";
 import { loadApiKey, loadOutputStyle, loadPreset, readConfig } from "../../config.js";
 import { loadDotenv } from "../../env.js";
 import { t } from "../../i18n/index.js";
 import { detectForeignAgentPlatform } from "../../memory/project.js";
 import { sanitizeName } from "../../memory/session.js";
+import { appendBuiltinMwhMcpSpec } from "../../mwh/mcp-spec.js";
 import { markPhase } from "../startup-profile.js";
 import { resolvePreset } from "../ui/presets.js";
 import { chatCommand } from "./chat.js";
@@ -63,6 +65,12 @@ export interface CodeOptions {
   systemAppend?: string;
   /** Path to a UTF-8 text file whose contents are appended to the code system prompt. */
   systemAppendFile?: string;
+  /** Enable local file-based collaboration mode under .carboncode/collab. */
+  collab?: boolean;
+  /** Collaboration identity for this Carbon Code instance. */
+  collabAgent?: string;
+  /** Override collaboration root. Defaults to <project>/.carboncode/collab. */
+  collabRoot?: string;
 }
 
 export async function codeCommand(opts: CodeOptions = {}): Promise<void> {
@@ -80,6 +88,15 @@ export async function codeCommand(opts: CodeOptions = {}): Promise<void> {
   }
   const { codeSystemPrompt } = await import("../../code/prompt.js");
   const rootDir = resolve(opts.dir ?? process.cwd());
+  if (opts.collab) {
+    const agent = opts.collabAgent ?? "carboncode";
+    const collabRoot = resolveInboxRoot(opts.collabRoot, rootDir);
+    const status = initCollab({ agent, collabRoot });
+    const suffix = status.ok ? "" : ` (protocol check failed: ${status.reason})`;
+    process.stderr.write(`collab mode enabled: agent=${agent} root=${collabRoot}${suffix}\n`);
+    process.stderr.write("\nCopy this prompt to Codex, Claude Code, or another coding agent:\n\n");
+    process.stderr.write(`${renderCollabConnectPrompt(agent, collabRoot)}\n\n`);
+  }
   // Per-directory session so switching projects doesn't mix histories.
   // `code-<sanitized-basename>` fits the session name rules without
   // truncating most project names.
@@ -141,6 +158,9 @@ export async function codeCommand(opts: CodeOptions = {}): Promise<void> {
       modelId: resolvedModel,
       outputStyle: loadOutputStyle(),
     });
+  const cfg = readConfig();
+  const mcpSpecs = appendBuiltinMwhMcpSpec(cfg.mcp, cfg, rootDir);
+
   await chatCommand({
     model: resolvedModel,
     budgetUsd: opts.budgetUsd,
@@ -164,7 +184,7 @@ export async function codeCommand(opts: CodeOptions = {}): Promise<void> {
         currentRoot = newRoot;
       },
     },
-    mcp: readConfig().mcp,
+    mcp: mcpSpecs,
     forceResume: opts.forceResume,
     forceNew: opts.forceNew,
     noDashboard: opts.noDashboard,

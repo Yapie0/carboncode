@@ -64,22 +64,22 @@ export function overlayMatchedSpec(
 /** Serialize a normalized spec back to the `--mcp` string format. Round-trips through `parseMcpSpec`. */
 export function specToRaw(spec: McpServerSpec): string {
   if (spec.transport === "stdio") {
-    const args = spec.args
-      .map((a) => {
-        if (a.includes(" ") || a.includes('"') || a.includes("\t")) {
-          // Double-quote and escape internal double quotes + backslashes.
-          return `"${a.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
-        }
-        return a;
-      })
-      .join(" ");
-    const body = args ? `${spec.command} ${args}` : spec.command;
+    const args = spec.args.map(quoteShellWord).join(" ");
+    const body = args ? `${quoteShellWord(spec.command)} ${args}` : quoteShellWord(spec.command);
     return spec.name ? `${spec.name}=${body}` : body;
   }
   if (spec.transport === "sse") {
     return spec.name ? `${spec.name}=${spec.url}` : spec.url;
   }
   return spec.name ? `${spec.name}=streamable+${spec.url}` : `streamable+${spec.url}`;
+}
+
+function quoteShellWord(value: string): string {
+  if (value.includes(" ") || value.includes('"') || value.includes("\t")) {
+    // Double-quote and escape internal double quotes + backslashes.
+    return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  }
+  return value;
 }
 
 const NAME_PREFIX = /^([a-zA-Z_][a-zA-Z0-9_-]*)=(.*)$/;

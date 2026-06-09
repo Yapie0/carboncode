@@ -48,7 +48,7 @@ export class StdioTransport implements McpTransport {
       // quoting ONLY the args (command stays bare so the shell's PATH /
       // PATHEXT lookup finds `npx` → `npx.cmd` on Windows).
       const line = [
-        opts.command,
+        quoteCommand(opts.command, process.platform === "win32"),
         ...(opts.args ?? []).map((a) => quoteArg(a, process.platform === "win32")),
       ].join(" ");
       this.child = spawn(line, [], {
@@ -181,4 +181,8 @@ function quoteArg(s: string, windows: boolean): string {
   }
   // cmd.exe: double-quote, escape internal quotes by doubling.
   return `"${s.replace(/"/g, '""')}"`;
+}
+
+function quoteCommand(command: string, windows: boolean): string {
+  return /\s/.test(command) ? quoteArg(command, windows) : command;
 }

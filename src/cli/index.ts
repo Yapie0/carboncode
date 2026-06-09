@@ -145,6 +145,9 @@ program
   )
   .option("--system-append <prompt>", t("ui.systemAppendHint"))
   .option("--system-append-file <path>", t("ui.systemAppendFileHint"))
+  .option("--collab", "enable local collaboration mode (.carboncode/collab)")
+  .option("--agent <name>", "collaboration agent identity (default carboncode)", "carboncode")
+  .option("--collab-root <path>", "collaboration root (default <project>/.carboncode/collab)")
   .option(
     "--profile [path]",
     "record a V8 CPU profile; saved on exit. Send the .cpuprofile back if you're reporting a perf bug.",
@@ -170,6 +173,9 @@ program
         dashboardToken: resolveDashboardToken(false),
         systemAppend: opts.systemAppend,
         systemAppendFile: opts.systemAppendFile,
+        collab: opts.collab === true,
+        collabAgent: opts.agent,
+        collabRoot: opts.collabRoot,
       });
     } finally {
       if (profiling) await stopAndSaveCpuProfile();
@@ -417,6 +423,167 @@ program
     });
   });
 
+const collab = program.command("collab").description("local Carbon Code collaboration utilities");
+
+collab
+  .command("init")
+  .description("initialize .carboncode/collab protocol files")
+  .option("--agent <name>", "this agent's collaboration identity", "carboncode")
+  .option("--root <path>", "collaboration root (default .carboncode/collab)")
+  .option("--force", "regenerate protocol.md and protocol.sha256")
+  .option("--json", t("ui.jsonHint"))
+  .action(async (opts: { agent: string; root?: string; force?: boolean; json?: boolean }) => {
+    const { collabInitCommand } = await import("./commands/collab.js");
+    collabInitCommand({
+      agent: opts.agent,
+      root: opts.root,
+      force: !!opts.force,
+      json: !!opts.json,
+    });
+  });
+
+collab
+  .command("check")
+  .description("verify protocol.md matches protocol.sha256")
+  .option("--root <path>", "collaboration root (default .carboncode/collab)")
+  .option("--json", t("ui.jsonHint"))
+  .action(async (opts: { root?: string; json?: boolean }) => {
+    const { collabCheckCommand } = await import("./commands/collab.js");
+    collabCheckCommand({ root: opts.root, json: !!opts.json });
+  });
+
+collab
+  .command("send")
+  .description("send a JSON message to another agent inbox")
+  .requiredOption("--from <agent>", "sender agent")
+  .requiredOption("--to <agent>", "recipient agent")
+  .option("--type <type>", "message type", "note")
+  .option("--task <id>", "task id")
+  .option("--body <json>", "message body as a JSON object")
+  .option("--body-file <path>", "read message body JSON object from a file")
+  .option("--root <path>", "collaboration root (default .carboncode/collab)")
+  .option("--json", t("ui.jsonHint"))
+  .action(async (opts) => {
+    const { collabSendCommand } = await import("./commands/collab.js");
+    collabSendCommand({
+      from: opts.from,
+      to: opts.to,
+      type: opts.type,
+      task: opts.task,
+      body: opts.body,
+      bodyFile: opts.bodyFile,
+      root: opts.root,
+      json: !!opts.json,
+    });
+  });
+
+const inbox = collab.command("inbox").description("agent inbox utilities");
+
+inbox
+  .command("list")
+  .description("list messages in a worker inbox")
+  .option("--agent <name>", "worker/agent inbox name", "cccode")
+  .option("--root <path>", "collaboration root (default .carboncode/collab)")
+  .option("--json", t("ui.jsonHint"))
+  .action(async (opts: { agent: string; root?: string; json?: boolean }) => {
+    const { inboxListCommand } = await import("./commands/collab.js");
+    inboxListCommand({ agent: opts.agent, root: opts.root, json: !!opts.json });
+  });
+
+inbox
+  .command("read")
+  .description("read unread worker inbox messages and mark them read")
+  .option("--agent <name>", "worker/agent inbox name", "cccode")
+  .option("--root <path>", "collaboration root (default .carboncode/collab)")
+  .option("--all", "include messages already marked read")
+  .option("--no-mark-read", "do not mark returned messages as read")
+  .option("--json", t("ui.jsonHint"))
+  .action(
+    async (opts: {
+      agent: string;
+      root?: string;
+      all?: boolean;
+      markRead?: boolean;
+      json?: boolean;
+    }) => {
+      const { inboxReadCommand } = await import("./commands/collab.js");
+      inboxReadCommand({
+        agent: opts.agent,
+        root: opts.root,
+        all: !!opts.all,
+        noMarkRead: opts.markRead === false,
+        json: !!opts.json,
+      });
+    },
+  );
+
+const task = collab.command("task").description("local cross-agent task coordination");
+
+task
+  .command("assign")
+  .requiredOption("--to <agent>", "worker/agent to assign the task to")
+  .requiredOption("--file <path>", "markdown file containing task instructions")
+  .option("--root <path>", "collaboration root (default .carboncode/collab)")
+  .option("--title <text>", "task title override")
+  .option("--workspace <path>", "workspace path for the task", ".")
+  .option("--by <agent>", "assigning agent", "carboncode")
+  .option("--write-scope <path>", "allowed write scope; repeatable", collectOption, [] as string[])
+  .option("--verify <cmd>", "verification command; repeatable", collectOption, [] as string[])
+  .option("--json", t("ui.jsonHint"))
+  .description("create a task and deliver it to a worker inbox")
+  .action(async (opts) => {
+    const { taskAssignCommand } = await import("./commands/collab.js");
+    taskAssignCommand({
+      to: opts.to,
+      file: opts.file,
+      root: opts.root,
+      title: opts.title,
+      workspace: opts.workspace,
+      by: opts.by,
+      writeScope: opts.writeScope,
+      verify: opts.verify,
+      json: !!opts.json,
+    });
+  });
+
+task
+  .command("status")
+  .description("list collaboration tasks")
+  .option("--root <path>", "collaboration root (default .carboncode/collab)")
+  .option("--set <task=status>", "update one task status before printing")
+  .option("--json", t("ui.jsonHint"))
+  .action(async (opts: { root?: string; set?: string; json?: boolean }) => {
+    const { taskStatusCommand } = await import("./commands/collab.js");
+    taskStatusCommand({ root: opts.root, set: opts.set, json: !!opts.json });
+  });
+
+task
+  .command("respond")
+  .description("send an approve/reject response to a worker")
+  .requiredOption("--task <id>", "task id")
+  .option("--to <agent>", "worker/agent to notify; defaults to task assignee")
+  .option("--from <agent>", "responding agent", "carboncode")
+  .option("--request <id>", "permission request id")
+  .option("--note <text>", "response note")
+  .option("--approve", "approve the request")
+  .option("--reject", "reject the request")
+  .option("--root <path>", "collaboration root (default .carboncode/collab)")
+  .option("--json", t("ui.jsonHint"))
+  .action(async (opts) => {
+    const { taskRespondCommand } = await import("./commands/collab.js");
+    taskRespondCommand({
+      task: opts.task,
+      to: opts.to,
+      from: opts.from,
+      request: opts.request,
+      note: opts.note,
+      approve: !!opts.approve,
+      reject: !!opts.reject,
+      root: opts.root,
+      json: !!opts.json,
+    });
+  });
+
 program
   .command("replay <transcript>")
   .description(t("cli.replay"))
@@ -553,6 +720,21 @@ mcp
     }
   });
 
+const mwh = program.command("mwh").description("Middlewave Hub reusable middleware library");
+
+mwh
+  .command("mcp-server")
+  .description("run the Middlewave Hub stdio MCP server")
+  .option("--root <path>", "workspace root for .carboncode/mwh")
+  .option("--home <path>", "home root fallback for .carboncode/mwh")
+  .action(async (opts: { root?: string; home?: string }) => {
+    const { runMwhMcpServer } = await import("./commands/mwh-mcp-server.js");
+    runMwhMcpServer({
+      projectRoot: opts.root ?? process.cwd(),
+      homeDir: opts.home,
+    });
+  });
+
 program
   .command("version")
   .description(t("cli.version"))
@@ -590,6 +772,10 @@ program
       await indexCommand(opts);
     },
   );
+
+function collectOption(value: string, previous: string[] = []): string[] {
+  return [...previous, value];
+}
 
 program.parseAsync(process.argv).catch((err) => {
   console.error(err);

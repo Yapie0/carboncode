@@ -35,7 +35,7 @@ import {
   t,
 } from "../../i18n/index.js";
 import type { LanguageCode } from "../../i18n/types.js";
-import { type CatalogEntry, MCP_CATALOG } from "../../mcp/catalog.js";
+import { type CatalogEntry, MCP_CATALOG, buildCatalogSpec } from "../../mcp/catalog.js";
 import { MultiSelect, type SelectItem, SingleSelect } from "./Select.js";
 import { openUrl } from "./open-url.js";
 import { ThemeProvider, useTheme } from "./theme/context.js";
@@ -831,11 +831,13 @@ export function mcpItems(): SelectItem<string>[] {
 }
 
 function mcpCatalogSummary(entry: CatalogEntry): string {
+  if (entry.name === "mwh") return entry.summary;
   return t(`wizard.mcpCatalog.${entry.name}.summary`);
 }
 
 function mcpCatalogNote(entry: CatalogEntry): string | undefined {
   if (!entry.note) return undefined;
+  if (entry.name === "mwh") return entry.note;
   return t(`wizard.mcpCatalog.${entry.name}.note`);
 }
 
@@ -856,9 +858,15 @@ export function placeholderFor(entry: CatalogEntry): string {
 }
 
 function deriveInitialCatalog(existingSpecs: string[]): string[] {
-  const packageToName = new Map(MCP_CATALOG.map((e) => [e.package, e.name]));
+  const packageToName = new Map(
+    MCP_CATALOG.flatMap((entry) => (entry.package ? [[entry.package, entry.name] as const] : [])),
+  );
   const out: string[] = [];
   for (const spec of existingSpecs) {
+    if (/^(mwh|MiddlewaveHub)=/.test(spec) || spec.includes(" mwh mcp-server")) {
+      out.push("mwh");
+      continue;
+    }
     for (const [pkg, name] of packageToName) {
       if (spec.includes(pkg)) {
         out.push(name);
@@ -878,8 +886,7 @@ export function buildSpec(name: string, argsByName: Record<string, string>): str
   const entry = CATALOG_BY_NAME.get(name);
   if (!entry) return name;
   const userArg = entry.userArgs ? argsByName[name] : undefined;
-  const tail = userArg ? ` ${quoteIfNeeded(userArg)}` : "";
-  return `${entry.name}=npx -y ${entry.package}${tail}`;
+  return buildCatalogSpec(entry, userArg ? [userArg] : []);
 }
 
 function quoteIfNeeded(s: string): string {

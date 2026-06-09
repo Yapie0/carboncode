@@ -546,6 +546,8 @@ describe("handleSlash", () => {
       "undo",
       "commit",
       "plan",
+      "collab",
+      "mwh",
     ]) {
       expect(names, `registry missing /${required}`).toContain(required);
     }
@@ -556,13 +558,15 @@ describe("handleSlash", () => {
     // Case-insensitive.
     expect(suggestSlashCommands("HE").map((s) => s.cmd)).toEqual(["help"]);
     // Empty prefix returns the full non-advanced release list, including code commands.
-    expect(suggestSlashCommands("", true)).toHaveLength(53);
+    expect(suggestSlashCommands("", true)).toHaveLength(55);
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("add-dir");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("vim");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("agents");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("config");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("statusline");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("pricing");
+    expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("collab");
+    expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("mwh");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("resume");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("export");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("logs");

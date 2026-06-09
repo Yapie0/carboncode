@@ -340,6 +340,15 @@ export const EN: TranslationSchema = {
     config: { description: "show every current setting + the command to change each" },
     vim: { description: "toggle vim editing in the composer (NORMAL/INSERT)" },
     context: { description: "show context-window breakdown (system / tools / log / input)" },
+    collab: {
+      description:
+        "enter local collaboration mode and print a prompt for Codex, Claude Code, or another agent",
+      argsHint: "[agent]",
+    },
+    mwh: {
+      description: "browse reusable Middlewave Hub modules and install local references",
+      argsHint: "[list|search|show|install]",
+    },
     retry: { description: "truncate & resend your last message (fresh sample)" },
     compact: {
       description:

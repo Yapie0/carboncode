@@ -1,7 +1,7 @@
 /** Agent-facing tools for scaffolding skills + MCP servers from chat. Persists via the same paths the wizard / `/skill new` use. */
 
 import { defaultConfigPath, loadResolvedSkillPaths, readConfig, writeConfig } from "../config.js";
-import { MCP_CATALOG } from "../mcp/catalog.js";
+import { MCP_CATALOG, buildCatalogSpec } from "../mcp/catalog.js";
 import { preflightStdioSpec } from "../mcp/preflight.js";
 import { type McpSpec, parseMcpSpec } from "../mcp/spec.js";
 import { SkillStore } from "../skills.js";
@@ -318,9 +318,7 @@ function buildSpecString(input: BuildSpecInput): { spec: string } | { error: str
         error: `catalog entry "${entry.name}" needs ${entry.userArgs} — pass it via the 'args' parameter`,
       };
     }
-    const tail = userArgs.map(quoteIfNeeded).join(" ");
-    const body = `npx -y ${entry.package}${tail ? ` ${tail}` : ""}`;
-    return { spec: `${input.name}=${body}` };
+    return { spec: buildCatalogSpec(entry, userArgs, input.name) };
   }
 
   const transport = input.transport;

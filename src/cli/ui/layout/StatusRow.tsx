@@ -1,5 +1,6 @@
 import { Box, Text, useStdout } from "ink";
 import React from "react";
+import type { EditMode } from "../../../config.js";
 import { t } from "../../../i18n/index.js";
 import { DEEPSEEK_CONTEXT_TOKENS, DEFAULT_CONTEXT_TOKENS } from "../../../telemetry/stats.js";
 import { VERSION } from "../../../version.js";
@@ -61,7 +62,15 @@ export function resolveRuntimeStatusBarConfig(cfg: Partial<StatusBarConfig> = {}
 
 export function StatusRow({
   statusBar = DEFAULT_STATUS_BAR_CONFIG,
-}: { statusBar?: StatusBarConfig }): React.ReactElement {
+  editMode,
+  planMode = false,
+  collabAgent,
+}: {
+  statusBar?: StatusBarConfig;
+  editMode?: EditMode;
+  planMode?: boolean;
+  collabAgent?: string;
+}): React.ReactElement {
   const status = useAgentState((s) => s.status);
   const session = useAgentState((s) => s.session);
   const { stdout } = useStdout();
@@ -88,6 +97,18 @@ export function StatusRow({
     segments.push({
       key: "preset",
       node: <PresetPill preset={status.preset} model={session.model} />,
+    });
+  }
+  if (editMode) {
+    segments.push({
+      key: "editMode",
+      node: <EditModePill editMode={editMode} planMode={planMode} />,
+    });
+  }
+  if (collabAgent) {
+    segments.push({
+      key: "collab",
+      node: <CollabPill agent={collabAgent} />,
     });
   }
   if (statusBar.showSessionInfo) {
@@ -217,6 +238,37 @@ function shortModelLabel(model: string): string {
   if (model === "deepseek-v4-flash") return "flash";
   if (model === "deepseek-v4-pro") return "pro";
   return model.replace(/^deepseek-/, "");
+}
+
+function EditModePill({
+  editMode,
+  planMode,
+}: {
+  editMode: EditMode;
+  planMode: boolean;
+}): React.ReactElement {
+  const label = planMode ? "plan" : editMode;
+  const color =
+    planMode || editMode === "yolo" ? TONE.err : editMode === "auto" ? TONE.accent : TONE.brand;
+  return (
+    <>
+      <Text color={FG.meta}>{"mode "}</Text>
+      <Text color={color} bold>
+        {label}
+      </Text>
+    </>
+  );
+}
+
+function CollabPill({ agent }: { agent: string }): React.ReactElement {
+  return (
+    <>
+      <Text color={FG.meta}>{"collab "}</Text>
+      <Text color={TONE.accent} bold>
+        {agent}
+      </Text>
+    </>
+  );
 }
 
 function CtxUsagePill({

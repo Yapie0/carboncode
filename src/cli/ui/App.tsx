@@ -29,6 +29,7 @@ import {
   relativeTime,
   savePlanState,
 } from "../../code/plan-store.js";
+import { type CollabMessage, readInboxMessages, sendMessage } from "../../collab/inbox.js";
 import {
   type EditMode,
   type PresetName,
@@ -195,6 +196,34 @@ import { useCompletionPickers } from "./useCompletionPickers.js";
 import { useEditHistory } from "./useEditHistory.js";
 import { useSessionInfo } from "./useSessionInfo.js";
 import { useSubagent } from "./useSubagent.js";
+
+interface PendingCollabReply {
+  to: string;
+  taskId: string;
+  inboundId: string;
+}
+
+interface QueuedSubmit {
+  text: string;
+  collabReply?: PendingCollabReply;
+}
+
+function formatCollabPrompt(msg: CollabMessage): string {
+  return [
+    "You received a Carbon Code collaboration message.",
+    "",
+    `From: ${msg.from}`,
+    `To: ${msg.to}`,
+    `Type: ${msg.type}`,
+    `Task ID: ${msg.taskId || "(none)"}`,
+    `Message ID: ${msg.id}`,
+    "",
+    "Body:",
+    JSON.stringify(msg.body, null, 2),
+    "",
+    "Reply directly to this collaboration message. Your final assistant response will be sent back to the sender through .carboncode/collab.",
+  ].join("\n");
+}
 
 export interface AppProps {
   model: string;
@@ -754,14 +783,16 @@ function AppInner({
   // handleSubmit directly because it early-returns on `busy === true`,
   // so we abort the in-flight turn and let the effect below fire the
   // submit once busy clears.
-  const [queuedSubmits, setQueuedSubmits] = useState<string[]>([]);
-  const queuedSubmitsRef = useRef<string[]>([]);
-  const enqueueSubmit = useCallback((text: string) => {
-    const next = [...queuedSubmitsRef.current, text];
+  const [queuedSubmits, setQueuedSubmits] = useState<QueuedSubmit[]>([]);
+  const queuedSubmitsRef = useRef<QueuedSubmit[]>([]);
+  const enqueueSubmit = useCallback((text: string, collabReply?: PendingCollabReply) => {
+    const next = [...queuedSubmitsRef.current, { text, collabReply }];
     queuedSubmitsRef.current = next;
     setQueuedSubmits(next);
     return next.length;
   }, []);
+  const [activeCollab, setActiveCollab] = useState<{ agent: string; root: string } | null>(null);
+  const activeCollabReplyRef = useRef<PendingCollabReply | null>(null);
   // Ctrl+P/Ctrl+N recall over a turn-local prompt history. We don't
   // persist to disk —the session log already keeps the messages, and
   // cross-session bash-style recall would need per-project scoping.
@@ -2810,6 +2841,7 @@ function AppInner({
           codeHistory: codeMode ? codeHistory : undefined,
           codeShowEdit: codeMode ? codeShowEdit : undefined,
           codeRoot: codeMode ? currentRootDir : undefined,
+          collabRoot: join(currentRootDir, ".carboncode", "collab"),
           pendingEditCount: codeMode ? pendingEdits.current.length : undefined,
           memoryRoot: currentRootDir,
           planMode,
@@ -3023,6 +3055,9 @@ function AppInner({
           resetPendingModals,
           text,
         });
+        if (result.collab) {
+          setActiveCollab(result.collab);
+        }
         if (fromQQ && result.info) qq.sendText(result.info);
         if (outcome.kind === "resubmit") {
           text = outcome.text;
@@ -3353,6 +3388,26 @@ function AppInner({
             log.pushWarning(t("app.hookStop"), formatHookOutcomeMessage(o));
           }
         }
+        const collabReply = activeCollabReplyRef.current;
+        activeCollabReplyRef.current = null;
+        if (activeCollab && collabReply && lastAssistantText.trim()) {
+          try {
+            sendMessage({
+              inboxRoot: activeCollab.root,
+              from: activeCollab.agent,
+              to: collabReply.to,
+              type: "note",
+              taskId: collabReply.taskId,
+              body: {
+                text: lastAssistantText.trim(),
+                inReplyTo: collabReply.inboundId,
+              },
+            });
+            log.pushInfo(`collab: replied to ${collabReply.to}.`);
+          } catch (err) {
+            log.pushWarning("collab reply failed", (err as Error).message);
+          }
+        }
         qq.maybeSendFinalReply(lastAssistantText);
       } finally {
         clearInterval(timer);
@@ -3377,6 +3432,7 @@ function AppInner({
     },
     [
       busy,
+      activeCollab,
       enqueueSubmit,
       codeApply,
       codeDiscard,
@@ -3542,22 +3598,57 @@ function AppInner({
     if (queuedSubmits.length === 0) return;
     const bypassIndex =
       busy || submittingRef.current
-        ? queuedSubmits.findIndex((text) => qq.canBypassBusy(text))
+        ? queuedSubmits.findIndex((item) => qq.canBypassBusy(item.text))
         : -1;
     if (!busy && !submittingRef.current) {
-      const text = queuedSubmits[0]!;
+      const item = queuedSubmits[0]!;
       const next = queuedSubmits.slice(1);
       queuedSubmitsRef.current = next;
       setQueuedSubmits(next);
-      void handleSubmit(text);
+      activeCollabReplyRef.current = item.collabReply ?? null;
+      void handleSubmit(item.text);
     } else if (bypassIndex >= 0) {
-      const text = queuedSubmits[bypassIndex]!;
+      const item = queuedSubmits[bypassIndex]!;
       const next = queuedSubmits.filter((_, i) => i !== bypassIndex);
       queuedSubmitsRef.current = next;
       setQueuedSubmits(next);
-      void handleSubmit(text);
+      activeCollabReplyRef.current = item.collabReply ?? null;
+      void handleSubmit(item.text);
     }
   }, [busy, queuedSubmits, handleSubmit, qq]);
+
+  useEffect(() => {
+    if (!activeCollab) return;
+    let stopped = false;
+    const poll = () => {
+      if (stopped) return;
+      try {
+        const messages = readInboxMessages(activeCollab.agent, {
+          inboxRoot: activeCollab.root,
+        });
+        for (const msg of messages) {
+          if (msg.from === activeCollab.agent) continue;
+          const collabReply = {
+            to: msg.from,
+            taskId: msg.taskId,
+            inboundId: msg.id,
+          };
+          const queued = enqueueSubmit(formatCollabPrompt(msg), collabReply);
+          log.pushInfo(
+            `collab: received ${msg.type} from ${msg.from}; queued model reply (${queued} queued).`,
+          );
+        }
+      } catch (err) {
+        log.pushWarning("collab inbox poll failed", (err as Error).message);
+      }
+    };
+    poll();
+    const timer = setInterval(poll, 3000);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }, [activeCollab, enqueueSubmit, log]);
 
   /**
    * PlanConfirm callback. Three outcomes, all ending with a synthetic
@@ -4538,6 +4629,7 @@ function AppInner({
                     pendingCount={pendingCount}
                     modeFlash={modeFlash}
                     planMode={planMode}
+                    collabAgent={activeCollab?.agent}
                     jobs={codeMode ? codeMode.jobs : undefined}
                     activeLoop={activeLoop}
                     statusBar={statusBar}

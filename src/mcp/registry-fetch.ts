@@ -232,7 +232,7 @@ export async function fetchSmitheryFirstPage(
 }
 
 export function fallbackFromCatalog(): RegistryEntry[] {
-  return MCP_CATALOG.map((e) => ({
+  return MCP_CATALOG.filter((e) => e.kind !== "builtin").map((e) => ({
     name: e.name,
     title: e.name,
     description: e.summary,

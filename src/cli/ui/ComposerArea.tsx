@@ -32,6 +32,7 @@ export interface ComposerAreaProps {
   pendingCount: number;
   modeFlash: boolean;
   planMode: boolean;
+  collabAgent?: string;
   jobs?: JobRegistry;
   activeLoop?: Parameters<typeof LoopStatusRow>[0]["loop"] | null;
   statusBar: StatusBarConfig;
@@ -90,6 +91,7 @@ export const ComposerArea: React.FC<ComposerAreaProps> = React.memo(
     pendingCount,
     modeFlash,
     planMode,
+    collabAgent,
     jobs,
     activeLoop,
     statusBar,
@@ -167,7 +169,12 @@ export const ComposerArea: React.FC<ComposerAreaProps> = React.memo(
             jobs={jobs}
           />
         ) : null}
-        <StatusRow statusBar={statusBar} />
+        <StatusRow
+          statusBar={statusBar}
+          editMode={editMode}
+          planMode={planMode}
+          collabAgent={collabAgent}
+        />
       </Box>
     );
 

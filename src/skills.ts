@@ -676,6 +676,33 @@ Don't:
 
 Lead each turn with a one-line status: "▸ running \`npm test\` ..." → "▸ 2 failures in tests/foo.test.ts — first is …" → so the user always knows where you are without scrolling tool output.`;
 
+const BUILTIN_MIDDLEWAVE_HUB_BODY = `You are using Middlewave Hub (MWH), Carbon Code's reusable middleware reference library.
+
+MWH is not normal persistent skill context. Treat it as a just-in-time module reference:
+- Use it when the current task needs reusable implementation knowledge, architecture, templates, integration steps, failure analysis, or verification checklists.
+- Do not keep module contents in the conversation unless they are needed for the current implementation.
+- Do not blindly copy module code. Adapt the module to the current project structure, dependencies, runtime, and tests.
+
+How to operate:
+1. Ask the user to run /mwh search <query> or /mwh show <id> when you need a module that is not already present locally.
+2. If a module has been installed, read it from .carboncode/mwh/modules/<id>/MWH.md and its manifest from .carboncode/mwh/modules/<id>/manifest.json.
+3. Use the module as a solution reference: identify applicable parts, map them to the local codebase, implement the smallest useful slice, and run focused verification.
+4. If the module is missing important details, propose an update to the MWH module instead of hiding the gap inside one-off project code.
+
+Current built-in module index:
+- video-call-webrtc: reusable middleware reference for browser video calls, signaling, media fallback, and React call UI.
+
+Useful commands for the user:
+- /mwh
+- /mwh search <query>
+- /mwh show <id>
+- /mwh install <id>
+
+Your output should separate three things clearly:
+- Which MWH module you used.
+- Which parts apply to the current project.
+- What you changed or recommend changing in the project.`;
+
 const BUILTIN_SKILLS: readonly Skill[] = Object.freeze([
   Object.freeze<Skill>({
     name: "explore",
@@ -718,6 +745,15 @@ const BUILTIN_SKILLS: readonly Skill[] = Object.freeze([
     description:
       "Run the project's test suite, diagnose failures, propose SEARCH/REPLACE fixes, re-run until green (or stop after 2 fix attempts on the same failure). Inlined — runs in the parent loop so you see the edit blocks and can /apply them. Detects npm/pnpm/yarn/pytest/go/cargo.",
     body: BUILTIN_TEST_BODY,
+    scope: "builtin",
+    path: "(builtin)",
+    runAs: "inline",
+  }),
+  Object.freeze<Skill>({
+    name: "middlewave-hub",
+    description:
+      "Use Carbon Code's Middlewave Hub as a just-in-time middleware/module reference library; query modules, read installed references, and adapt them to the current project.",
+    body: BUILTIN_MIDDLEWAVE_HUB_BODY,
     scope: "builtin",
     path: "(builtin)",
     runAs: "inline",

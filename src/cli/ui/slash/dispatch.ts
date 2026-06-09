@@ -4,6 +4,7 @@ import { resolveSlashAlias } from "./commands.js";
 import { handlers as adminHandlers } from "./handlers/admin.js";
 import { handlers as agentsHandlers } from "./handlers/agents.js";
 import { handlers as basicHandlers } from "./handlers/basic.js";
+import { handlers as collabHandlers } from "./handlers/collab.js";
 import { handlers as dashboardHandlers } from "./handlers/dashboard.js";
 import { handlers as editsHandlers } from "./handlers/edits.js";
 import { handlers as initHandlers } from "./handlers/init.js";
@@ -12,6 +13,7 @@ import { handlers as languageHandlers } from "./handlers/language.js";
 import { handlers as mcpHandlers } from "./handlers/mcp.js";
 import { handlers as memoryHandlers } from "./handlers/memory.js";
 import { handlers as modelHandlers } from "./handlers/model.js";
+import { handlers as mwhHandlers } from "./handlers/mwh.js";
 import { handlers as observabilityHandlers } from "./handlers/observability.js";
 import { handlers as permissionsHandlers } from "./handlers/permissions.js";
 import { handlers as plansHandlers } from "./handlers/plans.js";
@@ -30,6 +32,7 @@ const HANDLERS: Record<string, SlashHandler> = {
   ...adminHandlers,
   ...agentsHandlers,
   ...basicHandlers,
+  ...collabHandlers,
   ...dashboardHandlers,
   ...editsHandlers,
   ...initHandlers,
@@ -38,6 +41,7 @@ const HANDLERS: Record<string, SlashHandler> = {
   ...mcpHandlers,
   ...memoryHandlers,
   ...modelHandlers,
+  ...mwhHandlers,
   ...observabilityHandlers,
   ...permissionsHandlers,
   ...plansHandlers,
