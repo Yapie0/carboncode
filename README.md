@@ -1,17 +1,15 @@
 # Carbon Code
 
-Chinese-first, DeepSeek-powered terminal coding agent for personal developer
-workflows.
+中文优先、DeepSeek 驱动的个人开发者终端代码智能体。
 
-Carbon Code is aimed at personal developer workflows: open a repository, let the
-agent read and search the codebase, review planned edits, approve shell commands,
-run validation, and keep a concise session trail.
+Carbon Code 面向个人开发者工作流：进入一个仓库，让智能体读取和搜索代码、规划
+修改、展示 diff、在执行 shell 命令前请求确认、按需运行验证，并输出简洁结果。
 
-Simplified Chinese documentation: [README.zh-CN.md](README.zh-CN.md)
+English: [README.en.md](README.en.md)
 
-## Install
+## 安装
 
-Requires Node.js 22 or newer.
+要求 Node.js 22 或更新版本。
 
 ```bash
 npm install -g @carboncode/cli
@@ -19,91 +17,71 @@ cd path/to/project
 carboncode
 ```
 
-On Windows PowerShell, if `npm` fails with a script execution policy error, use
-`npm.cmd` instead:
+Windows PowerShell 运行 `npm` 命令时，如果提示 `npm.ps1` 被禁止执行，请改用 `npm.cmd`，例如：
 
 ```powershell
-npm.cmd install -g @carboncode/cli
+npm.cmd install
+npm.cmd run dev
+npm.cmd run verify
 ```
 
-Short command:
+短命令：
 
 ```bash
 ccode
 ```
 
-One-off usage without a global install:
+不全局安装也可以临时运行：
 
 ```bash
 npx @carboncode/cli
 ```
 
-## Commands
+## 常用命令
 
-| Command | Purpose |
+| 命令 | 用途 |
 | --- | --- |
-| `carboncode` / `carboncode code [dir]` | Coding agent rooted at the current project. |
-| `carboncode chat` | Chat without filesystem or shell tools. |
-| `carboncode run "task"` | Non-interactive one-shot task. |
-| `carboncode doctor` | Local health check. |
-| `carboncode update` | Check and install the latest CLI package. |
+| `carboncode` / `carboncode code [dir]` | 以当前项目为根目录的编码智能体。 |
+| `carboncode chat` | 不带文件系统和 shell 工具的纯聊天。 |
+| `carboncode run "task"` | 非交互式执行一次任务。 |
+| `carboncode doctor` | 本地环境健康检查。 |
+| `carboncode update` | 检查并安装最新 CLI 包。 |
 
-Carbon Code also installs `ccode`. It intentionally does not install `cc`,
-because that name commonly points to the system C compiler.
+Carbon Code 也安装 `ccode`。默认不会安装 `cc`，因为这个名字通常是系统 C 编译器。
 
-## Configuration
+## 配置
 
-Carbon Code stores user configuration in:
+用户配置文件位置：
 
 ```text
 ~/.carboncode/config.json
 ```
 
-Set a DeepSeek API key with the first-run setup wizard, or export it directly:
+可以通过首次运行向导配置 DeepSeek API Key，也可以直接导出环境变量：
 
 ```bash
 export DEEPSEEK_API_KEY=sk-...
 ```
 
-Project rules should live in `AGENTS.md` or `CARBON.md` in the repository.
+项目规则建议写在仓库里的 `AGENTS.md` 或 `CARBON.md`。
 
-Model presets use the current DeepSeek V4 API IDs: `flash` maps to
-`deepseek-v4-flash`, `pro` maps to `deepseek-v4-pro`, and `auto` starts on Flash
-with one-turn Pro escalation for harder turns.
+模型预设使用当前 DeepSeek V4 API ID：`flash` 对应 `deepseek-v4-flash`，
+`pro` 对应 `deepseek-v4-pro`，`auto` 默认从 Flash 开始，并在困难回合一次性升级
+到 Pro。
 
-## Release
+## 当前范围
 
-npm publishing is tag-driven through GitHub Actions after the package is
-configured for Trusted Publishing on npmjs.com. In the npm package settings, add
-a GitHub Actions trusted publisher with repository `Yapie0/carboncode`, workflow
-file `publish.yml`, and environment `npm`.
+Carbon Code 目前处于早期阶段，重点是个人开发者 CLI 工作流。当前产品化覆盖包名、
+命令名、Carbon 配置目录、更新/安装命令、中文优先 CLI 文案、npm 发布流程和开源
+许可合规。
 
-To release, update `package.json`, commit the release, then push a matching
-semver tag:
+## 许可与归因
 
-```bash
-git tag v0.1.0
-git push origin main --tags
-```
+Carbon Code 使用 MIT 许可证。
 
-The `Publish npm package` workflow verifies the package, checks that the tag
-matches `package.json`, and runs `npm publish --access public --provenance`. If
-the exact version already exists with the same `gitHead`, the workflow treats the
-tag as an idempotent release marker and skips the publish step.
-
-## Current Scope
-
-Carbon Code is currently early-stage and focused on the personal CLI workflow:
-package identity, command names, Carbon config paths, update/install commands,
-Chinese-first CLI copy, npm publishing, and license compliance.
-
-## License And Attribution
-
-Carbon Code is MIT licensed.
-
-Third-party MIT notices are preserved in:
+第三方 MIT 声明保留在：
 
 - `THIRD_PARTY_NOTICES.md`
 - `LICENSES/`
 
-Do not remove copyright or MIT notices from derived files.
+不要移除派生源码中的 copyright 或 MIT notice。
