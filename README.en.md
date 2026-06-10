@@ -72,12 +72,6 @@ Model presets use the current DeepSeek V4 API IDs: `flash` maps to
 `deepseek-v4-flash`, `pro` maps to `deepseek-v4-pro`, and `auto` starts on Flash
 with one-turn Pro escalation for harder turns.
 
-## Current Scope
-
-Carbon Code is currently early-stage and focused on the personal CLI workflow:
-package identity, command names, Carbon config paths, update/install commands,
-Chinese-first CLI copy, npm publishing, and license compliance.
-
 ## License And Attribution
 
 Carbon Code is MIT licensed.

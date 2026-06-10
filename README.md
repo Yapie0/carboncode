@@ -69,12 +69,6 @@ export DEEPSEEK_API_KEY=sk-...
 `pro` 对应 `deepseek-v4-pro`，`auto` 默认从 Flash 开始，并在困难回合一次性升级
 到 Pro。
 
-## 当前范围
-
-Carbon Code 目前处于早期阶段，重点是个人开发者 CLI 工作流。当前产品化覆盖包名、
-命令名、Carbon 配置目录、更新/安装命令、中文优先 CLI 文案、npm 发布流程和开源
-许可合规。
-
 ## 许可与归因
 
 Carbon Code 使用 MIT 许可证。
