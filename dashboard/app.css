@@ -1683,6 +1683,44 @@ input:focus, textarea:focus, select:focus { border-color: var(--c-brand); }
 .app.simple .composer-actions { flex-direction: row; align-self: auto; align-items: center; justify-content: flex-end; gap: 8px; }
 .app.simple .composer-sub { gap: 8px; }
 
+/* simple mode: GPT-style composer — circular ↑ send, model picker as an "Instant" pill */
+.app.simple .composer-model {
+  margin-right: auto;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--bd-strong);
+}
+.app.simple .composer-model select {
+  background: transparent;
+  border: none;
+  color: var(--fg-2);
+  font-size: 12px;
+  cursor: pointer;
+}
+.app.simple .composer-actions .primary {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 50%;
+  padding: 0;
+  font-size: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fg-0);
+  color: var(--bg);
+  border: none;
+}
+.app.simple .composer-actions .primary::after {
+  content: "↑";
+  font-size: 17px;
+  font-weight: 700;
+}
+.app.simple .composer-actions .primary:disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
+}
+
 /* simple mode: clean choice cards (the long word-ids overflowed the 28px id column) */
 .app.simple .modal-card {
   border-left-width: 1px; border-color: var(--bd-strong);
