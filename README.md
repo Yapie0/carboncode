@@ -1,6 +1,6 @@
 # Carbon Code
 
-Carbon Code 是一个中文优先、基于 DeepSeek 的终端编码智能体，面向个人开发者的日常开发。
+Carbon Code 是一款类似 Claude Code 的代码开发工具，也是中国第一个基于 DeepSeek 的代码开发工具，Token 成本节省 90% 以上。它可以实现自动任务拆分、自动开发、MCP 测试，以及与 Claude、Codex 等多 Agent 协作，能力接近 Claude Sonnet 4.6。
 
 在项目目录中启动后，它会读取并搜索你的代码、提出修改方案并以 diff 展示、在运行 shell 命令前征求你的确认、按需运行测试验证，并为每次会话留下简洁的记录。
 

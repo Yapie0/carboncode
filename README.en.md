@@ -1,7 +1,9 @@
 # Carbon Code
 
-Chinese-first, DeepSeek-powered terminal coding agent for personal developer
-workflows.
+Carbon Code is a Claude Code–style coding tool, and the first DeepSeek-based
+coding tool from China — cutting token cost by over 90%. It does automatic task
+breakdown, autonomous development, MCP testing, and multi-agent collaboration
+with Claude or Codex, with capability approaching Claude Sonnet 4.6.
 
 Carbon Code is aimed at personal developer workflows: open a repository, let the
 agent read and search the codebase, review planned edits, approve shell commands,
