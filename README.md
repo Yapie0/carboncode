@@ -1,9 +1,8 @@
 # Carbon Code
 
-中文优先、DeepSeek 驱动的个人开发者终端代码智能体。
+Carbon Code 是一个中文优先、基于 DeepSeek 的终端编码智能体，面向个人开发者的日常开发。
 
-Carbon Code 面向个人开发者工作流：进入一个仓库，让智能体读取和搜索代码、规划
-修改、展示 diff、在执行 shell 命令前请求确认、按需运行验证，并输出简洁结果。
+在项目目录中启动后，它会读取并搜索你的代码、提出修改方案并以 diff 展示、在运行 shell 命令前征求你的确认、按需运行测试验证，并为每次会话留下简洁的记录。
 
 English: [README.en.md](README.en.md)
 
@@ -41,7 +40,8 @@ npx @carboncode/cli
 
 | 命令 | 用途 |
 | --- | --- |
-| `carboncode` / `carboncode code [dir]` | 以当前项目为根目录的编码智能体。 |
+| `carboncode` | 在当前项目目录启动编码智能体（等同 `carboncode code`）。 |
+| `carboncode code [dir]` | 在指定目录 `[dir]` 启动编码智能体；省略 `[dir]` 即为当前目录。 |
 | `carboncode chat` | 不带文件系统和 shell 工具的纯聊天。 |
 | `carboncode run "task"` | 非交互式执行一次任务。 |
 | `carboncode doctor` | 本地环境健康检查。 |

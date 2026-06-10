@@ -42,7 +42,8 @@ npx @carboncode/cli
 
 | Command | Purpose |
 | --- | --- |
-| `carboncode` / `carboncode code [dir]` | Coding agent rooted at the current project. |
+| `carboncode` | Start the coding agent in the current project (same as `carboncode code`). |
+| `carboncode code [dir]` | Start the coding agent in `[dir]`; omit `[dir]` for the current directory. |
 | `carboncode chat` | Chat without filesystem or shell tools. |
 | `carboncode run "task"` | Non-interactive one-shot task. |
 | `carboncode doctor` | Local health check. |
