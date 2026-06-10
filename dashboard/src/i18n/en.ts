@@ -193,6 +193,7 @@ export const en = {
     effortHighTitle: "high (cheaper / faster)",
     presetTitle: "preset — model commitment",
     heroGreeting: "How can I help you today?",
+    thinking: "Reasoning",
     chipCode: "Write a function",
     chipExplain: "Explain this code",
     chipFix: "Fix a bug",

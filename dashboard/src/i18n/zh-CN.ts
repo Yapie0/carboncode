@@ -193,6 +193,7 @@ export const zhCN = {
     effortHighTitle: "high（更便宜 / 更快）",
     presetTitle: "预设 — 模型承诺",
     heroGreeting: "有什么可以帮你的？",
+    thinking: "思考过程",
     chipCode: "写个函数",
     chipExplain: "解释这段代码",
     chipFix: "帮我修个 Bug",

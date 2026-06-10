@@ -1553,16 +1553,31 @@ input:focus, textarea:focus, select:focus { border-color: var(--c-brand); }
 }
 
 .chat-msg .reasoning {
+  margin: 4px 0 10px;
+  font-size: 12.5px;
+}
+.chat-msg .reasoning > summary {
+  cursor: pointer;
+  color: var(--fg-3);
+  list-style: revert;
+  user-select: none;
+  padding: 2px 0;
+}
+.chat-msg .reasoning > summary:hover {
+  color: var(--fg-2);
+}
+.chat-msg .reasoning .reasoning-body {
   margin-top: 6px;
-  padding: 6px 10px;
+  padding: 8px 10px;
   background: var(--bg-elev);
   border-left: 2px solid var(--c-accent);
   color: var(--fg-2);
   font-size: 12px;
-  font-style: italic;
   white-space: pre-wrap;
   word-break: break-word;
   border-radius: var(--r);
+  max-height: 340px;
+  overflow-y: auto;
 }
 
 .chat-msg .tool-name {
@@ -1667,6 +1682,44 @@ input:focus, textarea:focus, select:focus { border-color: var(--c-brand); }
 .app.simple .chat-input-area textarea:focus { border: none; outline: none; }
 .app.simple .composer-actions { flex-direction: row; align-self: auto; align-items: center; justify-content: flex-end; gap: 8px; }
 .app.simple .composer-sub { gap: 8px; }
+
+/* simple mode: GPT-style composer — circular ↑ send, model picker as an "Instant" pill */
+.app.simple .composer-model {
+  margin-right: auto;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--bd-strong);
+}
+.app.simple .composer-model select {
+  background: transparent;
+  border: none;
+  color: var(--fg-2);
+  font-size: 12px;
+  cursor: pointer;
+}
+.app.simple .composer-actions .primary {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 50%;
+  padding: 0;
+  font-size: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fg-0);
+  color: var(--bg);
+  border: none;
+}
+.app.simple .composer-actions .primary::after {
+  content: "↑";
+  font-size: 17px;
+  font-weight: 700;
+}
+.app.simple .composer-actions .primary:disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
+}
 
 /* simple mode: clean choice cards (the long word-ids overflowed the 28px id column) */
 .app.simple .modal-card {

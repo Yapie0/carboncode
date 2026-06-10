@@ -320,7 +320,7 @@ export const ChatMessage = memo(function ChatMessage({ msg, streaming }: ChatMes
     <div class="chat-msg ${role}">
       <div class="glyph">${glyph}</div>
       <div class="body">
-        ${msg.reasoning ? html`<div class="reasoning">${msg.reasoning}</div>` : null}
+        ${msg.reasoning ? html`<details class="reasoning"><summary>${t("chat.thinking")}</summary><div class="reasoning-body">${msg.reasoning}</div></details>` : null}
         ${renderMessageBody(msg.text)}
         ${streaming ? html`<span class="chat-streaming-cursor"></span>` : null}
       </div>
