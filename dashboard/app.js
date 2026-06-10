@@ -4,8 +4,9 @@ import htm from "htm";
 import { h, render } from "preact";
 import { useCallback, useEffect, useState } from "preact/hooks";
 import { initLangFromServer, t, useLang } from "./src/i18n";
-import { MODE } from "./src/lib/api";
+import { MODE, api } from "./src/lib/api";
 import { ToastStack, appBus } from "./src/lib/bus";
+import { usePoll } from "./src/lib/use-poll";
 import { ErrorBoundary, ErrorOverlay } from "./src/lib/error-boundary";
 import { ChangesPanel } from "./src/panels/changes";
 import { ChatPanel } from "./src/panels/chat";
@@ -132,6 +133,86 @@ function tabSections() {
   ];
 }
 
+function sessLabel(s) {
+  const n = (s && s.name) || "";
+  return n.length > 30 ? `${n.slice(0, 30)}…` : n;
+}
+
+// Simple-mode left rail: a ChatGPT-style conversation sidebar backed by the
+// existing /sessions API (list · new · switch). Replaces the panel-nav aside
+// when in simple mode so the chat reads like a dedicated chat app.
+function SimpleSidebar() {
+  useLang();
+  const { data, refresh } = usePoll("/sessions", 5000);
+  const [q, setQ] = useState("");
+  const [busy, setBusy] = useState(false);
+  const sessions = ((data && data.sessions) || []).filter(
+    (s) => !((s && s.name) || "").startsWith("subagent"),
+  );
+  const current = (data && data.currentSession) || null;
+  const filtered = q
+    ? sessions.filter((s) => ((s && s.name) || "").toLowerCase().includes(q.toLowerCase()))
+    : sessions;
+  const newChat = useCallback(async () => {
+    setBusy(true);
+    try {
+      await api("/sessions/new", { method: "POST" });
+      await refresh();
+    } catch {
+      /* ignore — server surfaces errors elsewhere */
+    } finally {
+      setBusy(false);
+    }
+  }, [refresh]);
+  const switchTo = useCallback(
+    async (name) => {
+      try {
+        await api(`/sessions/${encodeURIComponent(name)}/switch`, { method: "POST" });
+        await refresh();
+      } catch {
+        /* ignore */
+      }
+    },
+    [refresh],
+  );
+  return html`
+    <div class="cc-sb">
+      <div class="cc-sb-head"><span class="cc-wordmark">Carbon Code</span></div>
+      <div class="cc-sb-nav">
+        <button class="cc-sb-item" onClick=${newChat} disabled=${busy}>
+          <span class="cc-ico">✎</span><span class="lbl">${t("chat.newChat")}</span>
+        </button>
+        <label class="cc-sb-find">
+          <span class="cc-ico">⌕</span>
+          <input
+            placeholder=${t("chat.searchChats")}
+            value=${q}
+            onInput=${(e) => setQ(e.target.value)}
+          />
+        </label>
+      </div>
+      <div class="cc-sb-recent">
+        ${filtered.length > 0 ? html`<div class="cc-sb-sec">${t("chat.recent")}</div>` : null}
+        ${filtered.map(
+          (s) => html`
+            <button
+              class=${`cc-sb-chat ${s.name === current ? "active" : ""}`}
+              onClick=${() => switchTo(s.name)}
+              title=${s.name}
+            >
+              <span class="t">${sessLabel(s)}</span>
+            </button>
+          `,
+        )}
+      </div>
+      <div class="cc-sb-user">
+        <span class="cc-avatar">C</span>
+        <span class="who"><span class="nm">Carbon Code</span><span class="pl">${MODE}</span></span>
+      </div>
+    </div>
+  `;
+}
+
 function App() {
   useLang();
   useEffect(() => {
@@ -206,6 +287,10 @@ function App() {
   return html`
     <div class=${`app ${sidebarCollapsed ? "collapsed" : ""} ${simple ? "simple" : ""}`}>
       <aside class="app-side">
+        ${
+          simple
+            ? html`<${SimpleSidebar} />`
+            : html`
         <div class="brand">
           <span class="glyph">◈</span>
           <span class="label">CARBON CODE</span>
@@ -248,6 +333,8 @@ function App() {
             onClick=${() => setSimple(true)}
           >◐</span>
         </div>
+        `
+        }
       </aside>
       <header class="app-top">
         ${

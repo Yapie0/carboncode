@@ -885,6 +885,17 @@ const ChatInput = memo(function ChatInput({
           `
           : null
       }
+      ${
+        simpleMode
+          ? html`<button
+              class="cc-plus"
+              type="button"
+              title=""
+              onMouseDown=${(e: Event) => e.preventDefault()}
+              onClick=${() => taRef.current?.focus()}
+            >+</button>`
+          : null
+      }
       <textarea
         ref=${taRef}
         placeholder=${busy ? t("chat.placeholderBusy") : t("chat.placeholder")}
@@ -909,6 +920,13 @@ const ChatInput = memo(function ChatInput({
                   ${["auto", "flash", "pro"].map((p) => html`<option value=${p}>${p}</option>`)}
                 </select>
               </div>`
+            : null
+        }
+        ${
+          simpleMode
+            ? html`<button class="cc-mic" type="button" title="" onMouseDown=${(e: Event) => e.preventDefault()}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0"></path><path d="M12 17.5V21"></path></svg>
+              </button>`
             : null
         }
         <button

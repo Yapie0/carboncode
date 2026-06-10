@@ -53,3 +53,6 @@ desktop/src-tauri/binaries/
 # Design mock-up reference (local, not part of repo)
 .design-ref/
 *.cpuprofile
+
+# Playwright MCP scratch output (page snapshots / screenshots).
+.playwright-mcp/
