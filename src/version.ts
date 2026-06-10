@@ -8,10 +8,10 @@ import { fileURLToPath } from "node:url";
 /** npm registry endpoint for the `latest` dist-tag of this package. */
 const REGISTRY_URL = "https://registry.npmjs.org/@carboncode/cli/latest";
 
-/** TTL for the on-disk cache entry. 24h keeps noise low; users who
- * want a fresh check can run `carboncode update` which passes
- * `force: true`. */
-export const LATEST_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+/** TTL for the on-disk cache entry. Short (5 min) so a freshly-published version
+ * is picked up on the next launch instead of being masked for a day, while still
+ * deduping rapid relaunches; `carboncode update` passes `force: true` to bypass it. */
+export const LATEST_CACHE_TTL_MS = 5 * 60 * 1000;
 
 /** Network timeout. Short — we never block the UI waiting on this. */
 export const LATEST_FETCH_TIMEOUT_MS = 2_000;
