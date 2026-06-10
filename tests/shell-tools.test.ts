@@ -446,6 +446,19 @@ describe("runCommand", () => {
     expect(r.timedOut).toBe(true);
   });
 
+  it("does not hang on a command that reads stdin — stdin is EOF, not an open pipe", async () => {
+    // Without stdin closed, the child inherits an open, never-fed stdin pipe, so a
+    // program that reads stdin (input(), a REPL, this stdin reader) blocks until the
+    // timeout and its buffered output is lost. With stdin = /dev/null the reader gets
+    // EOF immediately and the command returns. A short timeout would trip if it hung.
+    const r = await runCommand(
+      "node -e \"process.stdin.on('end',()=>{process.stdout.write('eof');process.exit(0)});process.stdin.resume()\"",
+      { cwd: tmp, timeoutSec: 5 },
+    );
+    expect(r.timedOut).toBe(false);
+    expect(r.output).toContain("eof");
+  });
+
   it("truncates long output with a marker", async () => {
     const r = await runCommand("node -e \"process.stdout.write('x'.repeat(50000))\"", {
       cwd: tmp,

@@ -71,6 +71,13 @@ export async function runCommand(
     cwd: opts.cwd,
     shell: false,
     windowsHide: true,
+    // stdin = /dev/null (EOF). Without this the child inherits an open, never-fed
+    // pipe, so a program that reads stdin (`input()`, `read`, a REPL) blocks until
+    // the timeout and its buffered stdout is lost — the model sees a hang / "no
+    // output" and flails. EOF makes such a bare run fail fast (clear EOFError) so
+    // the model pipes input instead (`printf … | prog`, handled by shell-chain).
+    // Mirrors shell-chain.ts's first-segment stdin:"ignore".
+    stdio: ["ignore", "pipe", "pipe"],
     // POSIX: detach so the child becomes its own process-group leader.
     // Required for `process.kill(-pid, …)` in killProcessTree to
     // terminate the whole subtree (child + grandchildren) instead of
