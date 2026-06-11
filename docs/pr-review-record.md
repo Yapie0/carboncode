@@ -40,6 +40,12 @@ Recommended first batch:
 4. Keep #93 out of merge decisions until it exits draft.
 5. Treat #81 as likely superseded by the dashboard auth/token work already applied locally; verify exact diff before closing.
 
+Contributor-friendly handling for the next pass:
+
+- For harmless contributor PRs, prefer `repair-and-merge` over asking the author to fix small formatting, naming, copy, or test-polish issues.
+- For fork PRs, first check whether maintainer edits are allowed. If not, either leave an exact friendly request or create a credited maintainer follow-up branch.
+- Close only with a concrete reason and a short explanation of what would make a future PR acceptable.
+
 ## Review record template
 
 Use this for each PR:
@@ -54,6 +60,8 @@ Use this for each PR:
 - Diff summary:
 - Risks:
 - Tests run:
+- Maintainer action: none | repair-and-merge | comment-for-author | maintainer-follow-up
+- Contributor note:
 - Outcome:
 - Follow-up:
 ```

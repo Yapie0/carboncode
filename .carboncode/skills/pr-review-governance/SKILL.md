@@ -25,6 +25,8 @@ Use this skill when asked to review, triage, merge, close, or prioritize Carbon 
 6. Check for duplicates and behavior already present on `main`.
 7. Preserve unrelated local work; do not reset or checkout over dirty files.
 8. Record every decision in `docs/pr-review-record.md`.
+9. During the early project phase, prefer maintainer repair over rejection for harmless, useful PRs.
+10. Keep contributor-facing comments specific, respectful, and encouraging; acknowledge the useful part before explaining any blocker.
 
 ## Classification
 
@@ -35,15 +37,36 @@ Use this skill when asked to review, triage, merge, close, or prioritize Carbon 
 - `close`: not useful or unsafe.
 - `draft-only`: draft PR; no merge review yet.
 
+## Contributor-friendly handling
+
+Useful contributor PRs should not be bounced for small issues that maintainers can safely fix.
+
+- Use `merge-candidate` when the PR is useful, scoped, verified, and either already clean or clean after maintainer repair.
+- Use `needs-refresh` when the PR is useful but must be updated against current `main` or rerun verification.
+- Use `needs-split` only when mixed scope prevents a safe review.
+- Use `close` only for duplicate, unsafe, directionally wrong, abandoned broken, or unreviewable work.
+- If a PR has small issues such as formatting, naming, copy, focused test gaps, or simple compatibility fixes, repair it directly when branch permissions allow.
+- For fork PRs without maintainer edit permission, write the exact requested change or create a maintainer follow-up branch that credits the PR.
+- Preserve contributor credit in comments, merge messages, or follow-up branch notes.
+
 ## Procedure
 
 1. Fetch PR metadata and diff.
 2. Summarize intent in one sentence.
 3. Check changed files and risk level.
 4. Compare with current `main` for duplication.
-5. Run targeted tests or identify the exact verification needed.
-6. Produce findings first if reviewing code.
-7. Update `docs/pr-review-record.md` with the decision.
+5. Decide whether any remaining issue is small enough for maintainer repair.
+6. If repair is appropriate, apply the smallest maintainer fix on an editable PR branch or a separate credited maintainer branch.
+7. Run targeted tests or identify the exact verification needed.
+8. Produce findings first if reviewing code.
+9. Update `docs/pr-review-record.md` with the decision.
+
+## Remote handling
+
+- Reading PRs can use GitHub API plus `git fetch origin pull/<id>/head` and does not require `gh`.
+- Merging code can use normal git merge/cherry-pick plus push, when repository permissions allow.
+- Commenting, closing, labeling, or submitting formal reviews requires GitHub API permissions or a configured GitHub client.
+- Directly modifying a fork PR requires the contributor to allow maintainer edits and the maintainer to have a pushable remote.
 
 ## Merge gate
 
@@ -57,3 +80,5 @@ A PR is mergeable only when it satisfies the project rules:
 - Its compatibility story is intentional.
 
 When GitHub merge queue is unavailable, emulate it manually by updating against latest `main`, running verification, and merging immediately after the green result.
+
+Maintainer repairs must satisfy the same merge gate. Do not use small corrective commits to bypass review, tests, or attribution.

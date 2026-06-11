@@ -16,6 +16,9 @@ This document defines how Carbon Code should handle existing and new pull reques
   - https://opensource.guide/best-practices/
   - https://opensource.guide/how-to-contribute/
   - Summary: triage first, keep contributions moving, and treat draft/WIP PRs as early collaboration rather than merge-ready work.
+- GitHub maintainer edits:
+  - https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/allowing-changes-to-a-pull-request-branch-created-from-a-fork
+  - Summary: when a fork PR allows maintainer edits, maintainers may push small corrective commits to the contributor's PR branch; otherwise use comments or a maintainer follow-up branch.
 
 ## Operating model
 
@@ -27,6 +30,28 @@ Use one queue for all open PRs, but classify each PR before reviewing details:
 - `superseded`: already covered by `main` or by a newer/smaller PR.
 - `close`: not useful, unsafe, unmaintained, or contrary to Carbon Code direction.
 - `draft-only`: draft PRs stay out of the merge queue until explicitly marked ready.
+
+## Contributor-friendly policy
+
+Carbon Code is still early. Reviews should keep useful contributors moving and should prefer repair over rejection when the change is directionally useful.
+
+- Default to acceptance for harmless, scoped PRs that improve correctness, docs, tests, UX polish, or maintainability.
+- If a PR has small fixable issues, maintainers should fix them directly when possible instead of asking the contributor to iterate on formatting, naming, small test gaps, copy edits, or straightforward compatibility adjustments.
+- Do not reject a useful PR only because it needs maintainer polish.
+- Preserve contributor credit. Prefer pushing maintainer commits onto the PR branch when permitted, or clearly reference the original PR if a maintainer branch/cherry-pick is used.
+- Keep review comments encouraging and concrete: acknowledge the useful part first, then state the exact change needed or the maintainer fix applied.
+- Close only for clear reasons: duplicate work, unsafe behavior, security risk, product-direction conflict, unreviewable scope, abandoned broken work, or changes that cannot be made safe without a redesign.
+
+## Maintainer repair flow
+
+Use this flow for contributor PRs with useful intent:
+
+1. Read the diff and classify the PR.
+2. Identify whether remaining issues are small maintainer-fixable polish or substantive design problems.
+3. If the issue is small and the branch is editable, push a minimal maintainer commit to the PR branch.
+4. If the PR is from a fork and maintainer edits are unavailable, either request the exact change in a friendly comment or create a maintainer branch that incorporates the contribution.
+5. Run focused verification on latest `main` before merging.
+6. In the merge or close note, explain what happened and thank the contributor for the useful part.
 
 ## Review order
 
@@ -57,6 +82,12 @@ New PRs should enter the same queue and receive a quick triage label within one 
 - Does it avoid unrelated product, UI, docs, and generated-file churn?
 - Does it avoid modifying review-governance files unless authored by a project member?
 
+For external contributors, the first triage should also decide whether maintainer repair is appropriate:
+
+- `repair-and-merge`: useful and safe after small maintainer edits.
+- `comment-for-author`: useful but requires author intent, larger design choice, or unavailable branch permissions.
+- `maintainer-follow-up`: useful contribution should be incorporated through a separate maintainer branch because the PR branch cannot be edited safely.
+
 ## Merge gate
 
 Before merge, require all of:
@@ -68,6 +99,8 @@ Before merge, require all of:
 - The PR is not duplicated by a better or smaller change.
 
 If GitHub merge queue is unavailable, emulate it manually: update/rebase against latest `main`, run verification, then merge immediately if still green.
+
+Maintainer-applied fixes must pass the same merge gate. Do not use maintainer repair to bypass tests, scope review, or contributor attribution.
 
 ## Protected review branch
 
