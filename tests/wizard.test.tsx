@@ -132,8 +132,10 @@ describe("Wizard — localized MCP catalog descriptions", () => {
   it("shows MCP catalog summaries and notes in zh-CN", () => {
     setLanguageRuntime("zh-CN");
     const items = mcpItems();
+    const mwh = items.find((item) => item.value === "mwh");
     const filesystem = items.find((item) => item.value === "filesystem");
     const github = items.find((item) => item.value === "github");
+    expect(mwh?.hint).not.toContain("<dir>");
 
     expect(filesystem?.hint).toContain("在沙箱目录内读取、写入和搜索文件");
     expect(filesystem?.hint).toContain("需要你提供 <dir>");

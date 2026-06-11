@@ -41,10 +41,10 @@ describe("Middlewave Hub", () => {
     expect("error" in result).toBe(false);
     if ("error" in result) throw new Error(result.error);
     expect(result.manifestPath).toBe(
-      join(projectRoot, ".carboncode", "mwh", "modules", "video-call-webrtc", "manifest.json"),
+      join(home, ".carboncode", "mwh", "modules", "video-call-webrtc", "manifest.json"),
     );
     expect(result.modulePath).toBe(
-      join(projectRoot, ".carboncode", "mwh", "modules", "video-call-webrtc", "MWH.md"),
+      join(home, ".carboncode", "mwh", "modules", "video-call-webrtc", "MWH.md"),
     );
     expect(existsSync(result.manifestPath)).toBe(true);
     expect(readFileSync(result.modulePath, "utf8")).toContain("CallProvider");
@@ -131,7 +131,11 @@ describe("Middlewave Hub", () => {
     });
   });
 
-  it("uses the project MWH root when a workspace is present", () => {
-    expect(mwhRoot({ projectRoot, homeDir: home })).toBe(join(projectRoot, ".carboncode", "mwh"));
+  it("uses the system MWH root by default even when a workspace is present", () => {
+    expect(mwhRoot({ projectRoot, homeDir: home })).toBe(join(home, ".carboncode", "mwh"));
+  });
+
+  it("allows an explicit root override for advanced MCP server wiring", () => {
+    expect(mwhRoot({ projectRoot })).toBe(join(projectRoot, ".carboncode", "mwh"));
   });
 });
