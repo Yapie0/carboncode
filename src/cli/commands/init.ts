@@ -1,4 +1,13 @@
-import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  closeSync,
+  fstatSync,
+  ftruncateSync,
+  openSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+  writeSync,
+} from "node:fs";
 import { resolve } from "node:path";
 import { stdin, stdout } from "node:process";
 import { createInterface } from "node:readline/promises";
@@ -29,60 +38,102 @@ export async function initCommand(opts: InitCommandOptions = {}): Promise<InitCo
     throw new Error(`carboncode init: project directory not found: ${root}`);
   }
   const target = resolveProjectMemoryWritePath(root);
-  const existed = existsSync(target);
-  const previous = existed ? readFileSync(target, "utf8") : "";
-  const analysis = analyzeProject(root);
-  const content = renderProjectRules(analysis, getLanguage());
-  const changed = normalize(previous) !== normalize(content);
+  const existingFd = openExistingFile(target);
+  try {
+    const existed = existingFd !== null;
+    const previous = existingFd === null ? "" : readFileSync(existingFd, "utf8");
+    const analysis = analyzeProject(root);
+    const content = renderProjectRules(analysis, getLanguage());
+    const changed = normalize(previous) !== normalize(content);
 
-  if (opts.dryRun) {
-    const result = makeResult("preview", root, target, content, analysis.evidence, changed);
-    emitResult(result, opts, previous);
-    return result;
-  }
-  if (existed && !opts.force) {
-    const result = makeResult("exists", root, target, content, analysis.evidence, changed);
-    emitResult(result, opts, previous);
-    return result;
-  }
-  if (!changed) {
-    const result = makeResult("preview", root, target, content, analysis.evidence, changed);
-    emitResult(result, opts, previous);
-    return result;
-  }
-
-  if (!opts.yes) {
-    if (opts.json || !stdin.isTTY || !stdout.isTTY) {
-      const result = makeResult(
-        "needs-confirmation",
-        root,
-        target,
-        content,
-        analysis.evidence,
-        changed,
-      );
+    if (opts.dryRun) {
+      const result = makeResult("preview", root, target, content, analysis.evidence, changed);
       emitResult(result, opts, previous);
       return result;
     }
-    printPreview(target, previous, content);
-    if (!(await confirmWrite(existed))) {
-      const result = makeResult("cancelled", root, target, content, analysis.evidence, changed);
-      emitResult(result, { ...opts, json: false }, previous, false);
+    if (existed && !opts.force) {
+      const result = makeResult("exists", root, target, content, analysis.evidence, changed);
+      emitResult(result, opts, previous);
       return result;
     }
+    if (!changed) {
+      const result = makeResult("preview", root, target, content, analysis.evidence, changed);
+      emitResult(result, opts, previous);
+      return result;
+    }
+
+    if (!opts.yes) {
+      if (opts.json || !stdin.isTTY || !stdout.isTTY) {
+        const result = makeResult(
+          "needs-confirmation",
+          root,
+          target,
+          content,
+          analysis.evidence,
+          changed,
+        );
+        emitResult(result, opts, previous);
+        return result;
+      }
+      printPreview(target, previous, content);
+      if (!(await confirmWrite(existed))) {
+        const result = makeResult("cancelled", root, target, content, analysis.evidence, changed);
+        emitResult(result, { ...opts, json: false }, previous, false);
+        return result;
+      }
+    }
+
+    writeProjectRulesFile(target, content, existingFd);
+    const result = makeResult(
+      existed ? "updated" : "created",
+      root,
+      target,
+      content,
+      analysis.evidence,
+      changed,
+    );
+    emitResult(result, opts, previous, false);
+    return result;
+  } finally {
+    if (existingFd !== null) closeSync(existingFd);
+  }
+}
+
+function openExistingFile(path: string): number | null {
+  try {
+    const fd = openSync(path, "r+");
+    if (!fstatSync(fd).isFile()) {
+      closeSync(fd);
+      throw new Error(`carboncode init: project rules path is not a file: ${path}`);
+    }
+    return fd;
+  } catch (error) {
+    if (isFileNotFound(error)) return null;
+    throw error;
+  }
+}
+
+export function writeProjectRulesFile(
+  path: string,
+  content: string,
+  existingFd: number | null,
+): void {
+  if (existingFd === null) {
+    writeFileSync(path, content, { encoding: "utf8", flag: "wx" });
+    return;
   }
 
-  writeFileSync(target, content, "utf8");
-  const result = makeResult(
-    existed ? "updated" : "created",
-    root,
-    target,
-    content,
-    analysis.evidence,
-    changed,
+  writeSync(existingFd, content, 0, "utf8");
+  ftruncateSync(existingFd, Buffer.byteLength(content));
+}
+
+function isFileNotFound(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "ENOENT"
   );
-  emitResult(result, opts, previous, false);
-  return result;
 }
 
 function makeResult(

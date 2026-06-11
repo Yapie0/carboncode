@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { initCommand, renderSimpleDiff } from "../src/cli/commands/init.js";
+import { initCommand, renderSimpleDiff, writeProjectRulesFile } from "../src/cli/commands/init.js";
 import { analyzeProject, renderProjectRules } from "../src/cli/init/analyze.js";
 import { setLanguageRuntime } from "../src/i18n/index.js";
 
@@ -146,6 +146,14 @@ describe("initCommand", () => {
 
     expect(result.status).toBe("updated");
     expect(readFileSync(carbon, "utf8")).toContain("# Project Guide");
+  });
+
+  it("does not overwrite a file that appears before exclusive creation", () => {
+    const carbon = join(root, "CARBON.md");
+    writeFileSync(carbon, "# Concurrent rules\n");
+
+    expect(() => writeProjectRulesFile(carbon, "# Generated\n", null)).toThrow();
+    expect(readFileSync(carbon, "utf8")).toBe("# Concurrent rules\n");
   });
 
   it("dry-run previews without writing", async () => {

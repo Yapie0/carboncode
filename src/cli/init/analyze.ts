@@ -438,11 +438,7 @@ function uniqueBy<T>(values: T[], key: (value: T) => string): T[] {
 }
 
 function localizeSource(source: string): string {
-  return source
-    .replace(/^package\.json scripts\./, "package.json 的 scripts.")
-    .replace(/^Cargo\.toml$/, "Cargo.toml")
-    .replace(/^go\.mod$/, "go.mod")
-    .replace(/^pyproject\.toml$/, "pyproject.toml");
+  return source.replace(/^package\.json scripts\./, "package.json 的 scripts.");
 }
 
 function localizeItem(item: string, language: ProjectGuideLanguage): string {
