@@ -8,6 +8,7 @@ import { MODE, api } from "./src/lib/api";
 import { ToastStack, appBus } from "./src/lib/bus";
 import { ErrorBoundary, ErrorOverlay } from "./src/lib/error-boundary";
 import { usePoll } from "./src/lib/use-poll";
+import { readDashboardStorage, writeDashboardStorage } from "./src/lib/storage";
 import { ChangesPanel } from "./src/panels/changes";
 import { ChatPanel } from "./src/panels/chat";
 import { HooksPanel } from "./src/panels/hooks";
@@ -29,7 +30,7 @@ const html = htm.bind(h);
 function useTheme() {
   const [theme, setTheme] = useState(() => {
     try {
-      const stored = localStorage.getItem("rx.theme");
+      const stored = readDashboardStorage("theme");
       if (stored === "light" || stored === "dark") return stored;
     } catch {
       /* private mode */
@@ -40,7 +41,7 @@ function useTheme() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     try {
-      localStorage.setItem("rx.theme", theme);
+      writeDashboardStorage("theme", theme);
     } catch {
       /* private mode / disabled storage — ignore */
     }
@@ -218,7 +219,7 @@ function App() {
   }, []);
   const [activeId, setActiveId] = useState(() => {
     try {
-      return localStorage.getItem("rx.activeTab") ?? "chat";
+      return readDashboardStorage("activeTab") ?? "chat";
     } catch {
       return "chat";
     }
@@ -226,7 +227,7 @@ function App() {
   const [theme, setTheme] = useTheme();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
-      return localStorage.getItem("rx.sidebarCollapsed") === "1";
+      return readDashboardStorage("sidebarCollapsed") === "1";
     } catch {
       return false;
     }
@@ -235,28 +236,28 @@ function App() {
   // just the conversation. Default ON; the ⚙ in the top bar reveals everything.
   const [simple, setSimple] = useState(() => {
     try {
-      return (localStorage.getItem("rx.simpleMode") ?? "1") === "1";
+      return (readDashboardStorage("simpleMode") ?? "1") === "1";
     } catch {
       return true;
     }
   });
   useEffect(() => {
     try {
-      localStorage.setItem("rx.sidebarCollapsed", sidebarCollapsed ? "1" : "0");
+      writeDashboardStorage("sidebarCollapsed", sidebarCollapsed ? "1" : "0");
     } catch {
       /* private mode / disabled storage — ignore */
     }
   }, [sidebarCollapsed]);
   useEffect(() => {
     try {
-      localStorage.setItem("rx.simpleMode", simple ? "1" : "0");
+      writeDashboardStorage("simpleMode", simple ? "1" : "0");
     } catch {
       /* private mode / disabled storage — ignore */
     }
   }, [simple]);
   useEffect(() => {
     try {
-      localStorage.setItem("rx.activeTab", activeId);
+      writeDashboardStorage("activeTab", activeId);
     } catch {
       /* private mode / disabled storage — ignore */
     }
