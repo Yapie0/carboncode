@@ -293,7 +293,13 @@ export function PromptInput({
   const showHugeBufferHints = lines.length > 20;
 
   return (
-    <Box flexDirection="column" paddingX={1} borderStyle="round" borderColor={accentColor}>
+    <Box
+      flexDirection="column"
+      paddingX={1}
+      borderStyle="round"
+      borderColor={accentColor}
+      backgroundColor={SURFACE.bgInput}
+    >
       {(() => {
         const rows: React.ReactNode[] = [];
         let firstRowEmitted = false;
