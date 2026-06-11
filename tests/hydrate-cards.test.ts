@@ -20,7 +20,12 @@ describe("hydrateCardsFromMessages", () => {
     const cards = hydrateCardsFromMessages(msgs);
     expect(cards.map((c) => c.kind)).toEqual(["user", "streaming"]);
     expect(cards[0]).toMatchObject({ kind: "user", text: "hi" });
-    expect(cards[1]).toMatchObject({ kind: "streaming", text: "hello there", done: true });
+    expect(cards[1]).toMatchObject({
+      kind: "streaming",
+      text: "hello there",
+      done: true,
+      userPrompt: "hi",
+    });
   });
 
   it("emits a ReasoningCard before the StreamingCard when reasoning_content is present", () => {

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import type { DoctorCheckEntry, PlanStep, TipSection } from "../state/cards.js";
 import { useDispatch } from "../state/provider.js";
 
@@ -101,11 +101,13 @@ export interface Scrollback {
 
 export function useScrollback(): Scrollback {
   const dispatch = useDispatch();
+  const latestUserPromptRef = useRef<string | null>(null);
 
   return useMemo<Scrollback>(
     () => ({
       pushUser(text) {
         const id = nextId("u");
+        latestUserPromptRef.current = text;
         dispatch({ type: "user.submit", text });
         return id;
       },
@@ -262,7 +264,13 @@ export function useScrollback(): Scrollback {
       },
       startStreaming(model) {
         const id = nextId("s");
-        dispatch({ type: "streaming.start", id, ...(model ? { model } : {}) });
+        const userPrompt = latestUserPromptRef.current ?? undefined;
+        dispatch({
+          type: "streaming.start",
+          id,
+          ...(model ? { model } : {}),
+          ...(userPrompt ? { userPrompt } : {}),
+        });
         return id;
       },
       appendStreaming(id, chunk) {

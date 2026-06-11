@@ -21,6 +21,7 @@ const EXPANDED_MAX_LINES = 60;
 
 const LIVE_TOKEN_CALIBRATION_CHARS = 1000;
 const ESTIMATED_CHARS_PER_TOKEN = 4;
+const USER_PROMPT_MAX_CELLS = 96;
 
 export interface LiveTokenCalibration {
   cardId: string;
@@ -78,6 +79,7 @@ export function StreamingCard({ card }: { card: StreamingCardData }): React.Reac
     return (
       <Card tone={TONE.ok}>
         <CardHeader glyph={GLYPH.event} tone={TONE.ok} title={t("cardTitles.reply")} />
+        {card.userPrompt ? <ReplyPrompt text={card.userPrompt} cols={cols} /> : null}
         <Markdown text={card.text} />
       </Card>
     );
@@ -97,6 +99,7 @@ export function StreamingCard({ card }: { card: StreamingCardData }): React.Reac
         title={headLabel}
         right={aborted ? null : <Spinner kind="braille" color={TONE_ACTIVE.brand} />}
       />
+      {card.userPrompt ? <ReplyPrompt text={card.userPrompt} cols={cols} /> : null}
       {visible.map((line, i) => (
         <Box key={`${card.id}:${i}`} flexDirection="row">
           <Text color={aborted ? FG.meta : FG.body}>{clipToCells(line, lineCells)}</Text>
@@ -104,5 +107,17 @@ export function StreamingCard({ card }: { card: StreamingCardData }): React.Reac
       ))}
       {aborted ? <Text color={FG.faint}>{t("cardLabels.truncatedByEsc")}</Text> : null}
     </Card>
+  );
+}
+
+function ReplyPrompt({ text, cols }: { text: string; cols: number }): React.ReactElement {
+  const oneLine = text.replace(/\s+/g, " ").trim();
+  if (!oneLine) return <></>;
+  const budget = Math.max(24, Math.min(USER_PROMPT_MAX_CELLS, cols - 8));
+  return (
+    <Box>
+      <Text color={FG.faint}>{"  ↳ "}</Text>
+      <Text color={FG.sub}>{clipToCells(oneLine, budget)}</Text>
+    </Box>
   );
 }

@@ -276,7 +276,10 @@ function App() {
   useEffect(() => {
     const onNav = (ev) => {
       const id = ev.detail?.tabId;
-      if (id) setActiveId(id);
+      if (id) {
+        setActiveId(id);
+        if (id !== "chat") setSimple(false);
+      }
     };
     appBus.addEventListener("navigate-tab", onNav);
     return () => appBus.removeEventListener("navigate-tab", onNav);

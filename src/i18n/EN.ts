@@ -544,7 +544,7 @@ export const EN: TranslationSchema = {
     mcpArgsRequiredParam: "Required parameter: ",
     mcpArgsEmpty: "{name} needs a value — got an empty string.",
     mcpArgsNotADir: "{path} exists but is not a directory.",
-    mcpArgsFilesystemPlaceholder: "e.g. /tmp/carboncode-sandbox",
+    mcpArgsDefaultPlaceholder: "default: {value}",
     mcpArgsSqlitePlaceholder: "e.g. ./notes.sqlite",
     mcpArgsFilesystemSummary: "read/write/search files inside a sandboxed directory",
     mcpArgsFilesystemNote: "the directory is a hard sandbox — the server refuses access outside it",

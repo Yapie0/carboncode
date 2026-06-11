@@ -10,6 +10,7 @@ import {
   listInboxMessages,
   listTasks,
   readInboxMessages,
+  renderCollabConnectPrompt,
   respondToTask,
   updateTaskStatus,
 } from "../src/collab/inbox.js";
@@ -113,6 +114,21 @@ describe("collab inbox protocol", () => {
     expect(result.info).toContain("Copy this prompt to Codex");
     expect(result.info).toContain("Carbon Code agent name: carbon-main");
     expect(checkProtocol(inboxRoot).ok).toBe(true);
+  });
+
+  it("prints generic background collaboration instructions in the connect prompt", () => {
+    const prompt = renderCollabConnectPrompt("carbon-main", inboxRoot);
+    expect(prompt).toContain(
+      "If your agent environment supports background tasks, hooks, automations, reminders, or scheduled continuations",
+    );
+    expect(prompt).toContain(
+      "Schedule: every 2 minutes while collaboration is active, or the closest supported interval.",
+    );
+    expect(prompt).toContain(
+      `carboncode collab inbox read --agent <your-agent-name> --root "${inboxRoot}" --json`,
+    );
+    expect(prompt).toContain("Do not read Carbon Code's outbox directly");
+    expect(prompt).toContain(".carboncode/collab/agents/<your-agent-name>/inbox.jsonl");
   });
 
   it("handles /collab outside code mode when the session provides a collaboration root", () => {

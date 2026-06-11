@@ -42,7 +42,10 @@ export function reduce(state: AgentState, event: AgentEvent): AgentState {
       }));
 
     case "streaming.start":
-      return appendCard(state, makeStreamingCard(event.id, event.model ?? state.session.model));
+      return appendCard(
+        state,
+        makeStreamingCard(event.id, event.model ?? state.session.model, event.userPrompt),
+      );
 
     case "streaming.chunk":
       return mutateCard(state, event.id, "streaming", (c) => ({ ...c, text: c.text + event.text }));
@@ -436,7 +439,7 @@ function makeReasoningCard(id: string, model?: string): ReasoningCard {
   };
 }
 
-function makeStreamingCard(id: string, model?: string): StreamingCard {
+function makeStreamingCard(id: string, model?: string, userPrompt?: string): StreamingCard {
   return {
     kind: "streaming",
     id,
@@ -444,6 +447,7 @@ function makeStreamingCard(id: string, model?: string): StreamingCard {
     text: "",
     done: false,
     ...(model ? { model } : {}),
+    ...(userPrompt ? { userPrompt } : {}),
   };
 }
 

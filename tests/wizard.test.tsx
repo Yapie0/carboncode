@@ -6,12 +6,12 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   Wizard,
   buildSpec,
+  defaultArgFor,
   mcpArgsNoteFor,
   mcpArgsSummaryFor,
   mcpItems,
   placeholderFor,
   presetItems,
-  shouldAutoOpenKeyHelp,
   validateDeepSeekApiKey,
 } from "../src/cli/ui/Wizard.js";
 import { setLanguageRuntime } from "../src/i18n/index.js";
@@ -20,21 +20,6 @@ import { parseMcpSpec } from "../src/mcp/spec.js";
 async function nextFrame(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
-
-describe("shouldAutoOpenKeyHelp — auto-open the DeepSeek key page", () => {
-  it("opens on a genuine first run: no saved key + real TTY", () => {
-    expect(shouldAutoOpenKeyHelp(false, true)).toBe(true);
-  });
-
-  it("does NOT open when a key already exists (reconfigure via `setup`)", () => {
-    expect(shouldAutoOpenKeyHelp(true, true)).toBe(false);
-  });
-
-  it("does NOT open without a TTY — keeps tests/pipes from spawning a browser", () => {
-    expect(shouldAutoOpenKeyHelp(false, false)).toBe(false);
-    expect(shouldAutoOpenKeyHelp(false, undefined)).toBe(false);
-  });
-});
 
 describe("Wizard.buildSpec → parseMcpSpec round-trip", () => {
   it("builds a filesystem spec the parser accepts", () => {
@@ -195,8 +180,11 @@ describe("Wizard MCP argument placeholders", () => {
     });
     const sqlite = placeholderFor({ name: "sqlite", command: "npx", args: [], userArgs: "<db>" });
 
-    expect(filesystem).toContain("/tmp/carboncode-sandbox");
-    expect(filesystem).not.toBe("e.g. /tmp/carboncode-sandbox");
+    expect(defaultArgFor({ name: "filesystem", command: "npx", args: [], userArgs: "<dir>" })).toBe(
+      process.cwd(),
+    );
+    expect(filesystem).toContain(process.cwd());
+    expect(filesystem).not.toContain("例如");
     expect(sqlite).toContain("./notes.sqlite");
     expect(sqlite).not.toBe("e.g. ./notes.sqlite");
   });
@@ -204,7 +192,7 @@ describe("Wizard MCP argument placeholders", () => {
   it("keeps filesystem and sqlite placeholders in EN", () => {
     expect(
       placeholderFor({ name: "filesystem", command: "npx", args: [], userArgs: "<dir>" }),
-    ).toBe("e.g. /tmp/carboncode-sandbox");
+    ).toBe(`default: ${process.cwd()}`);
     expect(placeholderFor({ name: "sqlite", command: "npx", args: [], userArgs: "<db>" })).toBe(
       "e.g. ./notes.sqlite",
     );

@@ -17,7 +17,7 @@ export function detectSystemLanguage(
   return null;
 }
 
-let currentLang: LanguageCode = loadLanguage() ?? detectSystemLanguage() ?? "EN";
+let currentLang: LanguageCode = loadLanguage() ?? detectSystemLanguage() ?? "zh-CN";
 
 type Listener = () => void;
 const listeners: Listener[] = [];

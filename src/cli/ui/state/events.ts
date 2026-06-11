@@ -41,6 +41,7 @@ const streamingStart = z.object({
   type: z.literal("streaming.start"),
   id: cardId,
   model: z.string().min(1).optional(),
+  userPrompt: z.string().optional(),
 });
 
 const streamingChunk = z.object({

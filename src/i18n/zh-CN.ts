@@ -528,7 +528,7 @@ export const zhCN: TranslationSchema = {
     mcpArgsRequiredParam: "必填参数：",
     mcpArgsEmpty: "{name} 需要一个值 — 不能为空。",
     mcpArgsNotADir: "{path} 存在但不是目录。",
-    mcpArgsFilesystemPlaceholder: "例如：/tmp/carboncode-sandbox",
+    mcpArgsDefaultPlaceholder: "默认：{value}",
     mcpArgsSqlitePlaceholder: "例如：./notes.sqlite",
     mcpArgsFilesystemSummary: "在沙盒目录内读写和搜索文件",
     mcpArgsFilesystemNote: "该目录是严格沙盒，服务器会拒绝访问目录外的内容",
