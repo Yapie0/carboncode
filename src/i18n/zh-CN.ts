@@ -111,7 +111,7 @@ export const zhCN: TranslationSchema = {
             { key: "滚轮", text: "滚动聊天记录（Web / 云端 / SSH 终端也能用）" },
             {
               key: "↑ / ↓",
-              text: "滚动聊天 · 输入框历史 + 多行光标用 Ctrl+P / Ctrl+N",
+              text: "上一条 / 下一条输入历史 · 多行草稿中按行移动光标",
             },
           ],
         },
@@ -126,10 +126,13 @@ export const zhCN: TranslationSchema = {
           rows: [
             { key: "Enter", text: "提交输入" },
             { key: "Shift+Enter", text: "在输入框中插入换行" },
-            { key: "↑ / ↓", text: "滚动聊天记录（鼠标滚轮也走这条路径）" },
+            {
+              key: "↑ / ↓",
+              text: "上一条 / 下一条输入历史 · 多行草稿中按行移动光标",
+            },
             {
               key: "Ctrl+P / Ctrl+N",
-              text: "上一条 / 下一条输入历史 · 多行草稿中按行移动光标",
+              text: "同 ↑ / ↓",
             },
             { key: "Ctrl+A / Ctrl+E", text: "跳到当前行的开头 / 结尾" },
             { key: "Ctrl+W", text: "删除光标前的一个词" },
@@ -1265,8 +1268,8 @@ export const zhCN: TranslationSchema = {
   composer: {
     placeholder: "输入任务",
     waitingForResponse: "…等待响应…",
-    queueHint: "正在响应中 - 回车会将下一条消息排队",
-    queueActive: "已排队 {count} 条 - 当前响应结束后发送",
+    queueHint: "正在响应中 - 回车会中断当前响应并发送下一条消息",
+    queueActive: "已排队 {count} 条 - 正在中断当前响应后发送",
     hintSend: "发送",
     hintNewline: "换行",
     hintClear: "清空",

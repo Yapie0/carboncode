@@ -51,7 +51,7 @@ export interface PromptInputProps {
   onSubmit: (v: string) => void;
   disabled?: boolean;
   placeholder?: string;
-  /** Ctrl+P / Ctrl+N hand off here when no in-buffer cursor move applies — parent walks history and swaps `value` via `onChange`. */
+  /** ↑/↓ and Ctrl+P / Ctrl+N hand off here when no in-buffer cursor move applies — parent walks history and swaps `value` via `onChange`. */
   onHistoryPrev?: () => void;
   onHistoryNext?: () => void;
   /** Ctrl+X — parent spawns $EDITOR with the current buffer and re-injects on exit. */
@@ -453,7 +453,7 @@ export function HintRow(): React.ReactElement {
     { key: "\u23ce", tKey: "composer.hintSend" },
     { key: "\u21e7\u23ce", tKey: "composer.hintNewline" },
     { key: "^U", tKey: "composer.hintClear" },
-    { key: "^P/^N", tKey: "composer.hintHistory" },
+    { key: "↑/↓", tKey: "composer.hintHistory" },
     { key: "esc", tKey: "composer.hintAbort" },
     { key: "^C", tKey: "composer.hintQuit" },
   ];

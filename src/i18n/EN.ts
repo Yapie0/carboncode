@@ -114,7 +114,7 @@ export const EN: TranslationSchema = {
             { key: "wheel", text: "scrolls chat history (works on web/cloud/SSH terminals too)" },
             {
               key: "↑ / ↓",
-              text: "scroll chat · use Ctrl+P / Ctrl+N for prompt history + multi-line cursor",
+              text: "previous / next prompt history · cursor up / down in a multi-line draft",
             },
           ],
         },
@@ -129,10 +129,13 @@ export const EN: TranslationSchema = {
           rows: [
             { key: "Enter", text: "submit the prompt" },
             { key: "Shift+Enter", text: "insert a newline in the prompt" },
-            { key: "↑ / ↓", text: "scroll chat history (mouse wheel routes here too)" },
+            {
+              key: "↑ / ↓",
+              text: "previous / next prompt history · cursor up / down in a multi-line draft",
+            },
             {
               key: "Ctrl+P / Ctrl+N",
-              text: "previous / next prompt history · cursor up / down in a multi-line draft",
+              text: "same as ↑ / ↓",
             },
             { key: "Ctrl+A / Ctrl+E", text: "jump to start / end of the current line" },
             { key: "Ctrl+W", text: "delete the word before the cursor" },
@@ -1331,8 +1334,8 @@ export const EN: TranslationSchema = {
   composer: {
     placeholder: "Ask for a code change",
     waitingForResponse: "\u2026waiting for response\u2026",
-    queueHint: "response in progress - enter queues the next message",
-    queueActive: "{count} queued - will send after the current response",
+    queueHint: "response in progress - enter interrupts it and sends the next message",
+    queueActive: "{count} queued - interrupting the current response, then sending",
     hintSend: "send",
     hintNewline: "newline",
     hintClear: "clear",

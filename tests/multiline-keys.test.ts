@@ -148,20 +148,27 @@ describe("processMultilineKey — cursor motion", () => {
     expect(processMultilineKey("abc", 3, key({ rightArrow: true })).cursor).toBe(3);
   });
 
-  it("↑/↓ are NOOP — reserved for chat scroll at the App level", () => {
+  it("↑/↓ on single-line / empty buffer hand off to history recall", () => {
     expect(processMultilineKey("hello", 3, key({ upArrow: true }))).toEqual({
       next: null,
       cursor: null,
       submit: false,
+      historyHandoff: "prev",
     });
     expect(processMultilineKey("hello", 3, key({ downArrow: true }))).toEqual({
       next: null,
       cursor: null,
       submit: false,
+      historyHandoff: "next",
     });
-    expect(processMultilineKey("", 0, key({ upArrow: true })).historyHandoff).toBeUndefined();
-    expect(processMultilineKey("", 0, key({ downArrow: true })).historyHandoff).toBeUndefined();
-    expect(processMultilineKey("hello\nworld", 9, key({ upArrow: true })).cursor).toBeNull();
+    expect(processMultilineKey("", 0, key({ upArrow: true })).historyHandoff).toBe("prev");
+    expect(processMultilineKey("", 0, key({ downArrow: true })).historyHandoff).toBe("next");
+  });
+
+  it("↑/↓ move cursor inside a multi-line buffer", () => {
+    const v = "hello\nworld";
+    expect(processMultilineKey(v, 9, key({ upArrow: true })).cursor).toBe(3);
+    expect(processMultilineKey(v, 3, key({ downArrow: true })).cursor).toBe(9);
   });
 
   it("Ctrl+P / Ctrl+N on single-line / empty buffer hand off to history recall", () => {
@@ -227,16 +234,18 @@ describe("processMultilineKey — cursor motion", () => {
     expect(down.cursor).toBeNull();
   });
 
-  it("raw `\\x1b[A` / `\\x1b[B` escape sequences are NOOP (chat-scroll handled at App level)", () => {
+  it("raw `\\x1b[A` / `\\x1b[B` escape sequences map to history recall", () => {
     expect(processMultilineKey("", 0, { input: "\x1b[A" })).toEqual({
       next: null,
       cursor: null,
       submit: false,
+      historyHandoff: "prev",
     });
     expect(processMultilineKey("", 0, { input: "\x1b[B" })).toEqual({
       next: null,
       cursor: null,
       submit: false,
+      historyHandoff: "next",
     });
   });
 
