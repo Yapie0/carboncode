@@ -6,8 +6,8 @@ import { useCallback, useEffect, useState } from "preact/hooks";
 import { initLangFromServer, t, useLang } from "./src/i18n";
 import { MODE, api } from "./src/lib/api";
 import { ToastStack, appBus } from "./src/lib/bus";
-import { usePoll } from "./src/lib/use-poll";
 import { ErrorBoundary, ErrorOverlay } from "./src/lib/error-boundary";
+import { usePoll } from "./src/lib/use-poll";
 import { ChangesPanel } from "./src/panels/changes";
 import { ChatPanel } from "./src/panels/chat";
 import { HooksPanel } from "./src/panels/hooks";
@@ -134,7 +134,7 @@ function tabSections() {
 }
 
 function sessLabel(s) {
-  const n = (s && s.name) || "";
+  const n = s?.name || "";
   return n.length > 30 ? `${n.slice(0, 30)}…` : n;
 }
 
@@ -146,12 +146,10 @@ function SimpleSidebar() {
   const { data, refresh } = usePoll("/sessions", 5000);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
-  const sessions = ((data && data.sessions) || []).filter(
-    (s) => !((s && s.name) || "").startsWith("subagent"),
-  );
-  const current = (data && data.currentSession) || null;
+  const sessions = (data?.sessions || []).filter((s) => !(s?.name || "").startsWith("subagent"));
+  const current = data?.currentSession || null;
   const filtered = q
-    ? sessions.filter((s) => ((s && s.name) || "").toLowerCase().includes(q.toLowerCase()))
+    ? sessions.filter((s) => (s?.name || "").toLowerCase().includes(q.toLowerCase()))
     : sessions;
   const newChat = useCallback(async () => {
     setBusy(true);
