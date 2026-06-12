@@ -171,6 +171,7 @@ import { applyMcpAppend } from "./mcp-append.js";
 import { handleMcpBrowseSlash } from "./mcp-browse.js";
 import { formatMcpLifecycleEvent } from "./mcp-lifecycle.js";
 import { replaceMcpServerSummary } from "./mcp-server-list.js";
+import { formatMcpStartupSummary } from "./mcp-startup-summary.js";
 import { formatMcpSlowToast } from "./mcp-toast.js";
 import { openUrl } from "./open-url.js";
 import { formatLongPaste } from "./paste-collapse.js";
@@ -1197,45 +1198,21 @@ function AppInner({
     mcpBridgeStartedRef.current = true;
     const total = mcpSpecs.length;
     let ready = 0;
+    let connected = 0;
+    let toolsReady = 0;
+    let disabled = 0;
+    let failed = 0;
     agentStore.dispatch({ type: "mcp.loading", ready, total });
     const bumpReady = () => {
       ready = Math.min(ready + 1, total);
       agentStore.dispatch({ type: "mcp.loading", ready, total });
     };
     mcpRuntime.setLifecycleSink((notice) => {
-      if (notice.kind === "handshake") {
-        log.pushInfo(formatMcpLifecycleEvent({ state: "handshake", name: notice.name }));
-      } else if (notice.kind === "connected") {
-        log.pushInfo(
-          formatMcpLifecycleEvent({
-            state: "connected",
-            name: notice.name,
-            tools: notice.tools,
-            resources: notice.resources,
-            prompts: notice.prompts,
-            ms: notice.ms,
-          }),
-        );
-        bumpReady();
-      } else if (notice.kind === "disabled") {
-        log.pushInfo(formatMcpLifecycleEvent({ state: "disabled", name: notice.name }));
-        bumpReady();
-      } else if (notice.kind === "failed") {
+      if (notice.kind === "failed") {
         log.pushWarning(
           `MCP ${notice.name} failed`,
           `${notice.reason}\nrun \`carboncode setup\` to remove this entry, or fix the underlying issue (missing npm package, network, etc.).`,
         );
-        bumpReady();
-      } else if (notice.kind === "tools-ready") {
-        log.pushInfo(
-          formatMcpLifecycleEvent({
-            state: "tools-ready",
-            name: notice.name,
-            tools: notice.tools,
-            ms: notice.ms,
-          }),
-        );
-        bumpReady();
       } else if (notice.kind === "warn") {
         log.pushWarning(
           `MCP ${notice.name} warn`,
@@ -1255,11 +1232,37 @@ function AppInner({
         );
       }
     });
-    for (const spec of mcpSpecs) {
-      void mcpRuntime.addSpec(spec, loop).then(() => {
+    const startSpec = async (spec: string) => {
+      try {
+        const result = await mcpRuntime.addSpec(spec, loop);
+        if (result.ok) {
+          connected += 1;
+          toolsReady += result.summary.toolCount;
+        } else if (result.reason === "disabled by user") {
+          disabled += 1;
+        } else {
+          failed += 1;
+        }
+      } catch (err) {
+        failed += 1;
+        log.pushWarning("MCP startup failed", (err as Error).message);
+      } finally {
+        bumpReady();
         setLiveMcpServers(mcpRuntime.summaries());
-      });
-    }
+      }
+    };
+    void Promise.all(mcpSpecs.map(startSpec)).then(() => {
+      log.pushInfo(
+        formatMcpStartupSummary({
+          total,
+          connected,
+          tools: toolsReady,
+          disabled,
+          failed,
+        }),
+        failed > 0 ? "warn" : "ok",
+      );
+    });
   }, [mcpRuntime, mcpSpecs, loop, log, agentStore]);
 
   // Ambient session info (balance, model catalog, latest published

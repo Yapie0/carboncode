@@ -1847,6 +1847,9 @@ export const EN: TranslationSchema = {
       "→ run `carboncode setup` to remove this entry, or fix the underlying issue (missing npm package, network, etc.).",
     failedSetupConfigHint:
       "→ run `carboncode setup` to remove broken entries from your saved config.",
+    startupSummary: "MCP ready · {connected}/{total} connected · {tools} tools · details: /mcp",
+    startupSummaryIssues:
+      "MCP ready · {connected}/{total} connected · {tools} tools · {disabled} disabled · {failed} failed · details: /mcp",
   },
   checkpointPicker: {
     title: "restore a checkpoint \u2014 {workspace}",
