@@ -44,7 +44,12 @@ export async function handleFileRead(
 ): Promise<ApiResult> {
   if (method !== "GET") return { status: 405, body: { error: "GET only" } };
 
-  const filePath = decodeURIComponent(rest.join("/"));
+  let filePath: string;
+  try {
+    filePath = decodeURIComponent(rest.join("/"));
+  } catch {
+    return { status: 400, body: { error: "invalid file path encoding" } };
+  }
   if (!filePath) return { status: 400, body: { error: "file path required" } };
 
   const cwd = ctx.getCurrentCwd?.();
