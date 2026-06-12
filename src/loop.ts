@@ -372,7 +372,7 @@ export class CacheFirstLoop {
     this._budgetWarned = false;
   }
 
-  /** Single-turn upgrade consumed at next step() — distinct from `/preset max` (persistent). */
+  /** Single-turn upgrade consumed at next step() — distinct from `/preset pro` (persistent). */
   armProForNextTurn(): void {
     this._proArmedForNextTurn = true;
   }
@@ -984,7 +984,7 @@ export class CacheFirstLoop {
       // the counter — next attempt runs on v4-pro with the same
       // messages. Only triggers when the call was on a model OTHER
       // than the escalation model; if the user already configured
-      // v4-pro (via /preset max etc.), the marker is taken as a
+      // v4-pro (via /preset pro etc.), the marker is taken as a
       // no-op content and passed through verbatim, so there's no
       // infinite-retry loop.
       if (
