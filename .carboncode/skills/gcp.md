@@ -57,7 +57,7 @@ description: Git Commit & Push — collect changes, classify, generate Chinese c
 优化:
 - 调整 Carbon Code 输出格式偏好，避免终端表格错位
 
-Co-Authored-By: Carbon Code <carboncode@ai6666.ai>
+Co-Authored-By: Carbon Code <carboncode@code.ai6666.com>
 ```
 
 ## 4. 暂存并提交

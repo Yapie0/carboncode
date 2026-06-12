@@ -98,7 +98,7 @@ Tests: <test-files> — <N>/<N> passed
 <Type>: <one-line summary of the actual change>
 Thanks @<author> for <specific contribution>.
 
-Co-Authored-By: Carbon Code <carboncode@ai6666.ai>
+Co-Authored-By: Carbon Code <carboncode@code.ai6666.com>
 ```
 
 - **Tests line**: list the test file(s) the PR adds or touches, with pass count if available.
@@ -137,7 +137,7 @@ Tests: <test-files> — <pass-count>
 <Type>: <one-line summary>
 Thanks @<author> for <specific contribution>.
 
-Co-Authored-By: Carbon Code <carboncode@ai6666.ai>"
+Co-Authored-By: Carbon Code <carboncode@code.ai6666.com>"
 ```
 
 This is the preferred path. It creates the squash merge on GitHub's servers, auto-closes the PR, and does NOT trigger local `verify` hooks. Reference: #92 was merged this way — note the rich body with test results, change summary, and specific thanks.
@@ -194,7 +194,7 @@ Steps:
 
    Thanks @<author> for <specific contribution>.
 
-   Co-Authored-By: Carbon Code <carboncode@ai6666.ai>
+   Co-Authored-By: Carbon Code <carboncode@code.ai6666.com>
 
    — Carbon Code"
    ```
