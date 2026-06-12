@@ -7,9 +7,10 @@ export interface PruneSessionsOptions {
 
 export function pruneSessionsCommand(opts: PruneSessionsOptions): void {
   const days = opts.days ?? 90;
-  if (!Number.isFinite(days) || days < 1) {
+  if (!Number.isInteger(days) || days < 1) {
     console.error(`--days must be a positive integer (got ${days}).`);
     process.exit(1);
+    return;
   }
   if (opts.dryRun) {
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
