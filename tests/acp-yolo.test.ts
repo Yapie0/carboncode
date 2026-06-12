@@ -61,16 +61,32 @@ describe("acp --yolo", () => {
     expect(bridged).toBe(false);
   });
 
-  it("does NOT auto-resolve run_command requests even with --yolo (shell.ts handles that via allowAll)", async () => {
+  it("auto-allows run_command requests when yolo is active", async () => {
     const gate = new PauseGate();
-    let bridgedReqId: number | null = null;
+    let bridged = false;
     makeListener({ yolo: true }, "review")(gate, (id) => {
-      bridgedReqId = id;
+      bridged = true;
       gate.resolve(id, { type: "run_once" } as never);
     });
 
-    await gate.ask({ kind: "run_command", payload: { command: "rm -rf /" } });
-    expect(bridgedReqId).not.toBeNull();
+    await expect(
+      gate.ask({ kind: "run_command", payload: { command: "git push origin main" } }),
+    ).resolves.toEqual({ type: "run_once" });
+    expect(bridged).toBe(false);
+  });
+
+  it("auto-allows run_background requests when yolo is active", async () => {
+    const gate = new PauseGate();
+    let bridged = false;
+    makeListener({ yolo: true }, "review")(gate, (id) => {
+      bridged = true;
+      gate.resolve(id, { type: "run_once" } as never);
+    });
+
+    await expect(
+      gate.ask({ kind: "run_background", payload: { command: "npm run dev" } }),
+    ).resolves.toEqual({ type: "run_once" });
+    expect(bridged).toBe(false);
   });
 
   it("auto-allows path_access (run_once) when yolo — mirrors shell.ts allowAll bypass", async () => {

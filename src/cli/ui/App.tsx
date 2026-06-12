@@ -3879,6 +3879,11 @@ function AppInner({
       switch (request.kind) {
         case "run_command":
         case "run_background": {
+          const auto = autoResolveVerdict(request, editModeRef.current);
+          if (auto !== null) {
+            pauseGate.resolve(request.id, auto as never);
+            break;
+          }
           const p = payload as {
             command: string;
             cwd?: string;

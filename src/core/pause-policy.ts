@@ -13,10 +13,13 @@ export function autoResolveVerdict(req: PauseRequest, editMode: EditMode): unkno
   if (req.kind === "plan_checkpoint" && shouldAutoResolveCheckpoint(editMode)) {
     return { type: "continue" };
   }
-  // yolo mirrors shell.ts's allowAll bypass — outside-sandbox reads/writes pass
-  // through too. Stays "run_once" rather than "always_allow" so the YOLO session
-  // doesn't pollute the on-disk allowlist with every transient path it touched.
-  if (req.kind === "path_access" && editMode === "yolo") {
+  // YOLO is a runtime bypass, not an allowlist mutation. Resolve as
+  // run_once so it never pollutes on-disk permissions with transient
+  // shell commands or paths.
+  if (
+    editMode === "yolo" &&
+    (req.kind === "run_command" || req.kind === "run_background" || req.kind === "path_access")
+  ) {
     return { type: "run_once" };
   }
   return null;
