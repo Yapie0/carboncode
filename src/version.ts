@@ -172,7 +172,13 @@ export function isNpxInstall(): boolean {
 export function detectNpmInstallPrefix(bin?: string): string | null {
   const raw = bin ?? process.argv[1] ?? "";
   if (!raw) return null;
-  const norm = raw.replace(/\\/g, "/");
+  let resolved = raw;
+  try {
+    resolved = realpathSync(raw);
+  } catch {
+    /* synthetic / nonexistent path (e.g. in tests) -- keep the literal argv */
+  }
+  const norm = resolved.replace(/\\/g, "/");
   const posix = norm.match(/^(.+?)\/lib\/node_modules\/@carboncode\/cli(?:\/|$)/i);
   if (posix) return posix[1] ?? null;
   const win = norm.match(/^(.+?)\/node_modules\/@carboncode\/cli(?:\/|$)/i);

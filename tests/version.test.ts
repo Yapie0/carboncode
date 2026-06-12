@@ -228,6 +228,33 @@ describe("detectNpmInstallPrefix", () => {
     ).toBe("C:/Users/me/AppData/Roaming/npm");
   });
 
+  it("resolves a bin symlink before extracting the npm prefix", () => {
+    const dir = mkdtempSync(join(tmpdir(), "cc-prefix-"));
+    try {
+      const target = join(
+        dir,
+        "lib",
+        "node_modules",
+        "@carboncode",
+        "cli",
+        "dist",
+        "cli",
+        "index.js",
+      );
+      mkdirSync(join(dir, "lib", "node_modules", "@carboncode", "cli", "dist", "cli"), {
+        recursive: true,
+      });
+      writeFileSync(target, "#!/usr/bin/env node\n");
+      mkdirSync(join(dir, "bin"));
+      const link = join(dir, "bin", "carboncode");
+      symlinkSync(target, link);
+
+      expect(detectNpmInstallPrefix(link)).toBe(dir.replace(/\\/g, "/"));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("returns null when no @carboncode/cli node_modules segment is present", () => {
     expect(detectNpmInstallPrefix("/opt/custom/bin/carboncode")).toBeNull();
   });
