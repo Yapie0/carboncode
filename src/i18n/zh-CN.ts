@@ -1759,6 +1759,9 @@ export const zhCN: TranslationSchema = {
     failedSetupHint:
       "→ 运行 `carboncode setup` 移除此条目，或修复底层问题（缺少 npm 包、网络等）。",
     failedSetupConfigHint: "→ 运行 `carboncode setup` 从已保存配置中移除损坏的条目。",
+    startupSummary: "MCP 就绪 · 已连接 {connected}/{total} · {tools} 个工具 · 详情：/mcp",
+    startupSummaryIssues:
+      "MCP 就绪 · 已连接 {connected}/{total} · {tools} 个工具 · 已禁用 {disabled} · 失败 {failed} · 详情：/mcp",
   },
   checkpointPicker: {
     title: "恢复检查点 \u2014 {workspace}",
