@@ -1660,15 +1660,6 @@ function AppInner({
     if (ev.ctrl && ev.input === "d") quitProcess();
   });
 
-  // Chat scroll lives on PgUp/PgDn, End, and terminal wheel events.
-  // Plain ↑/↓ are prompt-history / multi-line cursor keys unless a
-  // picker owns them for navigation.
-  useKeystroke((ev) => {
-    if (ev.pageUp || ev.mouseScrollUp) chatScroll.scrollPageUp();
-    else if (ev.pageDown || ev.mouseScrollDown) chatScroll.scrollPageDown();
-    else if (ev.end) chatScroll.jumpToBottom();
-  }, !modalOpen);
-
   // Esc/Ctrl+C during an active model turn forward to the loop as an
   // abort signal. Generic busy states such as `!cmd` and `/btw` are
   // excluded so a stray Esc cannot poison the next turn's abort

@@ -1,11 +1,8 @@
-import { Box, type DOMElement, Text, useBoxMetrics } from "ink";
-import React, { useEffect, useMemo, useRef } from "react";
-import { t } from "../../../i18n/index.js";
+import { Box, Static } from "ink";
+import React from "react";
 import { CardRenderer } from "../cards/CardRenderer.js";
 import type { Card } from "../state/cards.js";
-import { useChatScrollActions, useChatScrollState } from "../state/chat-scroll-provider.js";
 import { useAgentState } from "../state/provider.js";
-import { FG, TONE } from "../theme/tokens.js";
 
 /** Buffer of rows kept rendered on each side of the viewport so a single scroll
  * step doesn't reveal an unmeasured card. Larger = smoother but renders more. */
@@ -17,9 +14,8 @@ export type CardStreamItem<T> =
 
 /** Decide which cards render live vs collapse into a spacer, given the cached
  * heights and the current viewport position. Window is quantized to
- * VISIBLE_BUFFER_ROWS buckets so a single-row scrollRows / outerHeight wiggle
- * doesn't toggle a boundary card and re-trigger inner.height oscillation
- * (root cause of issues #549 / #700). */
+ * VISIBLE_BUFFER_ROWS buckets so small scrollRows / outerHeight wiggles don't
+ * toggle a boundary card and re-trigger inner.height oscillation. */
 export function computeCardStreamItems<T extends { id: string }>(
   cards: readonly T[],
   cardHeights: ReadonlyMap<string, number>,
@@ -54,145 +50,52 @@ export function computeCardStreamItems<T extends { id: string }>(
   return out;
 }
 
-/**
- * Row-precision virtual scroll with card-level virtualization.
- *
- * outer Box clips with overflow="hidden"; inner Box holds visible cards
- * plus spacer Boxes for off-screen ranges and slides up via negative
- * marginTop. Off-screen cards are replaced by a single spacer Box of the
- * cumulative height — Yoga skips them entirely on every re-layout.
- *
- * Heights are populated lazily: any card whose height isn't cached yet
- * is rendered live (so it can be measured), then collapses into the
- * spacer once outside the viewport. A streaming card that grows on every
- * delta keeps its height fresh through the same measurement path.
- */
 export function CardStream({
   suppressLive = false,
-  maxRows,
 }: {
   suppressLive?: boolean;
+  /** Kept for call-site compatibility; native scrollback is handled by Static. */
   maxRows?: number;
 }): React.ReactElement {
   const cards = useAgentState((s) => s.cards);
-  const scrollRows = useChatScrollState((s) => s.scrollRows);
-  const cardHeights = useChatScrollState((s) => s.cardHeights);
-  const { setMaxScroll, setCardHeight, pruneCardHeights } = useChatScrollActions();
-  const outerRef = useRef<DOMElement>(null!);
-  const innerRef = useRef<DOMElement>(null!);
-  const outer = useBoxMetrics(outerRef);
-  const inner = useBoxMetrics(innerRef);
-  const maxScroll = Math.max(0, inner.height - outer.height);
-
-  useEffect(() => {
-    setMaxScroll(maxScroll);
-  }, [maxScroll, setMaxScroll]);
-
-  // Drop heights for cards no longer in the list (resumed sessions, /clear, etc).
-  useEffect(() => {
-    const live = new Set<string>();
-    for (const c of cards) live.add(c.id);
-    pruneCardHeights(live);
-  }, [cards, pruneCardHeights]);
-
-  let visible = cards;
-  if (suppressLive && cards.length > 0 && !isFullySettled(cards[cards.length - 1]!)) {
-    visible = cards.slice(0, -1);
-  }
-
-  const items = useMemo(
-    () => computeCardStreamItems(visible, cardHeights, scrollRows, outer.height),
-    [visible, cardHeights, scrollRows, outer.height],
-  );
+  const { committed, live } = React.useMemo(() => splitCardsForNativeScroll(cards), [cards]);
+  const visibleLive =
+    suppressLive && live.length > 0 && !isFullySettled(live[live.length - 1]!)
+      ? live.slice(0, -1)
+      : live;
 
   return (
     <>
-      {/* Always reserve the row — making it conditional ties outer.height to scrollRows and closes a setState loop with pinned mode. */}
-      <Box height={1} flexShrink={0}>
-        {scrollRows > 0 ? <ScrollIndicator scrollRows={scrollRows} maxScroll={maxScroll} /> : null}
-      </Box>
-      <Box
-        ref={outerRef}
-        flexDirection="column"
-        flexGrow={maxRows === undefined ? 1 : 0}
-        flexShrink={1}
-        maxHeight={maxRows}
-        overflow="hidden"
-      >
-        <Box ref={innerRef} flexDirection="column" marginTop={-scrollRows} flexShrink={0}>
-          {items.map((item) =>
-            item.kind === "spacer" ? (
-              <Box key={item.key} height={item.rows} flexShrink={0} />
-            ) : (
-              <MeasuredCard key={item.card.id} card={item.card} report={setCardHeight} />
-            ),
-          )}
+      <Static items={committed}>
+        {(card) => (
+          <Box key={card.id} flexDirection="column">
+            <CardRenderer card={card} />
+          </Box>
+        )}
+      </Static>
+      {visibleLive.length > 0 ? (
+        <Box flexDirection="column" flexShrink={1}>
+          {visibleLive.map((card) => (
+            <Box key={card.id} flexDirection="column">
+              <CardRenderer card={card} />
+            </Box>
+          ))}
         </Box>
-      </Box>
+      ) : null}
     </>
   );
 }
 
-/** Thin wrapper that captures a card's row height on every render and reports
- * it to the scroll store. Wrapping in React.memo would defeat the purpose —
- * we *want* the effect to re-run when the streaming card grows.
- *
- * Monotonic height lock (#549 / #700): for unsettled (streaming/reasoning)
- * cards, height is only reported when it INCREASES. Yoga can emit intermediate
- * shrink measurements during re-layout that would otherwise cause the virtual
- * window to oscillate. Settled cards always report the exact final height. */
-function MeasuredCard({
-  card,
-  report,
-}: { card: Card; report: (id: string, rows: number) => void }): React.ReactElement {
-  const ref = useRef<DOMElement>(null!);
-  const m = useBoxMetrics(ref);
-  const lastReportedRef = useRef<number>(0);
-  const settled = isCardSettled(card);
-
-  useEffect(() => {
-    const h = m.height;
-    if (h <= 0) return;
-    // Dedup: skip if height hasn't changed since last report.
-    if (h === lastReportedRef.current) return;
-    // Monotonic lock: for unsettled cards, only report growth.
-    // Yoga may emit transient shrink values during streaming re-layout
-    // that would otherwise feed back into scroll position oscillation.
-    if (!settled && h < lastReportedRef.current) return;
-    lastReportedRef.current = h;
-    report(card.id, h);
-  }, [card.id, m.height, report, settled]);
-
-  return (
-    <Box ref={ref} flexDirection="column" flexShrink={0}>
-      <CardRenderer card={card} />
-    </Box>
-  );
-}
-
-/** Position indicator in the row above the viewport. Briefly highlights on every
- * scroll tick (scrollVersion bump) so the user gets visual confirmation that
- * the wheel/arrow registered, even before the new frame paints. */
-function ScrollIndicator({
-  scrollRows,
-  maxScroll,
-}: { scrollRows: number; maxScroll: number }): React.ReactElement {
-  const version = useChatScrollState((s) => s.scrollVersion);
-  const [hot, setHot] = React.useState(false);
-  React.useEffect(() => {
-    if (version === 0) return;
-    setHot(true);
-    const id = setTimeout(() => setHot(false), 220);
-    return () => clearTimeout(id);
-  }, [version]);
-  const remaining = Math.max(0, maxScroll - scrollRows);
-  const above =
-    scrollRows === 1
-      ? t("cardStream.scrollAbove", { scroll: scrollRows, max: maxScroll })
-      : t("cardStream.scrollAbovePlural", { scroll: scrollRows, max: maxScroll });
-  const more = remaining > 0 ? t("cardStream.scrollMore", { remaining }) : "";
-  const text = `${above}${more}${t("cardStream.scrollPgUp")}`;
-  return <Text color={hot ? TONE.accent : FG.faint}>{text}</Text>;
+function splitCardsForNativeScroll(cards: ReadonlyArray<Card>): {
+  committed: Card[];
+  live: Card[];
+} {
+  const firstLive = cards.findIndex((card) => !isFullySettled(card));
+  if (firstLive < 0) return { committed: [...cards], live: [] };
+  return {
+    committed: cards.slice(0, firstLive),
+    live: cards.slice(firstLive),
+  };
 }
 
 function isFullySettled(card: Card): boolean {
@@ -212,13 +115,6 @@ function isFullySettled(card: Card): boolean {
   }
 }
 
-/** True when a card's content is final — no more streaming deltas expected.
- * Drives the monotonic height lock in MeasuredCard: settled cards always
- * report their exact height; unsettled cards only report growth.
- *
- * If a future card kind legitimately shrinks in height while still in-flight,
- * add an explicit entry here — otherwise the monotonic lock won't catch it
- * and default:true will report the stale larger height. */
 function isCardSettled(card: Card): boolean {
   switch (card.kind) {
     case "reasoning":

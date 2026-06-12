@@ -75,11 +75,12 @@ export function PromptInput({
 }: PromptInputProps) {
   const { stdout } = useStdout();
   const cols = stdout?.columns ?? 80;
+  const inputCols = Math.max(20, Math.floor(cols * 0.96));
   const promptPrefix = "> ";
   const continuationIndent = "  ";
   const prefixCells = promptPrefix.length;
   // Reserve for prompt prefix, cursor margin, and the rounded border (2 cells) + padding.
-  const visibleCells = Math.max(8, cols - prefixCells - 5);
+  const visibleCells = Math.max(8, inputCols - prefixCells - 5);
   // Cap at 24 — collapseLinesForDisplay hides content past ~20 logical lines.
   // Long lines SOFT-WRAP to multiple display rows now, so size the reserve by the
   // wrapped-row count (not logical lines). Quantize to 4-row buckets so per-keystroke
@@ -295,6 +296,7 @@ export function PromptInput({
   return (
     <Box
       flexDirection="column"
+      width={inputCols}
       paddingX={1}
       borderStyle="round"
       borderColor={accentColor}
