@@ -14,6 +14,16 @@ describe("slash help i18n coverage", () => {
     expect(missing.map((c) => c.cmd)).toEqual([]);
   });
 
+  it("keeps /memory help aligned with the current project and user memory files", () => {
+    expect(EN.slash.memory.description).toContain("AGENTS.md/CARBON.md");
+    expect(EN.slash.memory.description).toContain("~/.carboncode/memory");
+    expect(EN.slash.memory.description).not.toContain("~/.carboncode/CARBON.md");
+
+    expect(zhCN.slash.memory.description).toContain("AGENTS.md/CARBON.md");
+    expect(zhCN.slash.memory.description).toContain("~/.carboncode/memory");
+    expect(zhCN.slash.memory.description).not.toContain("~/.carboncode/CARBON.md");
+  });
+
   it("localizes the zh-CN MCP registry fallback wording", () => {
     expect(zhCN.ui.mcpListDescription).toContain("Smithery 第三方目录");
     expect(zhCN.ui.mcpListDescription).toContain("本地备选");

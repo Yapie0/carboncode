@@ -296,7 +296,7 @@ export const EN: TranslationSchema = {
       argsHint: "[name]",
     },
     memory: {
-      description: "show / manage pinned memory (CARBON.md + ~/.carboncode/CARBON.md)",
+      description: "show / manage pinned memory (AGENTS.md/CARBON.md + ~/.carboncode/memory)",
       argsHint: "[list|show <name>|forget <name>|clear <scope> confirm]",
     },
     agents: {
