@@ -319,7 +319,7 @@ export interface TranslationSchema {
     mcpArgsRequiredParam: string;
     mcpArgsEmpty: string;
     mcpArgsNotADir: string;
-    mcpArgsFilesystemPlaceholder: string;
+    mcpArgsDefaultPlaceholder: string;
     mcpArgsSqlitePlaceholder: string;
     mcpArgsFilesystemSummary: string;
     mcpArgsFilesystemNote: string;

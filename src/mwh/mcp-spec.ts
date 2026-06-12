@@ -20,10 +20,11 @@ export function appendBuiltinMwhMcpSpec(
 }
 
 export function buildBuiltinMwhMcpSpec(projectRoot: string, entrypoint?: string): string {
+  void projectRoot;
   const entry = resolve(entrypoint ?? resolveCliEntrypoint());
   const args = entry.endsWith(".ts")
-    ? ["--import", "tsx", entry, "mwh", "mcp-server", "--root", resolve(projectRoot)]
-    : [entry, "mwh", "mcp-server", "--root", resolve(projectRoot)];
+    ? ["--import", "tsx", entry, "mwh", "mcp-server"]
+    : [entry, "mwh", "mcp-server"];
   return specToRaw({
     transport: "stdio",
     name: MIDDLEWAVE_HUB_MCP_NAME,

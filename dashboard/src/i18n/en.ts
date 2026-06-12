@@ -184,7 +184,7 @@ export const en = {
     semanticBanner: "Semantic search isn't enabled for this project.",
     semanticBannerDesc:
       'Build the index once and the model can find code by meaning ("where do we handle auth failures?") instead of grep on exact strings.',
-    semanticBannerBtn: "Build it →",
+    semanticBannerBtn: "Set up →",
     semanticBannerDismiss: "dismiss (don't show again)",
     slashCommands: "slash commands",
     projectFiles: "project files",

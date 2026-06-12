@@ -8,13 +8,17 @@ export function hydrateCardsFromMessages(messages: ReadonlyArray<ChatMessage>): 
   let seq = 0;
   const ts = Date.now();
   const id = (k: string) => `hyd-${k}-${++seq}`;
+  let latestUserPrompt: string | null = null;
 
   for (const m of messages) {
     if (m.role === "system") continue;
 
     if (m.role === "user") {
       const text = typeof m.content === "string" ? m.content : "";
-      if (text) cards.push({ kind: "user", id: id("user"), ts, text });
+      if (text) {
+        latestUserPrompt = text;
+        cards.push({ kind: "user", id: id("user"), ts, text });
+      }
       continue;
     }
 
@@ -33,7 +37,14 @@ export function hydrateCardsFromMessages(messages: ReadonlyArray<ChatMessage>): 
       }
       const text = typeof m.content === "string" ? m.content : "";
       if (text) {
-        cards.push({ kind: "streaming", id: id("streaming"), ts, text, done: true });
+        cards.push({
+          kind: "streaming",
+          id: id("streaming"),
+          ts,
+          text,
+          done: true,
+          ...(latestUserPrompt ? { userPrompt: latestUserPrompt } : {}),
+        });
       }
       if (m.tool_calls?.length) {
         for (const tc of m.tool_calls) {

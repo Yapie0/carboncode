@@ -1,5 +1,5 @@
-import { Box, Text, useCursor, useStdout } from "ink";
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Box, Text, useStdout } from "ink";
+import React, { useEffect, useRef, useState } from "react";
 import { t } from "../../i18n/index.js";
 import { useKeystroke } from "./keystroke-context.js";
 import { useReserveRows } from "./layout/viewport-budget.js";
@@ -51,7 +51,7 @@ export interface PromptInputProps {
   onSubmit: (v: string) => void;
   disabled?: boolean;
   placeholder?: string;
-  /** Ctrl+P / Ctrl+N hand off here when no in-buffer cursor move applies — parent walks history and swaps `value` via `onChange`. */
+  /** ↑/↓ and Ctrl+P / Ctrl+N hand off here when no in-buffer cursor move applies — parent walks history and swaps `value` via `onChange`. */
   onHistoryPrev?: () => void;
   onHistoryNext?: () => void;
   /** Ctrl+X — parent spawns $EDITOR with the current buffer and re-injects on exit. */
@@ -96,41 +96,6 @@ export function PromptInput({
   useEffect(() => {
     onCursorChange?.(cursor);
   }, [cursor, onCursorChange]);
-
-  // ── real terminal cursor (IME) ──────────────────────────────────────
-  // Park the OS cursor AT the input cell so the macOS IME candidate window hugs
-  // the text. Ink otherwise leaves it at the bottom of the frame → popup in the
-  // corner. The cursor row's absolute position comes from its Yoga layout (Ink 7's
-  // useCursor wants coords relative to the output origin).
-  const { setCursorPosition } = useCursor();
-  const cursorRowRef = useRef<any>(null); // Ink DOMElement / Yoga node.
-  const cursorXInRowRef = useRef(0);
-  const cursorActiveRef = useRef(false);
-  // Last frame's cursor-row origin (border/padding + row top) — stable as you type,
-  // so the in-render setCursorPosition below can use it without waiting for layout.
-  const rowOriginRef = useRef<{ top: number; left: number }>({ top: 0, left: 0 });
-  // Re-resolve on input/cursor/size change — the active typing path, where IME matters.
-  useLayoutEffect(() => {
-    if (disabled || !cursorActiveRef.current || !cursorRowRef.current?.yogaNode) {
-      setCursorPosition(undefined);
-      return;
-    }
-    let top = 0;
-    let left = 0;
-    let n: any = cursorRowRef.current; // walk Ink's Yoga layout tree.
-    while (n?.yogaNode) {
-      top += n.yogaNode.getComputedTop() ?? 0;
-      left += n.yogaNode.getComputedLeft() ?? 0;
-      n = n.parentNode;
-    }
-    // Cache the (stable) origin for the in-render setCursorPosition; refreshing it
-    // post-layout keeps it accurate when the row actually moves (buffer grows a row).
-    rowOriginRef.current = { top, left };
-    setCursorPosition({
-      x: Math.max(0, Math.round(left + cursorXInRowRef.current)),
-      y: Math.max(0, Math.round(top)),
-    });
-  });
 
   // ── vim layer ──────────────────────────────────────────────────────
   // `vimMode` drives the badge + accent; refs carry the live value across the
@@ -328,12 +293,16 @@ export function PromptInput({
   const showHugeBufferHints = lines.length > 20;
 
   return (
-    <Box flexDirection="column" paddingX={1} borderStyle="round" borderColor={accentColor}>
+    <Box
+      flexDirection="column"
+      paddingX={1}
+      borderStyle="round"
+      borderColor={accentColor}
+      backgroundColor={SURFACE.bgInput}
+    >
       {(() => {
         const rows: React.ReactNode[] = [];
         let firstRowEmitted = false;
-        // Reset each render; set true on whichever row carries the cursor (drives useCursor).
-        cursorActiveRef.current = false;
         for (let renderIdx = 0; renderIdx < renderItems.length; renderIdx++) {
           const item = renderItems[renderIdx]!;
           if (item.kind === "skip") {
@@ -352,15 +321,9 @@ export function PromptInput({
           const isCursorLine = i === cursorLine;
           const showPlaceholder = i === 0 && value.length === 0;
           if (showPlaceholder) {
-            const here = isCursorLine && !disabled;
-            if (here) {
-              cursorActiveRef.current = true;
-              cursorXInRowRef.current = prefixCells; // cursor sits right after "> "
-            }
             rows.push(
               <PromptLine
                 key={`ln-${i}-text-0`}
-                ref={here ? cursorRowRef : undefined}
                 line=""
                 isFirst={true}
                 isCursorLine={isCursorLine && !disabled}
@@ -415,17 +378,9 @@ export function PromptInput({
               const cursorInChunk =
                 relCursor >= chunk.start &&
                 (isLastChunk ? relCursor <= chunkEnd : relCursor < chunkEnd);
-              const here = cursorInChunk && !disabled;
-              if (here) {
-                cursorActiveRef.current = true;
-                cursorXInRowRef.current =
-                  prefixCells +
-                  stringCells(chunk.text.slice(0, relCursor - chunk.start), pastesRef.current);
-              }
               rows.push(
                 <PromptLine
                   key={`ln-${i}-text-${segIdx}-${ci}`}
-                  ref={here ? cursorRowRef : undefined}
                   line={chunk.text}
                   isFirst={isFirst}
                   isCursorLine={cursorInChunk && !disabled}
@@ -446,15 +401,9 @@ export function PromptInput({
           if (segs.length === 0) {
             const isFirst = !firstRowEmitted;
             firstRowEmitted = true;
-            const here = isCursorLine && !disabled;
-            if (here) {
-              cursorActiveRef.current = true;
-              cursorXInRowRef.current = prefixCells;
-            }
             rows.push(
               <PromptLine
                 key={`ln-${i}-empty`}
-                ref={here ? cursorRowRef : undefined}
                 line=""
                 isFirst={isFirst}
                 isCursorLine={isCursorLine && !disabled}
@@ -471,19 +420,6 @@ export function PromptInput({
               />,
             );
           }
-        }
-        // Position the OS cursor DURING render — setCursorPosition only writes a ref, and
-        // doing it here (before useCursor's insertion effect) lands it THIS commit. From a
-        // layout effect it lands one frame late: invisible per keystroke, but a multi-char
-        // IME commit flashed the cursor at the line start before snapping to the end. x is
-        // this frame's offset; the row origin is last frame's (stable as you type).
-        if (!disabled && cursorActiveRef.current) {
-          setCursorPosition({
-            x: Math.max(0, Math.round(rowOriginRef.current.left + cursorXInRowRef.current)),
-            y: Math.max(0, Math.round(rowOriginRef.current.top)),
-          });
-        } else {
-          setCursorPosition(undefined);
         }
         return rows;
       })()}
@@ -517,7 +453,7 @@ export function HintRow(): React.ReactElement {
     { key: "\u23ce", tKey: "composer.hintSend" },
     { key: "\u21e7\u23ce", tKey: "composer.hintNewline" },
     { key: "^U", tKey: "composer.hintClear" },
-    { key: "^P/^N", tKey: "composer.hintHistory" },
+    { key: "↑/↓", tKey: "composer.hintHistory" },
     { key: "esc", tKey: "composer.hintAbort" },
     { key: "^C", tKey: "composer.hintQuit" },
   ];

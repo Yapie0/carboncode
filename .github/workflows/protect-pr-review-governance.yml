@@ -1,0 +1,26 @@
+name: Protect PR review governance branch
+
+on:
+  pull_request:
+    branches:
+      - codex/pr-review-governance
+
+permissions:
+  contents: read
+
+jobs:
+  project-members-only:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject non-project-member authors
+        run: |
+          case "${{ github.event.pull_request.author_association }}" in
+            OWNER|MEMBER|COLLABORATOR)
+              echo "Author association allowed: ${{ github.event.pull_request.author_association }}"
+              ;;
+            *)
+              echo "PRs targeting codex/pr-review-governance are limited to project members."
+              echo "author_association=${{ github.event.pull_request.author_association }}"
+              exit 1
+              ;;
+          esac

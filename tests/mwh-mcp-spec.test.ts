@@ -13,7 +13,8 @@ describe("built-in MWH MCP spec", () => {
     expect(parsed.args).toContain("--import");
     expect(parsed.args).toContain("tsx");
     expect(parsed.args).toContain("mcp-server");
-    expect(parsed.args).toContain("--root");
+    expect(parsed.args).not.toContain("--root");
+    expect(parsed.args).not.toContain("C:\\repo");
   });
 
   it("resolves the Carbon Code CLI entrypoint without relying on process argv", () => {

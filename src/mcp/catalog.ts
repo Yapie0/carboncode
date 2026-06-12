@@ -24,7 +24,6 @@ export const MCP_CATALOG: CatalogEntry[] = [
     name: "mwh",
     kind: "builtin",
     summary: "Carbon Code Middlewave Hub reusable middleware library",
-    userArgs: "<dir>",
     note: "built into Carbon Code; stores reusable module references under .carboncode/mwh",
   },
   {
@@ -75,8 +74,10 @@ export function buildCatalogSpec(
 ): string {
   if (entry.kind === "builtin") {
     if (entry.name === "mwh") {
-      const root = userArgs[0] ?? "<dir>";
-      return `${name}=carboncode mwh mcp-server --root ${quoteIfNeeded(root)}`;
+      const root = userArgs[0];
+      return root
+        ? `${name}=carboncode mwh mcp-server --root ${quoteIfNeeded(root)}`
+        : `${name}=carboncode mwh mcp-server`;
     }
     throw new Error(`unknown built-in MCP catalog entry: ${entry.name}`);
   }

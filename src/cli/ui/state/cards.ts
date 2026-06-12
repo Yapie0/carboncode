@@ -28,6 +28,8 @@ export interface StreamingCard extends CardBase {
   text: string;
   done: boolean;
   aborted?: boolean;
+  /** Short copy of the user prompt that started this turn, shown on the reply card. */
+  userPrompt?: string;
   /** Snapshotted at streaming.start so escalation mid-turn doesn't relabel completed output. */
   model?: string;
   /** Stamped at streaming.end. */

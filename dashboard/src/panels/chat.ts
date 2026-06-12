@@ -15,11 +15,12 @@ import {
   WorkspaceModal,
   parseToolArgs,
 } from "../components/chat-internals.js";
+import { t, useLang } from "../i18n/index.js";
 import { MODE, TOKEN, api } from "../lib/api.js";
 import { appBus, showToast } from "../lib/bus.js";
 import { fmtCost, fmtUsd } from "../lib/format.js";
 import { html } from "../lib/html.js";
-import { t, useLang } from "../i18n/index.js";
+import { readDashboardStorage, writeDashboardStorage } from "../lib/storage.js";
 
 interface StreamingState {
   id: string;
@@ -124,14 +125,14 @@ export function ChatPanel() {
   const [slashCommands, setSlashCommands] = useState<SlashCommand[]>([]);
   const [semanticBannerDismissed, setSemanticBannerDismissed] = useState<boolean>(() => {
     try {
-      return localStorage.getItem("rx.semanticBannerDismissed") === "1";
+      return readDashboardStorage("semanticBannerDismissed") === "1";
     } catch {
       return false;
     }
   });
   useEffect(() => {
     try {
-      localStorage.setItem("rx.semanticBannerDismissed", semanticBannerDismissed ? "1" : "0");
+      writeDashboardStorage("semanticBannerDismissed", semanticBannerDismissed ? "1" : "0");
     } catch {
       /* ignore */
     }
@@ -715,7 +716,7 @@ const ChatInput = memo(function ChatInput({
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   let simpleMode = true;
   try {
-    simpleMode = (localStorage.getItem("rx.simpleMode") ?? "1") !== "0";
+    simpleMode = (readDashboardStorage("simpleMode") ?? "1") !== "0";
   } catch {
     /* storage disabled */
   }
@@ -966,7 +967,7 @@ const ChatFeed = memo(function ChatFeed({ messages, streaming, innerRef }: ChatF
   const hasConvo = allMessages.some((m) => m.role === "user" || m.role === "assistant");
   let simpleMode = true;
   try {
-    simpleMode = (localStorage.getItem("rx.simpleMode") ?? "1") !== "0";
+    simpleMode = (readDashboardStorage("simpleMode") ?? "1") !== "0";
   } catch {
     /* storage disabled */
   }

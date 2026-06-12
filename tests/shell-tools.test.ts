@@ -928,6 +928,33 @@ describe("prepareSpawn", () => {
     expect(out.spawnOverrides.windowsVerbatimArguments).toBe(true);
   });
 
+  it("maps common read-only Windows shell aliases to cmd.exe builtins", () => {
+    const opts = {
+      platform: "win32" as const,
+      env: { PATH: "C:\\nope", PATHEXT: ".EXE" },
+      pathDelimiter: ";",
+      isFile: () => false,
+    };
+
+    const cases: Array<[string[], string]> = [
+      [["pwd"], "chcp 65001 >nul & cd"],
+      [["cwd"], "chcp 65001 >nul & cd"],
+      [["ls"], "chcp 65001 >nul & dir"],
+      [["ls", "src"], "chcp 65001 >nul & dir src"],
+      [["ll", "src"], "chcp 65001 >nul & dir /a src"],
+      [["cat", "package.json"], "chcp 65001 >nul & type package.json"],
+      [["cat", "a & b.txt"], 'chcp 65001 >nul & type "a & b.txt"'],
+      [["clear"], "chcp 65001 >nul & cls"],
+    ];
+
+    for (const [argv, command] of cases) {
+      const out = prepareSpawn(argv, opts);
+      expect(out.bin).toBe("cmd.exe");
+      expect(out.args).toEqual(["/d", "/s", "/c", command]);
+      expect(out.spawnOverrides.windowsVerbatimArguments).toBe(true);
+    }
+  });
+
   it("cmd.exe builtin wrapping quotes metacharacter args", () => {
     const out = prepareSpawn(["echo", "a & b"], {
       platform: "win32",

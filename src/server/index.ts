@@ -29,7 +29,7 @@ export interface DashboardServerHandle {
 }
 
 function mintToken(): string {
-  return randomBytes(32).toString("hex");
+  return randomBytes(16).toString("hex");
 }
 
 /** `===` short-circuits on first mismatch — leaks position via timing even on localhost. */
@@ -124,8 +124,8 @@ export async function dispatch(
   if (path === "/" || path === "/index.html") {
     const fail = checkAuth(req, expectedToken, false);
     if (fail) {
-      res.writeHead(fail.status, { "content-type": "text/plain" });
-      res.end("unauthorized — open the URL printed by /dashboard, including ?token=…");
+      res.writeHead(fail.status, { "content-type": "text/plain; charset=utf-8" });
+      res.end("unauthorized - open the URL printed by /dashboard, including ?token=...");
       return;
     }
     const html = renderIndexHtml(expectedToken, ctx.mode);

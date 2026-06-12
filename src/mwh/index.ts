@@ -62,7 +62,7 @@ export function readMwhModule(id: string, opts?: MwhInstallOptions): MwhModule |
 }
 
 export function mwhRoot(opts: MwhInstallOptions): string {
-  const base = resolve(opts.projectRoot ?? opts.homeDir ?? homedir());
+  const base = resolve(opts.homeDir ?? opts.projectRoot ?? homedir());
   return join(base, CARBON_RUNTIME_DIRNAME, MWH_DIRNAME);
 }
 

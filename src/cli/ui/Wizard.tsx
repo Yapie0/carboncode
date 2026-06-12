@@ -491,16 +491,6 @@ function LanguageStep({
 
 const DEEPSEEK_API_KEYS_URL = "https://platform.deepseek.com/api_keys";
 
-// Auto-open the key page only on a genuine first run (no key yet) and a real TTY.
-// The TTY guard keeps tests/pipes from spawning a browser; openUrl itself also
-// no-ops under CI / CARBONCODE_NO_OPEN.
-export function shouldAutoOpenKeyHelp(
-  hasExistingKey: boolean,
-  isTty: boolean | undefined,
-): boolean {
-  return !hasExistingKey && !!isTty;
-}
-
 function ApiKeyStep({
   initialValue,
   validateApiKey,
@@ -517,14 +507,7 @@ function ApiKeyStep({
   const [value, setValue] = useState("");
   const [checking, setChecking] = useState(false);
   const [browserOpened, setBrowserOpened] = useState(false);
-  // Open the key page for the user (Claude opens a browser; DeepSeek has no OAuth,
-  // so the closest we can do is land them on the key page).
-  useEffect(() => {
-    if (shouldAutoOpenKeyHelp(!!initialValue, process.stdout.isTTY)) {
-      if (openUrl(DEEPSEEK_API_KEYS_URL).opened) setBrowserOpened(true);
-    }
-  }, [initialValue]);
-  // Tab re-opens it — the only key ink-text-input ignores that's free here, so it
+  // Tab opens it; ink-text-input ignores Tab, so it
   // never leaks into the masked key field (Ctrl+O would be typed as "o").
   useInput((_input, key) => {
     if (key.tab && openUrl(DEEPSEEK_API_KEYS_URL).opened) setBrowserOpened(true);
@@ -716,7 +699,7 @@ function McpArgsStep({
             value={value}
             onChange={setValue}
             onSubmit={(raw) => {
-              const trimmed = raw.trim();
+              const trimmed = raw.trim() || defaultArgFor(entry) || "";
               if (!trimmed) {
                 onError(t("wizard.mcpArgsEmpty", { name: entry.name }));
                 return;
@@ -852,9 +835,15 @@ export function mcpArgsNoteFor(entry: CatalogEntry): string | undefined {
 }
 
 export function placeholderFor(entry: CatalogEntry): string {
-  if (entry.name === "filesystem") return t("wizard.mcpArgsFilesystemPlaceholder");
+  const defaultArg = defaultArgFor(entry);
+  if (defaultArg) return t("wizard.mcpArgsDefaultPlaceholder", { value: defaultArg });
   if (entry.name === "sqlite") return t("wizard.mcpArgsSqlitePlaceholder");
   return entry.userArgs ?? "";
+}
+
+export function defaultArgFor(entry: CatalogEntry): string | undefined {
+  if (entry.name === "filesystem") return process.cwd();
+  return undefined;
 }
 
 function deriveInitialCatalog(existingSpecs: string[]): string[] {

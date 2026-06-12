@@ -746,12 +746,12 @@ const mwh = program.command("mwh").description("Middlewave Hub reusable middlewa
 mwh
   .command("mcp-server")
   .description("run the Middlewave Hub stdio MCP server")
-  .option("--root <path>", "workspace root for .carboncode/mwh")
+  .option("--root <path>", "override system MWH root base for .carboncode/mwh")
   .option("--home <path>", "home root fallback for .carboncode/mwh")
   .action(async (opts: { root?: string; home?: string }) => {
     const { runMwhMcpServer } = await import("./commands/mwh-mcp-server.js");
     runMwhMcpServer({
-      projectRoot: opts.root ?? process.cwd(),
+      projectRoot: opts.root,
       homeDir: opts.home,
     });
   });

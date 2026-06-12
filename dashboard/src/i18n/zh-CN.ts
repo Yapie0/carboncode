@@ -184,7 +184,7 @@ export const zhCN = {
     semanticBanner: "此项目未启用语义搜索。",
     semanticBannerDesc:
       "构建一次索引，模型即可按含义查找代码（“哪里处理认证失败？”），而不仅依赖精确字符串的 grep。",
-    semanticBannerBtn: "构建 →",
+    semanticBannerBtn: "去设置 →",
     semanticBannerDismiss: "关闭（不再显示）",
     slashCommands: "斜杠命令",
     projectFiles: "项目文件",

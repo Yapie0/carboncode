@@ -251,6 +251,27 @@ describe("Codex-style terminal surface", () => {
     expect(out).not.toContain("更早");
   });
 
+  it("shows the user prompt context on assistant reply cards", () => {
+    setLanguageRuntime("zh-CN");
+    const { lastFrame, unmount } = render(
+      <StreamingCard
+        card={{
+          kind: "streaming",
+          id: "s1",
+          ts: Date.now() - 1000,
+          text: "可以，先看 PR 列表。",
+          done: true,
+          userPrompt: "帮我看一下当前 open PR",
+        }}
+      />,
+    );
+    const out = lastFrame() ?? "";
+    unmount();
+
+    expect(out).toContain("帮我看一下当前 open PR");
+    expect(out).toContain("可以，先看 PR 列表。");
+  });
+
   it("shows successful read tools as a compact action, not a file preview dump", () => {
     setLanguageRuntime("zh-CN");
     const { lastFrame, unmount } = render(

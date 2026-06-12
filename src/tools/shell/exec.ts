@@ -321,6 +321,8 @@ export function prepareSpawn(
   const head = argv[0] ?? "";
   const tail = argv.slice(1);
   const platform = opts.platform ?? process.platform;
+  const alias = platform === "win32" ? windowsShellAlias(head, tail) : null;
+  if (alias) return alias;
   const resolved = resolveExecutable(head, opts);
 
   if (platform !== "win32") {
@@ -376,6 +378,33 @@ export function prepareSpawn(
 /** Resolved bin path looks like Windows PowerShell or PowerShell Core. */
 function isPowerShellExe(resolved: string): boolean {
   return /(?:^|[\\/])(?:powershell|pwsh)(?:\.exe)?$/i.test(resolved);
+}
+
+function windowsShellAlias(
+  head: string,
+  tail: readonly string[],
+): { bin: string; args: string[]; spawnOverrides: SpawnOptions } | null {
+  const cmd = windowsReadAliasCommand(head, tail);
+  if (!cmd) return null;
+  return {
+    bin: "cmd.exe",
+    args: ["/d", "/s", "/c", withUtf8Codepage(cmd)],
+    spawnOverrides: { windowsVerbatimArguments: true },
+  };
+}
+
+function windowsReadAliasCommand(head: string, tail: readonly string[]): string | null {
+  const lower = head.toLowerCase();
+  if ((lower === "pwd" || lower === "cwd") && tail.length === 0) return "cd";
+  if (lower === "ls" || lower === "ll") {
+    const dirArgs = lower === "ll" ? ["/a", ...tail] : tail;
+    return ["dir", ...dirArgs].map(quoteForCmdExe).join(" ");
+  }
+  if (lower === "cat" && tail.length > 0) {
+    return ["type", ...tail].map(quoteForCmdExe).join(" ");
+  }
+  if (lower === "clear" && tail.length === 0) return "cls";
+  return null;
 }
 
 /** Targets `-Command` only — PowerShell quoting is finicky enough that wrapping script-file mode could break it. */

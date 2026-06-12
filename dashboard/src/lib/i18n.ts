@@ -1,5 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
 import { TOKEN, api } from "./api.js";
+import { readDashboardStorage, writeDashboardStorage } from "./storage.js";
 
 type Listener = () => void;
 
@@ -15,13 +16,13 @@ const SUPPORTED = new Set(LANG_REGISTRY.map(([d]) => d));
 const TO_BACKEND = new Map(LANG_REGISTRY);
 const FROM_BACKEND = new Map(LANG_REGISTRY.map(([d, b]) => [b, d]));
 
-const STORAGE_KEY = "rx.lang";
+const STORAGE_KEY = "lang";
 const listeners: Listener[] = [];
 let currentLang: DashboardLang = loadFromStorage() ?? "en";
 
 function loadFromStorage(): DashboardLang | null {
   try {
-    const v = localStorage.getItem(STORAGE_KEY);
+    const v = readDashboardStorage(STORAGE_KEY);
     if (v !== null && SUPPORTED.has(v as DashboardLang)) return v as DashboardLang;
   } catch {
     /* private mode */
@@ -45,7 +46,7 @@ export async function initLangFromServer(): Promise<void> {
     if (!serverLang || serverLang === currentLang) return;
     currentLang = serverLang;
     try {
-      localStorage.setItem(STORAGE_KEY, serverLang);
+      writeDashboardStorage(STORAGE_KEY, serverLang);
     } catch {
       /* ignore */
     }
@@ -63,7 +64,7 @@ export function setLang(lang: DashboardLang): void {
   if (!SUPPORTED.has(lang)) return;
   currentLang = lang;
   try {
-    localStorage.setItem(STORAGE_KEY, lang);
+    writeDashboardStorage(STORAGE_KEY, lang);
   } catch {
     /* ignore */
   }

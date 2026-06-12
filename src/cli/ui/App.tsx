@@ -1657,24 +1657,13 @@ function AppInner({
     if (ev.ctrl && ev.input === "d") quitProcess();
   });
 
-  // ↑/↓ / PgUp/PgDn always scroll chat; wheel arrives as ↑/↓ via
-  // DECSET 1007 alternate-scroll so it joins the same path. Pickers
-  // (slash / @-mention / slash-arg / shell-confirm) own ↑/↓ — when
-  // any of them is open we skip the arrow path so chat doesn't scroll
-  // alongside picker navigation; PgUp/PgDn/End still scroll. Prompt
-  // history + multi-line cursor moves live on Ctrl+P / Ctrl+N.
+  // Chat scroll lives on PgUp/PgDn, End, and terminal wheel events.
+  // Plain ↑/↓ are prompt-history / multi-line cursor keys unless a
+  // picker owns them for navigation.
   useKeystroke((ev) => {
-    const pickerOwnsArrows =
-      (atState?.entries.length ?? 0) > 0 ||
-      (slashMatches?.length ?? 0) > 0 ||
-      (slashArgMatches?.length ?? 0) > 0 ||
-      pendingShell != null ||
-      pendingPath != null;
     if (ev.pageUp || ev.mouseScrollUp) chatScroll.scrollPageUp();
     else if (ev.pageDown || ev.mouseScrollDown) chatScroll.scrollPageDown();
     else if (ev.end) chatScroll.jumpToBottom();
-    else if (!pickerOwnsArrows && ev.upArrow) chatScroll.scrollUp();
-    else if (!pickerOwnsArrows && ev.downArrow) chatScroll.scrollDown();
   }, !modalOpen);
 
   // Esc/Ctrl+C during an active model turn forward to the loop as an
@@ -1682,7 +1671,7 @@ function AppInner({
   // excluded so a stray Esc cannot poison the next turn's abort
   // controller.
   //
-  // Prompt history (Ctrl+P/Ctrl+N) is handed off from PromptInput via
+  // Prompt history and multi-line cursor movement are handed off from PromptInput via
   // recallPrev/recallNext below —parent-level useInput is simpler
   // than ink-text-input's (absent) history support and lets us own
   // the cursor semantics.
@@ -2694,6 +2683,12 @@ function AppInner({
         setInput("");
         resetCursor();
         log.pushInfo(t("composer.queueActive", { count: queuedCount }));
+        if (submittingRef.current && !abortedThisTurn.current) {
+          abortedThisTurn.current = true;
+          cleanupInterruptedTurn();
+          if (isLoopActive()) stopLoop();
+          loop.abort();
+        }
         return;
       }
 
@@ -3440,6 +3435,7 @@ function AppInner({
       codeMode,
       codeShowEdit,
       codeUndo,
+      cleanupInterruptedTurn,
       currentRootDir,
       quitProcess,
       hookList,

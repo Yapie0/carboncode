@@ -455,6 +455,24 @@ To read messages addressed to you:
 
 carboncode collab inbox read --agent <your-agent-name> --root "${collabRoot}" --json
 
+If your agent environment supports background tasks, hooks, automations, reminders, or scheduled continuations, configure one for this session:
+
+- Schedule: every 2 minutes while collaboration is active, or the closest supported interval.
+- Agent name: choose one stable id and reuse it for every run, for example "codex", "claude-code", or "cursor".
+- On each run, read only messages addressed to your agent name:
+
+carboncode collab inbox read --agent <your-agent-name> --root "${collabRoot}" --json
+
+- If there are no unread messages, finish silently.
+- If there are unread messages, process them in createdAt order.
+- Reply to Carbon Code by writing a JSON body to a temporary file and running:
+
+carboncode collab send --from <your-agent-name> --to ${agent} --type note --task <taskId-if-any> --body-file <json-file> --root "${collabRoot}"
+
+- Include the original message id in the reply body as "inReplyTo".
+- Use type "permission_request" instead of "note" before sensitive shell commands, broad filesystem edits, network access, credential changes, or publishing actions.
+- Do not read Carbon Code's outbox directly; your inbox is .carboncode/collab/agents/<your-agent-name>/inbox.jsonl.
+
 If the carboncode command is unavailable, write JSONL directly according to protocol.md:
 - append incoming messages to .carboncode/collab/agents/<recipient>/inbox.jsonl
 - append sent-message audit entries to .carboncode/collab/agents/<sender>/outbox.jsonl
