@@ -71,14 +71,13 @@ export function makeSessionNameFromTitle(
 ): string | null {
   const normalized = normalizeGeneratedSessionTitle(title);
   if (!normalized) return null;
-  const base = sanitizeName(
-    normalized
-      .replace(/[\s_]+/g, "-")
-      .replace(/[^\w\-\u4e00-\u9fa5]+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, ""),
-  );
-  if (!base) return null;
+  const slug = normalized
+    .replace(/[\s_]+/g, "-")
+    .replace(/[^\w\-\u4e00-\u9fa5]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  if (!slug) return null;
+  const base = sanitizeName(slug);
   const current = opts.currentName ? sanitizeName(opts.currentName) : "";
   const exists = opts.exists ?? ((name: string) => existsSync(sessionPath(name)));
   if (base === current || !exists(base)) return base;
