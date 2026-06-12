@@ -3,9 +3,12 @@ import { EN } from "./EN.js";
 import type { LanguageCode, TranslationSchema } from "./types.js";
 import { zhCN } from "./zh-CN.js";
 
+export const DEFAULT_LANGUAGE: LanguageCode = "zh-CN";
+export const SUPPORTED_LANGUAGES: readonly LanguageCode[] = ["zh-CN", "EN"];
+
 const translations: Record<LanguageCode, TranslationSchema> = {
-  EN,
   "zh-CN": zhCN,
+  EN,
 };
 
 /** Map a system locale (e.g. "zh-CN", "en-US") to a supported LanguageCode, or null. */
@@ -17,7 +20,7 @@ export function detectSystemLanguage(
   return null;
 }
 
-let currentLang: LanguageCode = loadLanguage() ?? detectSystemLanguage() ?? "zh-CN";
+let currentLang: LanguageCode = loadLanguage() ?? DEFAULT_LANGUAGE;
 
 type Listener = () => void;
 const listeners: Listener[] = [];
@@ -53,7 +56,7 @@ export function getLanguage(): LanguageCode {
 }
 
 export function getSupportedLanguages(): LanguageCode[] {
-  return Object.keys(translations) as LanguageCode[];
+  return [...SUPPORTED_LANGUAGES];
 }
 
 /** Returns a structured (non-string) translation entry — for tables / row objects passed to TipCard etc. */

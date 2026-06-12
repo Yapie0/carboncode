@@ -278,7 +278,7 @@ export const EN: TranslationSchema = {
     },
     language: {
       description: "switch the runtime language",
-      argsHint: "<EN|zh-CN>",
+      argsHint: "<zh-CN|EN>",
       success: "Language switched to English.",
       unsupported: "Unsupported language code: {code}. Supported: {supported}.",
     },
@@ -472,7 +472,7 @@ export const EN: TranslationSchema = {
   },
   wizard: {
     languageTitle: "Choose your language",
-    languageSubtitle: "Detected from your system locale. Switch later via /language.",
+    languageSubtitle: "Simplified Chinese is the default. Switch later via /language.",
     languageDetectedHint: "(detected)",
     welcomeTitle: "Welcome to Carbon Code.",
     apiKeyPrompt: "Paste your DeepSeek API key to get started.",

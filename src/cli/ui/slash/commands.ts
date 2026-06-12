@@ -97,7 +97,7 @@ export const SLASH_COMMANDS: readonly SlashCommandSpec[] = [
   {
     cmd: "language",
     group: "setup",
-    argsHint: "<EN|zh-CN>",
+    argsHint: "<zh-CN|EN>",
     summary: "switch the runtime language",
     argCompleter: ["EN", "zh-CN"],
     aliases: ["lang"],

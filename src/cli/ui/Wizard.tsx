@@ -31,7 +31,7 @@ import {
   getSupportedLanguages,
   notifyLanguageChange,
   onLanguageChange,
-  setLanguage,
+  setLanguageRuntime,
   t,
 } from "../../i18n/index.js";
 import type { LanguageCode } from "../../i18n/types.js";
@@ -143,7 +143,7 @@ export function Wizard({
         <LanguageStep
           initialValue={data.language}
           onSubmit={(lang) => {
-            setLanguage(lang);
+            setLanguageRuntime(lang);
             notifyLanguageChange();
             setData((d) => ({ ...d, language: lang }));
             setStep("theme");
@@ -290,6 +290,7 @@ export function Wizard({
                 const prev = readConfig();
                 const next: ReasonixConfig = {
                   ...prev,
+                  lang: data.language,
                   apiKey: data.apiKey,
                   preset: data.preset,
                   theme: data.theme,

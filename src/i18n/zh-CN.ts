@@ -273,7 +273,7 @@ export const zhCN: TranslationSchema = {
     },
     language: {
       description: "切换运行时语言",
-      argsHint: "<en|zh-CN>",
+      argsHint: "<zh-CN|EN>",
       success: "语言已切换为简体中文。",
       unsupported: "不支持的语言代码：{code}。支持的语言：{supported}。",
     },
@@ -459,7 +459,7 @@ export const zhCN: TranslationSchema = {
   },
   wizard: {
     languageTitle: "选择语言",
-    languageSubtitle: "已根据系统语言自动选中。之后可用 /language 切换。",
+    languageSubtitle: "默认使用简体中文。之后可用 /language 切换。",
     languageDetectedHint: "（已检测）",
     welcomeTitle: "欢迎使用 Carbon Code。",
     apiKeyPrompt: "粘贴你的 DeepSeek API key 开始使用。",

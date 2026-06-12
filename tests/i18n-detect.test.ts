@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { detectSystemLanguage } from "../src/i18n/index.js";
+import {
+  DEFAULT_LANGUAGE,
+  detectSystemLanguage,
+  getSupportedLanguages,
+} from "../src/i18n/index.js";
+
+describe("default language", () => {
+  it("defaults new installs to Simplified Chinese", () => {
+    expect(DEFAULT_LANGUAGE).toBe("zh-CN");
+  });
+
+  it("lists Simplified Chinese before English everywhere", () => {
+    expect(getSupportedLanguages()).toEqual(["zh-CN", "EN"]);
+  });
+});
 
 describe("detectSystemLanguage", () => {
   it("maps zh-CN to zh-CN", () => {
