@@ -3,16 +3,15 @@
  * StatsPanel / UsageCard now (covered by their own tests). This file only
  * asserts the turn-cost + cache cells StatusRow still renders.
  */
-import { render } from "ink";
+import { render } from "ink-testing-library";
 import React, { useEffect } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SlashSuggestions } from "../src/cli/ui/SlashSuggestions.js";
 import { StatusRow, resolveRuntimeStatusBarConfig } from "../src/cli/ui/layout/StatusRow.js";
 import type { SlashCommandSpec } from "../src/cli/ui/slash.js";
 import { AgentStoreProvider, useAgentStore } from "../src/cli/ui/state/provider.js";
 import type { AgentState, SessionInfo } from "../src/cli/ui/state/state.js";
 import { VERSION } from "../src/version.js";
-import { makeFakeStdin, makeFakeStdout } from "./helpers/ink-stdio.js";
 
 const SESSION: SessionInfo = {
   id: "default",
@@ -20,6 +19,17 @@ const SESSION: SessionInfo = {
   workspace: "/tmp/repo",
   model: "deepseek-chat",
 };
+
+async function waitForText(
+  output: { lastFrame(): string | undefined },
+  expected: string,
+): Promise<string> {
+  await vi.waitFor(() => expect(output.lastFrame() ?? "").toContain(expected), {
+    timeout: 1000,
+    interval: 10,
+  });
+  return output.lastFrame() ?? "";
+}
 
 function EventInjector({
   events,
@@ -50,24 +60,19 @@ function StateInjector({
 }
 
 async function renderStatusRow(overrides: Partial<AgentState["status"]>): Promise<string> {
-  const stdout = makeFakeStdout();
-  const { unmount } = render(
+  const output = render(
     <AgentStoreProvider session={SESSION}>
       <StateInjector overrides={overrides}>
         <StatusRow />
       </StateInjector>
     </AgentStoreProvider>,
-    { stdout: stdout as never, stdin: makeFakeStdin() as never },
   );
-  await new Promise((r) => setTimeout(r, 250));
-  unmount();
-  return stdout.text();
+  const text = await waitForText(output, "cache");
+  output.unmount();
+  return text;
 }
 
-// TODO(#flaky): three tests below intermittently render the row of dashes
-// instead of the cost segment — ink/state-flush race that 50–250 ms sleeps
-// don't reliably win. Skipping for the 0.44.2 mac hotfix; fix in follow-up.
-describe.skip("StatusRow — turn cost currency", () => {
+describe("StatusRow — turn cost currency", () => {
   it("USD wallet: turn cost shows $", async () => {
     const text = await renderStatusRow({
       cost: 0.0308,
@@ -123,6 +128,7 @@ describe("StatusRow — statusBar config toggles", () => {
   async function renderStatusRowWithConfig(
     overrides: Partial<AgentState["status"]>,
     config: Partial<import("../src/cli/ui/layout/StatusRow.js").StatusBarConfig>,
+    readyText = "cache",
   ): Promise<string> {
     const cfg = {
       showMode: true,
@@ -137,8 +143,7 @@ describe("StatusRow — statusBar config toggles", () => {
       showFeedbackHint: true,
       ...config,
     };
-    const stdout = makeFakeStdout();
-    const { unmount } = render(
+    const output = render(
       <AgentStoreProvider session={SESSION}>
         <StateInjector overrides={overrides}>
           <StatusRow
@@ -146,11 +151,10 @@ describe("StatusRow — statusBar config toggles", () => {
           />
         </StateInjector>
       </AgentStoreProvider>,
-      { stdout: stdout as never, stdin: makeFakeStdin() as never },
     );
-    await new Promise((r) => setTimeout(r, 250));
-    unmount();
-    return stdout.text();
+    const text = await waitForText(output, readyText);
+    output.unmount();
+    return text;
   }
 
   it("default config (all true) shows turn cost and cache", async () => {
@@ -168,9 +172,13 @@ describe("StatusRow — statusBar config toggles", () => {
   });
 
   it("showCacheHit=false hides cache hit", async () => {
-    const text = await renderStatusRowWithConfig({ cost: 0.05, cacheHit: 0.5 } as any, {
-      showCacheHit: false,
-    });
+    const text = await renderStatusRowWithConfig(
+      { cost: 0.05, cacheHit: 0.5 } as any,
+      {
+        showCacheHit: false,
+      },
+      "turn",
+    );
     expect(text).toContain("turn");
     expect(text).not.toContain("cache");
   });
@@ -197,6 +205,7 @@ describe("StatusRow — statusBar config toggles", () => {
     const text = await renderStatusRowWithConfig(
       { cost: 0, sessionCost: 0.01, balance: 5 } as any,
       { showBalance: false, showSessionCost: true },
+      "session",
     );
     expect(text).toContain("session");
     expect(text).not.toContain("left");
@@ -206,18 +215,18 @@ describe("StatusRow — statusBar config toggles", () => {
     const text = await renderStatusRowWithConfig(
       { cost: 0, sessionCost: 0.01, balance: 10, balanceCurrency: "USD" } as any,
       {},
+      "session",
     );
     expect(text).toContain("⛁");
     expect(text).toContain("$0.01 session");
     expect(text).toContain("left");
   });
 
-  // TODO(#flaky): same dash-row race as the skipped 'turn cost currency'
-  // block — skipping for the 0.44.2 mac hotfix.
-  it.skip("ctx pill renders pct + tokens once promptTokens is known", async () => {
+  it("ctx pill renders pct + tokens once promptTokens is known", async () => {
     const text = await renderStatusRowWithConfig(
       { cost: 0, promptTokens: 720_000, promptCap: 1_000_000 } as any,
       {},
+      "ctx",
     );
     expect(text).toContain("ctx");
     expect(text).toContain("72%");
@@ -247,8 +256,7 @@ function makeSlashCommands(count: number): SlashCommandSpec[] {
 }
 
 async function renderStatusWithSuggestions(): Promise<string> {
-  const stdout = makeFakeStdout();
-  const { unmount } = render(
+  const output = render(
     <AgentStoreProvider session={SESSION}>
       <StateInjector
         overrides={{
@@ -261,11 +269,10 @@ async function renderStatusWithSuggestions(): Promise<string> {
         <BoxLikeComposer />
       </StateInjector>
     </AgentStoreProvider>,
-    { stdout: stdout as never, stdin: makeFakeStdin() as never },
   );
-  await new Promise((r) => setTimeout(r, 250));
-  unmount();
-  return stdout.text();
+  const text = await waitForText(output, "cache 0%");
+  output.unmount();
+  return text;
 }
 
 function BoxLikeComposer(): React.ReactElement {
