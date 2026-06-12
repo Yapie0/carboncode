@@ -22,6 +22,23 @@ import {
   isNpxInstall,
 } from "../src/version.js";
 
+function canCreateFileSymlink(): boolean {
+  const dir = mkdtempSync(join(tmpdir(), "cc-symlink-probe-"));
+  try {
+    const target = join(dir, "target.js");
+    const link = join(dir, "link.js");
+    writeFileSync(target, "");
+    symlinkSync(target, link);
+    return true;
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "EPERM" || code === "EACCES" || code === "ENOTSUP") return false;
+    throw err;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 describe("VERSION", () => {
   it("matches the published package.json version", () => {
     const pkgPath = join(process.cwd(), "package.json");
@@ -89,6 +106,8 @@ describe("isNpxInstall", () => {
 });
 
 describe("detectInstallSource", () => {
+  const fileSymlinkIt = it.skipIf(!canCreateFileSymlink());
+
   it("identifies npm via lib/node_modules/@carboncode/cli", () => {
     expect(
       detectInstallSource("/usr/local/lib/node_modules/@carboncode/cli/dist/cli/index.js"),
@@ -158,7 +177,7 @@ describe("detectInstallSource", () => {
   // Regression: a real `npm i -g` puts a SYMLINK at bin/ccode → node_modules/@carboncode/cli/...
   // argv[1] is that symlink (no node_modules marker); detection must realpath it, else the
   // startup update check never runs for global installs.
-  it("resolves a bin symlink (npm global install) to npm, not unknown", () => {
+  fileSymlinkIt("resolves a bin symlink (npm global install) to npm, not unknown", () => {
     const dir = mkdtempSync(join(tmpdir(), "cc-bin-"));
     try {
       const target = join(
