@@ -10,7 +10,7 @@ There are 19 open PRs at the time of this audit.
 
 | PR | Title | Author | Draft | Base | Head | Initial disposition |
 | --- | --- | --- | --- | --- | --- | --- |
-| #93 | `[codex] Add project initialization command` | Star-Star66 | yes | `734e32b` | `0437479` | draft-only; review later |
+| #93 | `[carboncode] Add project initialization command` | Star-Star66 | yes | `734e32b` | `0437479` | draft-only; review later |
 | #92 | `test(git-diffs): add parseGitDiff tests and fix regex bugs` | yvng-jie | no | `734e32b` | `fe6d70e` | merge-candidate after focused review |
 | #91 | `Prefer Carbon dashboard storage keys` | Star-Star66 | no | `e44989c` | `ff6aa18` | needs-refresh; old base |
 | #90 | `Skip symlink version test when permissions block symlinks` | Star-Star66 | no | `e44989c` | `7fa7641` | needs-refresh; likely useful CI unblock |

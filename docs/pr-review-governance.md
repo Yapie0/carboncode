@@ -104,7 +104,7 @@ Maintainer-applied fixes must pass the same merge gate. Do not use maintainer re
 
 ## Protected review branch
 
-The review-governance branch is `codex/pr-review-governance`.
+The review-governance branch is `carboncode/pr-review-governance`.
 
 Policy:
 
@@ -114,5 +114,5 @@ Policy:
 
 Implementation in this branch:
 
-- `.github/workflows/protect-pr-review-governance.yml` fails PRs targeting `codex/pr-review-governance` unless `author_association` is `OWNER`, `MEMBER`, or `COLLABORATOR`.
-- Repository admins should mark that workflow as a required status check for `codex/pr-review-governance` in GitHub branch protection.
+- `.github/workflows/protect-pr-review-governance.yml` fails PRs targeting `carboncode/pr-review-governance` unless `author_association` is `OWNER`, `MEMBER`, or `COLLABORATOR`.
+- Repository admins should mark that workflow as a required status check for `carboncode/pr-review-governance` in GitHub branch protection.
