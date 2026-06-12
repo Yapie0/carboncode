@@ -70,6 +70,10 @@ import {
 } from "../../memory/session.js";
 import type { QQChannel } from "../../qq/channel.js";
 import { useQQChannel } from "../../qq/use-qq-channel.js";
+import {
+  RuntimeConnectionConfigSource,
+  sameRuntimeConnectionConfig,
+} from "../../runtime-config.js";
 import type {
   ActiveModal,
   DashboardEvent,
@@ -939,6 +943,8 @@ function AppInner({
   }, []);
 
   const loopRef = useRef<CacheFirstLoop | null>(null);
+  const runtimeConfigSource = useMemo(() => new RuntimeConnectionConfigSource(), []);
+  const initialRuntimeConfigRef = useRef(runtimeConfigSource.read());
   // hookList + currentRootDir intentionally NOT in deps —they seed
   // the loop on first construction (loopRef guards a single
   // instantiation), and later edits flow in through the mutable
@@ -949,13 +955,17 @@ function AppInner({
   // biome-ignore lint/correctness/useExhaustiveDependencies: currentRootDir —see comment above
   const loop = useMemo(() => {
     if (loopRef.current) return loopRef.current;
-    const client = new DeepSeekClient({ baseUrl: loadBaseUrl() });
+    const initialRuntimeConfig = initialRuntimeConfigRef.current;
+    const client = new DeepSeekClient({
+      apiKey: initialRuntimeConfig?.apiKey,
+      baseUrl: initialRuntimeConfig?.baseUrl ?? loadBaseUrl(),
+    });
     // Register run_skill HERE (not in code.tsx / chat.tsx) because
     // subagent-runAs skills need the client + parent registry to
     // spawn child loops. Wiring lives in App.tsx so the same code
     // path covers both code mode and chat mode.
     //
-    // The closure captures `tools` (parent registry), `client`, and
+    // The closure captures `tools` (parent registry), the loop ref, and
     // the subagent sink ref by lexical scope —`spawnSubagent` reads
     // them per invocation, so a sink handler attached after this
     // registration still receives events.
@@ -964,7 +974,7 @@ function AppInner({
         projectRoot: codeMode?.rootDir,
         subagentRunner: async (skill, task, signal) => {
           const result = await spawnSubagent({
-            client,
+            client: loopRef.current?.client ?? client,
             parentRegistry: tools,
             parentSignal: signal,
             // Skill body is the subagent's persona/playbook; the user-
@@ -1271,6 +1281,34 @@ function AppInner({
   // (balance) and the slash context (/models, /update).
   const { balance, models, latestVersion, refreshBalance, refreshModels, refreshLatestVersion } =
     useSessionInfo(loop);
+
+  useEffect(() => {
+    let applied = initialRuntimeConfigRef.current ?? {
+      apiKey: loop.client.apiKey,
+      baseUrl: loop.client.baseUrl,
+    };
+    const timer = setInterval(() => {
+      const next = runtimeConfigSource.read();
+      if (!next || sameRuntimeConnectionConfig(applied, next)) return;
+      if (busyRef.current || loop.inflight.size > 0) return;
+      if (!next.apiKey) {
+        log.pushWarning("config reload skipped", "DeepSeek API key is empty.");
+        applied = next;
+        return;
+      }
+      try {
+        loop.replaceClient(new DeepSeekClient({ apiKey: next.apiKey, baseUrl: next.baseUrl }));
+        applied = next;
+        refreshBalance();
+        refreshModels();
+        log.pushInfo("config: DeepSeek connection reloaded");
+      } catch (err) {
+        log.pushWarning("config reload failed", (err as Error).message);
+      }
+    }, 1000);
+    timer.unref();
+    return () => clearInterval(timer);
+  }, [log, loop, refreshBalance, refreshModels, runtimeConfigSource]);
 
   // Keep the dashboard-server ref-mirrors in sync with their state.
   // These four are the load-bearing live reads for the attached

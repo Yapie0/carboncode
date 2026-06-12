@@ -109,7 +109,7 @@ export interface ReconfigurableOptions {
 }
 
 export class CacheFirstLoop {
-  readonly client: DeepSeekClient;
+  private _client: DeepSeekClient;
   readonly prefix: ImmutablePrefix;
   readonly tools: ToolRegistry;
   readonly log = new AppendOnlyLog();
@@ -179,8 +179,12 @@ export class CacheFirstLoop {
     return this._turn;
   }
 
+  get client(): DeepSeekClient {
+    return this._client;
+  }
+
   constructor(opts: CacheFirstLoopOptions) {
-    this.client = opts.client;
+    this._client = opts.client;
     this.prefix = opts.prefix;
     this.tools = opts.tools ?? new ToolRegistry();
     this.model = opts.model ?? "deepseek-v4-flash";
@@ -364,6 +368,12 @@ export class CacheFirstLoop {
     }
     if (opts.reasoningEffort !== undefined) this.reasoningEffort = opts.reasoningEffort;
     if (opts.autoEscalate !== undefined) this.autoEscalate = opts.autoEscalate;
+  }
+
+  /** Swap provider credentials/endpoint without rebuilding session state. */
+  replaceClient(client: DeepSeekClient): void {
+    this._client = client;
+    this.context.replaceClient(client);
   }
 
   /** `null` disables the cap; any change re-arms the 80% warning. */

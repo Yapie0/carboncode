@@ -103,6 +103,10 @@ function extractPinnedSkills(head: ChatMessage[]): {
 export class ContextManager {
   constructor(private deps: ContextManagerDeps) {}
 
+  replaceClient(client: DeepSeekClient): void {
+    this.deps.client = client;
+  }
+
   /** Decision after a turn's response — fold, exit with summary, or carry on. */
   decideAfterUsage(
     usage: Usage | null,
