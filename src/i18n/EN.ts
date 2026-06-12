@@ -33,6 +33,7 @@ export const EN: TranslationSchema = {
     version: "Print Carbon Code version.",
     update: "Check for a newer Carbon Code and install it.",
     index: "Build (or incrementally refresh) a local semantic search index.",
+    init: "Analyze a project and create a concise CARBON.md guide.",
   },
   stats: {
     usageHint: "run `carboncode chat`, `carboncode code`, or `carboncode run <task>` — every turn",
@@ -213,6 +214,10 @@ export const EN: TranslationSchema = {
     projectDirHint: "project root directory",
     ollamaUrlHint: "Ollama server URL",
     skipPromptsHint: "skip confirmation prompts",
+    initForceHint: "overwrite an existing project rules file",
+    initDryRunHint: "preview the generated rules without writing",
+    initJsonHint: "output the result as JSON (requires --yes to write)",
+    initYesHint: "write without an interactive confirmation",
     verboseHint: "show full session metadata",
     pruneDaysHint: "delete sessions idle this many days or more (default 90)",
     pruneDryRunHint: "list what would be deleted without removing anything",

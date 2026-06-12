@@ -129,6 +129,27 @@ program
   });
 
 program
+  .command("init [dir]")
+  .description(t("cli.init"))
+  .option("--force", t("ui.initForceHint"))
+  .option("--dry-run", t("ui.initDryRunHint"))
+  .option("--json", t("ui.initJsonHint"))
+  .option("-y, --yes", t("ui.initYesHint"))
+  .action(async (dir: string | undefined, opts) => {
+    const { initCommand } = await import("./commands/init.js");
+    const result = await initCommand({
+      dir,
+      force: !!opts.force,
+      dryRun: !!opts.dryRun,
+      json: !!opts.json,
+      yes: !!opts.yes,
+    });
+    if (result.status === "exists" || result.status === "needs-confirmation") {
+      process.exitCode = 1;
+    }
+  });
+
+program
   .command("code [dir]")
   .description(t("cli.code"))
   .option("-m, --model <id>", t("ui.modelOverride"))

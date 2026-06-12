@@ -44,6 +44,7 @@ npx @carboncode/cli
 | `carboncode code [dir]` | 在指定目录 `[dir]` 启动编码智能体；省略 `[dir]` 即为当前目录。 |
 | `carboncode chat` | 不带文件系统和 shell 工具的纯聊天。 |
 | `carboncode run "task"` | 非交互式执行一次任务。 |
+| `carboncode init [dir]` | 分析项目并生成 `CARBON.md` 项目指南。 |
 | `carboncode doctor` | 本地环境健康检查。 |
 | `carboncode update` | 检查并安装最新 CLI 包。 |
 
@@ -68,6 +69,17 @@ export DEEPSEEK_API_KEY=sk-...
 模型预设使用当前 DeepSeek V4 API ID：`flash` 对应 `deepseek-v4-flash`，
 `pro` 对应 `deepseek-v4-pro`，`auto` 默认从 Flash 开始，并在困难回合一次性升级
 到 Pro。
+
+初始化已有项目的规则文件：
+
+```bash
+carboncode init
+carboncode init --dry-run
+carboncode init --force --yes
+```
+
+该命令只读取仓库中的 manifest、目录和工具配置，不调用模型。已有规则文件默认
+不会被覆盖；可先使用 `--dry-run` 查看差异，再显式传入 `--force`。
 
 ## 许可与归因
 

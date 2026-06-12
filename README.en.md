@@ -48,6 +48,7 @@ npx @carboncode/cli
 | `carboncode code [dir]` | Start the coding agent in `[dir]`; omit `[dir]` for the current directory. |
 | `carboncode chat` | Chat without filesystem or shell tools. |
 | `carboncode run "task"` | Non-interactive one-shot task. |
+| `carboncode init [dir]` | Analyze a project and generate a `CARBON.md` guide. |
 | `carboncode doctor` | Local health check. |
 | `carboncode update` | Check and install the latest CLI package. |
 
@@ -69,6 +70,17 @@ export DEEPSEEK_API_KEY=sk-...
 ```
 
 Project rules should live in `AGENTS.md` or `CARBON.md` in the repository.
+
+Initialize a rules file for an existing project:
+
+```bash
+carboncode init
+carboncode init --dry-run
+carboncode init --force --yes
+```
+
+The command reads repository manifests, directories, and tool configuration without
+calling a model. Existing rules are protected unless `--force` is supplied.
 
 Model presets use the current DeepSeek V4 API IDs: `flash` maps to
 `deepseek-v4-flash`, `pro` maps to `deepseek-v4-pro`, and `auto` starts on Flash

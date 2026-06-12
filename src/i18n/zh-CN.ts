@@ -33,6 +33,7 @@ export const zhCN: TranslationSchema = {
     version: "打印 Carbon Code 版本。",
     update: "检查较新版本的 Carbon Code 并安装。",
     index: "构建（或增量刷新）本地语义搜索索引。",
+    init: "分析项目并创建精简的 CARBON.md 项目指南。",
   },
   stats: {
     usageHint:
@@ -210,6 +211,10 @@ export const zhCN: TranslationSchema = {
     projectDirHint: "项目根目录",
     ollamaUrlHint: "Ollama 服务器 URL",
     skipPromptsHint: "跳过确认提示",
+    initForceHint: "覆盖已有的项目规则文件",
+    initDryRunHint: "预览生成的规则但不写入文件",
+    initJsonHint: "以 JSON 输出结果（写入时还需 --yes）",
+    initYesHint: "无需交互确认直接写入",
     verboseHint: "显示完整的会话元数据",
     pruneDaysHint: "删除空闲此天数或更多的会话（默认 90）",
     pruneDryRunHint: "列出将要删除的内容但不实际删除",

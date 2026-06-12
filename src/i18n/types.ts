@@ -33,6 +33,7 @@ export interface TranslationSchema {
     version: string;
     update: string;
     index: string;
+    init: string;
   };
   stats: {
     usageHint: string;
@@ -124,6 +125,10 @@ export interface TranslationSchema {
     projectDirHint: string;
     ollamaUrlHint: string;
     skipPromptsHint: string;
+    initForceHint: string;
+    initDryRunHint: string;
+    initJsonHint: string;
+    initYesHint: string;
     verboseHint: string;
     pruneDaysHint: string;
     pruneDryRunHint: string;
