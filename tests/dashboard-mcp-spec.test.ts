@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { mcpSpecCommand, mcpSpecLabel, normalizeMcpSpec } from "../dashboard/src/lib/mcp-spec.js";
+import {
+  mcpMutationNeedsRestart,
+  mcpSpecCommand,
+  mcpSpecLabel,
+  normalizeMcpSpec,
+  shouldShowMcpRestartHint,
+} from "../dashboard/src/lib/mcp-spec.js";
 
 describe("dashboard MCP spec display helpers", () => {
   it("keeps legacy string specs unchanged", () => {
@@ -32,5 +38,19 @@ describe("dashboard MCP spec display helpers", () => {
     expect(normalizeMcpSpec(spec)).toBeNull();
     expect(mcpSpecLabel(spec)).toBe("");
     expect(mcpSpecCommand(spec)).toBe("");
+  });
+});
+
+describe("dashboard MCP hot-reload feedback", () => {
+  it("only requests a restart when the API explicitly reports one", () => {
+    expect(mcpMutationNeedsRestart({ requiresRestart: true })).toBe(true);
+    expect(mcpMutationNeedsRestart({ requiresRestart: false })).toBe(false);
+    expect(mcpMutationNeedsRestart({})).toBe(false);
+  });
+
+  it("only shows the marketplace restart hint for installed, unbridged servers", () => {
+    expect(shouldShowMcpRestartHint(true, false)).toBe(true);
+    expect(shouldShowMcpRestartHint(true, true)).toBe(false);
+    expect(shouldShowMcpRestartHint(false, false)).toBe(false);
   });
 });
