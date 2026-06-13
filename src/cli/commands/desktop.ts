@@ -22,6 +22,7 @@ import {
   loadDesktopOpenTabs,
   loadEditMode,
   loadEditor,
+  loadModel,
   loadPreset,
   loadReasoningEffort,
   loadRecentWorkspaces,
@@ -779,7 +780,7 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
     pushRecentWorkspace(dir);
     const preset = canonicalPresetName(loadPreset());
     const resolved = resolvePreset(preset);
-    const model = opts.model || resolved.model;
+    const model = opts.model || loadModel() || resolved.model;
     const tab: Tab = {
       id: nextTabId(),
       rootDir: dir,

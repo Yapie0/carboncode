@@ -16,6 +16,7 @@ import {
   loadEditMode,
   loadIndexConfig,
   loadIndexUserConfig,
+  loadModel,
   loadPricingOverride,
   loadProjectPathAllowed,
   loadProjectShellAllowed,
@@ -37,6 +38,8 @@ import {
   saveDesktopOpenTabs,
   saveEditMode,
   saveIndexConfig,
+  saveModel,
+  savePreset,
   saveReasoningEffort,
   saveSemanticEmbeddingConfig,
   saveTheme,
@@ -69,6 +72,19 @@ describe("config", () => {
     delete process.env.CARBONCODE_EMBED_MODEL;
     // biome-ignore lint/performance/noDelete: same reason
     delete process.env.REASONIX_EMBED_MODEL;
+  });
+
+  it("persists an explicit chat model", () => {
+    saveModel(" custom-chat-model ", path);
+    expect(loadModel(path)).toBe("custom-chat-model");
+    expect(readConfig(path).model).toBe("custom-chat-model");
+  });
+
+  it("clears an explicit model when a preset is selected", () => {
+    writeConfig({ model: "custom-chat-model", preset: "auto" }, path);
+    savePreset("pro", path);
+    expect(loadModel(path)).toBeUndefined();
+    expect(readConfig(path).preset).toBe("pro");
   });
 
   afterEach(() => {

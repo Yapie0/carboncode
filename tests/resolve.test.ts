@@ -65,6 +65,22 @@ describe("resolveDefaults", () => {
     expect(r.reasoningEffort).toBe("max");
   });
 
+  it("config.model overrides the preset model while preserving preset effort", () => {
+    writeConfig(
+      { preset: "max", model: "provider-custom-model" },
+      join(home, ".carboncode", "config.json"),
+    );
+    const r = resolveDefaults({});
+    expect(r.model).toBe("provider-custom-model");
+    expect(r.reasoningEffort).toBe("max");
+  });
+
+  it("--model overrides config.model", () => {
+    writeConfig({ model: "provider-custom-model" }, join(home, ".carboncode", "config.json"));
+    const r = resolveDefaults({ model: "one-shot-model" });
+    expect(r.model).toBe("one-shot-model");
+  });
+
   it("--mcp overrides config.mcp wholesale (no merging)", () => {
     writeConfig(
       { mcp: ["fs=npx -y @modelcontextprotocol/server-filesystem /tmp/old"] },
@@ -85,7 +101,10 @@ describe("resolveDefaults", () => {
   });
 
   it("--no-config ignores the config entirely", () => {
-    writeConfig({ preset: "max", mcp: ["x=cmd"] }, join(home, ".carboncode", "config.json"));
+    writeConfig(
+      { preset: "max", model: "custom-model", mcp: ["x=cmd"] },
+      join(home, ".carboncode", "config.json"),
+    );
     const r = resolveDefaults({ noConfig: true });
     expect(r.model).toBe("deepseek-v4-flash"); // smart defaults (new default)
     expect(r.reasoningEffort).toBe("max");
