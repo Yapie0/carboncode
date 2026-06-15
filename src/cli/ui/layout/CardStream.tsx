@@ -52,6 +52,7 @@ export function computeCardStreamItems<T extends { id: string }>(
 
 export function CardStream({
   suppressLive = false,
+  maxRows,
 }: {
   suppressLive?: boolean;
   /** Kept for call-site compatibility; native scrollback is handled by Static. */
@@ -74,7 +75,12 @@ export function CardStream({
         )}
       </Static>
       {visibleLive.length > 0 ? (
-        <Box flexDirection="column" flexShrink={1}>
+        <Box
+          flexDirection="column"
+          flexShrink={1}
+          maxHeight={maxRows !== undefined ? Math.max(1, maxRows) : undefined}
+          overflow="hidden"
+        >
           {visibleLive.map((card) => (
             <Box key={card.id} flexDirection="column">
               <CardRenderer card={card} />
@@ -110,22 +116,6 @@ function isFullySettled(card: Card): boolean {
       return card.status !== "running";
     case "plan":
       return card.steps.every((s) => s.status === "done" || s.status === "skipped");
-    default:
-      return true;
-  }
-}
-
-function isCardSettled(card: Card): boolean {
-  switch (card.kind) {
-    case "reasoning":
-      return !card.streaming || !!card.aborted;
-    case "streaming":
-      return card.done || !!card.aborted;
-    case "tool":
-      return card.done || !!card.aborted;
-    case "task":
-    case "subagent":
-      return card.status !== "running";
     default:
       return true;
   }

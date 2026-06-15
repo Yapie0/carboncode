@@ -18,6 +18,7 @@ import { useIncrementalWrap } from "./useIncrementalWrap.js";
 
 /** Expanded mode shows up to this many lines so the card can't swallow the whole viewport. */
 const EXPANDED_MAX_LINES = 60;
+const LIVE_PREVIEW_LINES = 12;
 
 const LIVE_TOKEN_CALIBRATION_CHARS = 1000;
 const ESTIMATED_CHARS_PER_TOKEN = 4;
@@ -64,7 +65,7 @@ export function StreamingCard({ card }: { card: StreamingCardData }): React.Reac
   const { stdout } = useStdout();
   const cols = stdout?.columns ?? 80;
   const expanded = useContext(LiveExpandContext);
-  const reserveCap = expanded ? EXPANDED_MAX_LINES + 2 : Number.POSITIVE_INFINITY;
+  const reserveCap = (expanded ? EXPANDED_MAX_LINES : LIVE_PREVIEW_LINES) + 3;
   useReserveRows("stream", {
     min: 1,
     max: reserveCap,
@@ -85,7 +86,9 @@ export function StreamingCard({ card }: { card: StreamingCardData }): React.Reac
     );
   }
 
-  const visible = visualLines;
+  const maxVisible = expanded ? EXPANDED_MAX_LINES : LIVE_PREVIEW_LINES;
+  const hiddenLines = Math.max(0, visualLines.length - maxVisible);
+  const visible = hiddenLines > 0 ? visualLines.slice(-maxVisible) : visualLines;
   const aborted = !!card.aborted;
   const headColor = aborted ? TONE.err : TONE_ACTIVE.brand;
   const glyph = aborted ? "⊘" : GLYPH.event;
@@ -100,6 +103,13 @@ export function StreamingCard({ card }: { card: StreamingCardData }): React.Reac
         right={aborted ? null : <Spinner kind="braille" color={TONE_ACTIVE.brand} />}
       />
       {card.userPrompt ? <ReplyPrompt text={card.userPrompt} cols={cols} /> : null}
+      {hiddenLines > 0 ? (
+        <Text color={FG.faint}>
+          {t(hiddenLines === 1 ? "cardLabels.earlierLine" : "cardLabels.earlierLines", {
+            count: hiddenLines,
+          })}
+        </Text>
+      ) : null}
       {visible.map((line, i) => (
         <Box key={`${card.id}:${i}`} flexDirection="row">
           <Text color={aborted ? FG.meta : FG.body}>{clipToCells(line, lineCells)}</Text>

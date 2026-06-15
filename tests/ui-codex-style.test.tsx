@@ -251,6 +251,33 @@ describe("Codex-style terminal surface", () => {
     expect(out).not.toContain("更早");
   });
 
+  it("caps very long live streaming replies so native scrollback keeps the settled transcript", () => {
+    setLanguageRuntime("en");
+    const text = Array.from(
+      { length: 20 },
+      (_, i) => `line ${String(i + 1).padStart(2, "0")}`,
+    ).join("\n");
+    const { lastFrame, unmount } = render(
+      <StreamingCard
+        card={{
+          kind: "streaming",
+          id: "s1",
+          ts: Date.now() - 1000,
+          text,
+          done: false,
+          model: "deepseek-v4-pro",
+        }}
+      />,
+    );
+    const out = lastFrame() ?? "";
+    unmount();
+
+    expect(out).toContain("8");
+    expect(out).not.toContain("line 01");
+    expect(out).toContain("line 09");
+    expect(out).toContain("line 20");
+  });
+
   it("shows the user prompt context on assistant reply cards", () => {
     setLanguageRuntime("zh-CN");
     const { lastFrame, unmount } = render(

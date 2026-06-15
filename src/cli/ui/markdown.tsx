@@ -73,6 +73,21 @@ function Heading({ token }: { token: Tokens.Heading }): React.ReactElement {
 }
 
 function Paragraph({ token }: { token: Tokens.Paragraph }): React.ReactElement {
+  const width = useWidth();
+  const raw = plainText(token.tokens);
+  const lines = wrapToCells(raw, width);
+  if (lines.length > 1) {
+    return (
+      <Box flexDirection="column">
+        {lines.map((line, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: wrapped visual lines are positional
+          <Text key={`p-${i}`} color={FG.body}>
+            {line}
+          </Text>
+        ))}
+      </Box>
+    );
+  }
   return (
     <Text color={FG.body}>
       <Inline tokens={token.tokens ?? []} />
@@ -107,6 +122,7 @@ function ListItem({
   index: number;
   depth: number;
 }): React.ReactElement {
+  const width = useWidth();
   const marker = item.task
     ? item.checked
       ? GLYPH.todoDone
@@ -124,10 +140,25 @@ function ListItem({
         {item.tokens.map((tok, i) => {
           if (tok.type === "text") {
             const inner = (tok as Tokens.Text).tokens;
+            const raw = inner ? plainText(inner) : (tok as Tokens.Text).text;
+            const lines = wrapToCells(raw, Math.max(10, width - depth - 4));
+            if (lines.length > 1) {
+              return (
+                // biome-ignore lint/suspicious/noArrayIndexKey: list-item children are positional and stable per render
+                <Box key={`t-${i}`} flexDirection="column">
+                  {lines.map((line, li) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: wrapped visual lines are positional
+                    <Text key={`tl-${li}`} color={dim ? FG.faint : FG.body} strikethrough={dim}>
+                      {line}
+                    </Text>
+                  ))}
+                </Box>
+              );
+            }
             return (
               // biome-ignore lint/suspicious/noArrayIndexKey: list-item children are positional and stable per render
               <Text key={`t-${i}`} color={dim ? FG.faint : FG.body} strikethrough={dim}>
-                {inner ? <Inline tokens={inner} /> : (tok as Tokens.Text).text}
+                {inner ? <Inline tokens={inner} /> : raw}
               </Text>
             );
           }
