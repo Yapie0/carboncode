@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { initCollab, renderCollabConnectPrompt } from "../../../../collab/inbox.js";
 import type { SlashHandler } from "../dispatch.js";
 
@@ -9,16 +11,17 @@ const collab: SlashHandler = (args, _loop, ctx) => {
   }
   const result = initCollab({ agent, collabRoot });
   const status = result.ok ? "collab protocol ready" : `collab protocol invalid: ${result.reason}`;
+  const promptPath = join(collabRoot, "connect-prompt.md");
+  writeFileSync(promptPath, `${renderCollabConnectPrompt(agent, collabRoot)}\n`, "utf8");
   return {
     collab: { agent, root: collabRoot },
     info: [
       status,
       `protocol: ${result.protocolPath}`,
       `hash: ${result.hashPath}`,
-      "",
-      "Copy this prompt to Codex, Claude Code, or another coding agent:",
-      "",
-      renderCollabConnectPrompt(agent, collabRoot),
+      `prompt: ${promptPath}`,
+      `agent: ${agent}`,
+      "Copy the prompt file to Codex, Claude Code, or another coding agent.",
     ].join("\n"),
   };
 };

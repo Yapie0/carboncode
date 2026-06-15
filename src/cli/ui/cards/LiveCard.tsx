@@ -31,17 +31,25 @@ export function LiveCard({ card }: { card: LiveCardData }): React.ReactElement {
   const color = TONE_TO_COLOR[card.tone];
   const metaColor = card.tone === "err" || card.tone === "warn" ? color : FG.faint;
   const glyph = VARIANT_GLYPH[card.variant];
+  const [firstLine = "", ...restLines] = card.text.split(/\r?\n/);
   return (
-    <Box paddingLeft={2} flexDirection="row" gap={1}>
-      {card.variant === "thinking" ? (
-        <Spinner kind="circle" color={color} bold />
-      ) : (
-        <Text bold color={color}>
-          {glyph}
-        </Text>
-      )}
-      <Text color={FG.body}>{card.text}</Text>
-      {card.meta !== undefined ? <Text color={metaColor}>{`· ${card.meta}`}</Text> : null}
+    <Box paddingLeft={2} flexDirection="column">
+      <Box flexDirection="row" gap={1}>
+        {card.variant === "thinking" ? (
+          <Spinner kind="circle" color={color} bold />
+        ) : (
+          <Text bold color={color}>
+            {glyph}
+          </Text>
+        )}
+        <Text color={FG.body}>{firstLine}</Text>
+        {card.meta !== undefined ? <Text color={metaColor}>{`· ${card.meta}`}</Text> : null}
+      </Box>
+      {restLines.map((line, index) => (
+        <Box key={`${card.id}-line-${index}`} paddingLeft={2}>
+          <Text color={FG.body}>{line}</Text>
+        </Box>
+      ))}
     </Box>
   );
 }

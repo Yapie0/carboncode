@@ -29,7 +29,7 @@ import {
   relativeTime,
   savePlanState,
 } from "../../code/plan-store.js";
-import { type CollabMessage, readInboxMessages, sendMessage } from "../../collab/inbox.js";
+import { readInboxMessages, sendMessage } from "../../collab/inbox.js";
 import {
   type EditMode,
   type PresetName,
@@ -132,6 +132,7 @@ import { type ThemeChoice, ThemePicker } from "./ThemePicker.js";
 import { WelcomeBanner } from "./WelcomeBanner.js";
 import { WorkspacePicker } from "./WorkspacePicker.js";
 import { detectBangCommand, formatBangUserMessage } from "./bang.js";
+import { formatCollabPrompt } from "./collab-prompt.js";
 import { CopyMode } from "./copy-mode/CopyMode.js";
 import type { PickerSnapshot, ViewerSnapshot } from "./dashboard/use-picker-broadcast.js";
 import { useViewerBroadcast } from "./dashboard/use-picker-broadcast.js";
@@ -212,23 +213,6 @@ interface PendingCollabReply {
 interface QueuedSubmit {
   text: string;
   collabReply?: PendingCollabReply;
-}
-
-function formatCollabPrompt(msg: CollabMessage): string {
-  return [
-    "You received a Carbon Code collaboration message.",
-    "",
-    `From: ${msg.from}`,
-    `To: ${msg.to}`,
-    `Type: ${msg.type}`,
-    `Task ID: ${msg.taskId || "(none)"}`,
-    `Message ID: ${msg.id}`,
-    "",
-    "Body:",
-    JSON.stringify(msg.body, null, 2),
-    "",
-    "Reply directly to this collaboration message. Your final assistant response will be sent back to the sender through .carboncode/collab.",
-  ].join("\n");
 }
 
 export interface AppProps {

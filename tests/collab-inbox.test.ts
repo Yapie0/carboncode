@@ -110,9 +110,13 @@ describe("collab inbox protocol", () => {
 
   it("handles /collab as a code-mode command", () => {
     const result = handleSlash("collab", ["carbon-main"], {} as never, { collabRoot: inboxRoot });
+    const promptPath = join(inboxRoot, "connect-prompt.md");
+
     expect(result.info).toContain("collab protocol ready");
-    expect(result.info).toContain("Copy this prompt to Codex");
-    expect(result.info).toContain("Carbon Code agent name: carbon-main");
+    expect(result.info).toContain(`prompt: ${promptPath}`);
+    expect(result.info).toContain("Copy the prompt file to Codex");
+    expect(result.info).not.toContain("Carbon Code agent name: carbon-main");
+    expect(readFileSync(promptPath, "utf8")).toContain("Carbon Code agent name: carbon-main");
     expect(checkProtocol(inboxRoot).ok).toBe(true);
   });
 
@@ -133,8 +137,11 @@ describe("collab inbox protocol", () => {
 
   it("handles /collab outside code mode when the session provides a collaboration root", () => {
     const result = handleSlash("collab", ["cccode"], {} as never, { collabRoot: inboxRoot });
+    const promptPath = join(inboxRoot, "connect-prompt.md");
+
     expect(result.info).toContain("collab protocol ready");
-    expect(result.info).toContain("Carbon Code agent name: cccode");
+    expect(result.info).toContain(`prompt: ${promptPath}`);
+    expect(readFileSync(promptPath, "utf8")).toContain("Carbon Code agent name: cccode");
     expect(checkProtocol(inboxRoot).ok).toBe(true);
   });
 
