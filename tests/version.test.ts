@@ -39,6 +39,8 @@ function canCreateFileSymlink(): boolean {
   }
 }
 
+const fileSymlinkIt = it.skipIf(!canCreateFileSymlink());
+
 describe("VERSION", () => {
   it("matches the published package.json version", () => {
     const pkgPath = join(process.cwd(), "package.json");
@@ -106,8 +108,6 @@ describe("isNpxInstall", () => {
 });
 
 describe("detectInstallSource", () => {
-  const fileSymlinkIt = it.skipIf(!canCreateFileSymlink());
-
   it("identifies npm via lib/node_modules/@carboncode/cli", () => {
     expect(
       detectInstallSource("/usr/local/lib/node_modules/@carboncode/cli/dist/cli/index.js"),
@@ -228,7 +228,7 @@ describe("detectNpmInstallPrefix", () => {
     ).toBe("C:/Users/me/AppData/Roaming/npm");
   });
 
-  it("resolves a bin symlink before extracting the npm prefix", () => {
+  fileSymlinkIt("resolves a bin symlink before extracting the npm prefix", () => {
     const dir = mkdtempSync(join(tmpdir(), "cc-prefix-"));
     try {
       const target = join(
