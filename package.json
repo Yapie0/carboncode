@@ -1,6 +1,6 @@
 {
   "name": "@carboncode/cli",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "Chinese-first DeepSeek-powered terminal coding agent for personal developer workflows.",
   "type": "module",
   "bin": {

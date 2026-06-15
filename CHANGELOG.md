@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.2.9] - 2026-06-15
+
+Carbon Code CLI release summary, collected from `175440e..aa4e1d8`.
+
+### New
+
+- Added the `carboncode init` project initialization flow with repository analysis and tests.
+- Added the built-in Middlewave Hub catalog with reusable middleware modules, MCP exposure, and module tests.
+- Added collaboration-mode prompt and inbox support for file-based multi-agent handoff.
+- Added project skills for `gcp` and PR review workflow governance.
+
+### Fixed
+
+- Fixed terminal history/input layout regressions by preserving completed cards in native scrollback and capping live streaming previews.
+- Fixed collaboration-mode terminal redraw noise and long-response overlap in the TUI.
+- Fixed YOLO mode still prompting for shell confirmation in affected paths.
+- Fixed DeepSeek connection hot reload feedback and custom model selection persistence.
+- Hardened session/dashboard edge cases: malformed dashboard URLs, checkpoint IDs, empty session slugs, stats on missing transcripts, and prune-day parsing.
+- Fixed npm update prefix detection for symlinked global installs.
+
+### Changed
+
+- Default runtime language ordering now prefers Chinese.
+- Reduced MCP startup log noise and added a compact startup summary.
+- Improved user input card wrapping, multiline key handling, busy-submit behavior, and slash/help copy.
+- Expanded docs for slash commands, MWH catalog architecture, and contributor-friendly PR review.
+
 All notable changes to Reasonix. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
