@@ -455,7 +455,7 @@ export function HintRow(): React.ReactElement {
     { key: "\u23ce", tKey: "composer.hintSend" },
     { key: "\u21e7\u23ce", tKey: "composer.hintNewline" },
     { key: "^U", tKey: "composer.hintClear" },
-    { key: "↑/↓", tKey: "composer.hintHistory" },
+    { key: "^R", tKey: "composer.hintHistory" },
     { key: "esc", tKey: "composer.hintAbort" },
     { key: "^C", tKey: "composer.hintQuit" },
   ];

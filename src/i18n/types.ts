@@ -473,6 +473,12 @@ export interface TranslationSchema {
     hintHistory: string;
     hintAbort: string;
     hintQuit: string;
+    historySearchTitle: string;
+    historySearchPrompt: string;
+    historySearchCount: string;
+    historySearchEmpty: string;
+    historySearchNoMatch: string;
+    historySearchHint: string;
     abortedHint: string;
     editorNoRawMode: string;
     editorFailed: string;
