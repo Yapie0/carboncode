@@ -443,7 +443,8 @@ export const en = {
     specPlaceholder: "spec — e.g. fs=npx -y @modelcontextprotocol/...",
     saved: "saved",
     savedRestart: "saved — restart carboncode code to bridge this server",
-    removed: "removed — restart to drop the live bridge",
+    removed: "removed + disconnected",
+    removedRestart: "removed — restart to drop the live bridge",
     removeConfirm: "Remove MCP spec from config?\n\n{spec}",
     noServers: "No MCP servers in this session.",
     tools: "tools",
@@ -495,7 +496,7 @@ export const en = {
     marketplaceEnvHint:
       "Set these in your shell before next `carboncode code` so the bridged server can authenticate.",
     marketplaceRestartHint:
-      "Spec written to ~/.carboncode/config.json. Restart `carboncode code` to bridge the server (live hot-reload is on the roadmap).",
+      "Saved in ~/.carboncode/config.json but not bridged in this session. Restart `carboncode code` if live reload is unavailable or failed.",
   },
   memory: {
     loading: "loading memory…",

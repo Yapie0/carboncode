@@ -44,3 +44,11 @@ export function mcpSpecCommand(spec: unknown): string {
   const eq = text.indexOf("=");
   return eq > 0 ? text.slice(eq + 1) : text;
 }
+
+export function mcpMutationNeedsRestart(result: { requiresRestart?: boolean }): boolean {
+  return result.requiresRestart === true;
+}
+
+export function shouldShowMcpRestartHint(installed: boolean, bridged: boolean): boolean {
+  return installed && !bridged;
+}

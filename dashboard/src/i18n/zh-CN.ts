@@ -418,7 +418,8 @@ export const zhCN = {
     specPlaceholder: "规格 — 例如 fs=npx -y @modelcontextprotocol/...",
     saved: "已保存",
     savedRestart: "已保存 — 重启 carboncode code 以桥接此服务器",
-    removed: "已移除 — 重启以断开实时桥接",
+    removed: "已移除并断开桥接",
+    removedRestart: "已移除 — 重启以断开实时桥接",
     removeConfirm: "从配置中移除 MCP 规格？\n\n{spec}",
     noServers: "此会话中无 MCP 服务器。",
     tools: "个工具",
@@ -470,7 +471,7 @@ export const zhCN = {
     marketplaceEnvHint:
       "下次启动 `carboncode code` 之前在 shell 里设好，桥接的服务器才能正常鉴权。",
     marketplaceRestartHint:
-      "已写入 ~/.carboncode/config.json。重启 `carboncode code` 后服务器才会真正桥接（热重载在路线图上）。",
+      "已写入 ~/.carboncode/config.json，但当前会话尚未桥接。若实时重载不可用或失败，请重启 `carboncode code`。",
   },
   memory: {
     loading: "加载记忆…",

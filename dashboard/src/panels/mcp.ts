@@ -4,9 +4,11 @@ import { api } from "../lib/api.js";
 import { fmtNum } from "../lib/format.js";
 import { html } from "../lib/html.js";
 import {
-  normalizeMcpSpec,
+  mcpMutationNeedsRestart,
   mcpSpecCommand as specCommand,
   mcpSpecLabel as specLabel,
+  normalizeMcpSpec,
+  shouldShowMcpRestartHint,
 } from "../lib/mcp-spec.js";
 
 interface McpServer {
@@ -216,7 +218,7 @@ export function McpPanel() {
         method: "POST",
         body: { spec: newSpec.trim() },
       });
-      setInfo(r.requiresRestart ? t("mcp.savedRestart") : t("mcp.saved"));
+      setInfo(mcpMutationNeedsRestart(r) ? t("mcp.savedRestart") : t("mcp.saved"));
       setTimeout(() => setInfo(null), 4000);
       setNewSpec("");
       await load();
@@ -232,8 +234,13 @@ export function McpPanel() {
       if (!confirm(t("mcp.removeConfirm", { spec }))) return;
       setBusy(true);
       try {
-        await api("/mcp/specs", { method: "DELETE", body: { spec } });
-        setInfo(t("mcp.removed"));
+        const r = await api<{ requiresRestart?: boolean }>("/mcp/specs", {
+          method: "DELETE",
+          body: { spec },
+        });
+        setInfo(
+          mcpMutationNeedsRestart(r) ? t("mcp.removedRestart") : t("mcp.removed"),
+        );
         setTimeout(() => setInfo(null), 4000);
         await load();
       } catch (err) {
@@ -395,6 +402,10 @@ export function McpPanel() {
                 installedSpec: (() => {
                   const spec = specForEntry(openRegistry);
                   return spec && (specs ?? []).includes(spec) ? spec : null;
+                })(),
+                installedBridged: (() => {
+                  const spec = specForEntry(openRegistry);
+                  return !!spec && data.servers.some((server) => server.spec === spec);
                 })(),
                 onInstall: () => installFromRegistry(openRegistry),
                 onUninstall: (spec: string) => removeSpec(spec),
@@ -619,6 +630,7 @@ interface RegistryDetailArgs {
   entry: RegistryEntryDto;
   busy: boolean;
   installedSpec: string | null;
+  installedBridged: boolean;
   onInstall: () => void;
   onUninstall: (spec: string) => void;
   onClose: () => void;
@@ -628,6 +640,7 @@ function renderRegistryDetail({
   entry,
   busy,
   installedSpec,
+  installedBridged,
   onInstall,
   onUninstall,
   onClose,
@@ -713,7 +726,7 @@ function renderRegistryDetail({
     }
 
     ${
-      installed
+      shouldShowMcpRestartHint(installed, installedBridged)
         ? html`<div class="card accent-warn">
             <div class="card-b" style="font-size:12.5px;line-height:1.6">
               ${t("mcp.marketplaceRestartHint")}
