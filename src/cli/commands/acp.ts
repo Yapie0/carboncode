@@ -26,6 +26,7 @@ import { buildCodeToolset } from "../../code/setup.js";
 import {
   loadApiKey,
   loadBaseUrl,
+  loadModel,
   loadPreset,
   loadReasoningEffort,
   normalizeMcpConfig,
@@ -155,7 +156,7 @@ async function buildSession(opts: {
 }): Promise<Session> {
   const preset = canonicalPresetName(loadPreset());
   const resolved = resolvePreset(preset);
-  const model = opts.modelOverride || resolved.model;
+  const model = opts.modelOverride || loadModel() || resolved.model;
   const toolset = await buildCodeToolset({ rootDir: opts.rootDir });
   // Bridge MCP tools BEFORE building the prefix so their specs make it into the cache key.
   const mcpClients = await loadMcpServers(toolset.tools, opts.mcpSpecs ?? [], opts.mcpPrefix);
@@ -203,7 +204,8 @@ export async function acpCommand(opts: AcpOptions): Promise<void> {
 
   let transcriptStream: WriteStream | null = null;
   if (opts.transcript) {
-    const defaultModel = opts.model || resolvePreset(canonicalPresetName(loadPreset())).model;
+    const defaultModel =
+      opts.model || loadModel() || resolvePreset(canonicalPresetName(loadPreset())).model;
     transcriptStream = openTranscriptFile(opts.transcript, {
       version: 1,
       source: "carboncode acp",

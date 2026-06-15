@@ -72,6 +72,40 @@ describe("settings API — combined POST persistence (#274)", () => {
     expect(cfg.search).toBe(false);
   });
 
+  it("persists a model selection and applies it live", async () => {
+    const applied: string[] = [];
+    const ctx: DashboardContext = {
+      ...makeCtx(configPath),
+      applyModelLive: (model) => applied.push(model),
+    };
+    const res = await handleSettings(
+      "POST",
+      [],
+      JSON.stringify({ model: "provider-custom-model" }),
+      ctx,
+    );
+    expect(res.status).toBe(200);
+    expect(readCfg(configPath).model).toBe("provider-custom-model");
+    expect(applied).toEqual(["provider-custom-model"]);
+  });
+
+  it("clears a persisted model when a preset is selected", async () => {
+    writeFileSync(
+      configPath,
+      JSON.stringify({ preset: "auto", model: "provider-custom-model" }),
+      "utf8",
+    );
+    const res = await handleSettings(
+      "POST",
+      [],
+      JSON.stringify({ preset: "pro" }),
+      makeCtx(configPath),
+    );
+    expect(res.status).toBe(200);
+    expect(readCfg(configPath).model).toBeUndefined();
+    expect(readCfg(configPath).preset).toBe("pro");
+  });
+
   it("does not write to disk when no fields are provided", async () => {
     const before = readFileSync(configPath, "utf8");
     const res = await handleSettings("POST", [], JSON.stringify({}), makeCtx(configPath));

@@ -138,6 +138,7 @@ export async function handleSettings(
         return { status: 400, body: { error: "preset must be auto | flash | pro" } };
       }
       cfg.preset = fields.preset as "auto" | "flash" | "pro" | "fast" | "smart" | "max";
+      cfg.model = undefined;
       presetPendingLive = fields.preset;
       changed.push("preset");
     }
@@ -166,9 +167,8 @@ export async function handleSettings(
       if (typeof fields.model !== "string" || !fields.model.trim()) {
         return { status: 400, body: { error: "model must be a non-empty string" } };
       }
-      // Model is live-only (not in ReasonixConfig). Same as /model <id> slash — disk
-      // pickup goes through preset / startup flag, not direct cfg.model.
       modelPendingLive = fields.model.trim();
+      cfg.model = modelPendingLive;
       changed.push("model");
     }
     if (fields.proNext !== undefined) {

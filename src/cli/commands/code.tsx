@@ -22,7 +22,7 @@ import { readFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { buildCodeToolset } from "../../code/setup.js";
 import { initCollab, renderCollabConnectPrompt, resolveInboxRoot } from "../../collab/inbox.js";
-import { loadApiKey, loadOutputStyle, loadPreset, readConfig } from "../../config.js";
+import { loadApiKey, loadModel, loadOutputStyle, loadPreset, readConfig } from "../../config.js";
 import { loadDotenv } from "../../env.js";
 import { t } from "../../i18n/index.js";
 import { detectForeignAgentPlatform } from "../../memory/project.js";
@@ -75,7 +75,7 @@ export interface CodeOptions {
 
 export async function codeCommand(opts: CodeOptions = {}): Promise<void> {
   markPhase("code_command_enter");
-  const resolvedModel = opts.model ?? resolvePreset(loadPreset()).model;
+  const resolvedModel = opts.model ?? loadModel() ?? resolvePreset(loadPreset()).model;
   // Bridge .env + ~/.carboncode/config.json into process.env so buildCodeToolset's
   // eager DeepSeekClient constructions (subagent client; semantic embedder) can
   // pick up a key the user already configured via `carboncode setup`. chatCommand

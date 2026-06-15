@@ -111,6 +111,8 @@ export interface RateLimitConfig {
 export interface ReasonixConfig {
   apiKey?: string;
   baseUrl?: string;
+  /** Explicit chat model pin. When absent, the selected preset supplies the model. */
+  model?: string;
   lang?: LanguageCode;
   preset?: PresetName;
   editMode?: EditMode;
@@ -988,10 +990,24 @@ export function loadPreset(path: string = defaultConfigPath()): PresetName | und
   return readConfig(path).preset;
 }
 
-/** Persist preset so `/preset pro` (or `/model deepseek-v4-pro`) sticks across relaunches. */
+export function loadModel(path: string = defaultConfigPath()): string | undefined {
+  const model = readConfig(path).model;
+  return typeof model === "string" && model.trim() ? model.trim() : undefined;
+}
+
+/** Persist an explicit model pin while keeping the preset as the effort fallback. */
+export function saveModel(model: string, path: string = defaultConfigPath()): void {
+  const cfg = readConfig(path);
+  const trimmed = model.trim();
+  cfg.model = trimmed || undefined;
+  writeConfig(cfg, path);
+}
+
+/** Persist a preset and clear any explicit model pin so the preset owns model selection. */
 export function savePreset(preset: PresetName, path: string = defaultConfigPath()): void {
   const cfg = readConfig(path);
   cfg.preset = preset;
+  cfg.model = undefined;
   writeConfig(cfg, path);
 }
 

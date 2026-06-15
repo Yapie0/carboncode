@@ -46,6 +46,7 @@ import {
   readConfig,
   resolveThemePreference,
   saveEditMode,
+  saveModel,
   savePreset,
   saveTheme,
 } from "../../config.js";
@@ -2166,8 +2167,13 @@ function AppInner({
             loop.configure({ reasoningEffort: effort });
           },
           applyModelLive: (model) => {
-            loop.configure({ model });
+            loop.configure({ model, autoEscalate: false });
             agentStore.dispatch({ type: "session.model.change", model });
+            try {
+              saveModel(model);
+            } catch {
+              /* disk full / perms - runtime change still took effect */
+            }
           },
           getModels: () => modelsRef.current,
           setProNextLive: (armed) => {
@@ -2569,6 +2575,10 @@ function AppInner({
       if (inferred) {
         try {
           savePreset(inferred);
+        } catch {}
+      } else {
+        try {
+          saveModel(target);
         } catch {}
       }
       return `model: ${target}`;
@@ -4502,6 +4512,12 @@ function AppInner({
                             savePreset(inferred);
                           } catch {
                             /* disk full / perms —runtime change still took effect */
+                          }
+                        } else {
+                          try {
+                            saveModel(outcome.id);
+                          } catch {
+                            /* disk full / perms - runtime change still took effect */
                           }
                         }
                         log.pushInfo(`model: ${outcome.id}`);

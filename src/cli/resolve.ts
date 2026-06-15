@@ -27,7 +27,7 @@ export function resolveDefaults(flags: RawCliFlags): ResolvedDefaults {
   const preset = pickPreset(flags.preset, cfg.preset);
   const presetSettings = resolvePreset(preset);
 
-  const model = flags.model ?? presetSettings.model;
+  const model = flags.model ?? cfg.model ?? presetSettings.model;
   const reasoningEffort = presetSettings.reasoningEffort;
 
   // `--mcp` accumulator is [] when absent. Treat empty from flags as

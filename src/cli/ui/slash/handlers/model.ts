@@ -1,4 +1,4 @@
-import { savePreset } from "@/config.js";
+import { saveModel, savePreset } from "@/config.js";
 import { t } from "@/i18n/index.js";
 import { PRESETS } from "../../presets.js";
 import type { SlashHandler } from "../dispatch.js";
@@ -24,6 +24,12 @@ const model: SlashHandler = (args, loop, ctx) => {
   if (inferred) {
     try {
       savePreset(inferred);
+    } catch {
+      /* disk full / perms — runtime change still took effect */
+    }
+  } else {
+    try {
+      saveModel(id);
     } catch {
       /* disk full / perms — runtime change still took effect */
     }
