@@ -125,6 +125,7 @@ Type `/` mid-chat to open the picker. Aliases shown in parentheses. Code-mode-on
 | `/skill [list\|paths\|show\|new\|<name>]` | List / run / scaffold user skills |
 | `/mwh [list\|installed\|search <query>\|show <id>\|install <id>\|check\|update\|root]` | Browse and install reusable Middlewave Hub modules |
 | `/agents [list\|show\|new]` (`/agent`) | Manage project agents |
+| `/teams [create\|status\|inbox\|run\|dispatch]` | Manage multi-agent Carbon Code Teams |
 | `/qq <connect\|status\|disconnect>` | Connect, inspect, or disconnect the QQ channel |
 | `/collab [agent]` | Enter local collaboration mode and print a prompt for another coding agent |
 
