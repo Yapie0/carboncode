@@ -1,0 +1,42 @@
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#1a1a2e;color:#eee;min-height:100vh;display:flex;align-items:center;justify-content:center}
+#lobby{text-align:center;max-width:500px;padding:40px}
+#lobby h1{font-size:2.4em;margin-bottom:8px}
+#lobby p{color:#888;margin-bottom:24px}
+.green{color:#4ade80}.red{color:#f87171}
+#lobby-controls{display:flex;gap:8px;margin-bottom:20px}
+#name-input{flex:1;padding:10px 14px;border-radius:8px;border:1px solid #333;background:#16213e;color:#eee;font-size:14px}
+button{padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:600;transition:all .15s}
+#create-btn{background:#4ade80;color:#111}
+#list-btn{background:#334155;color:#eee}
+.room-entry{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;margin-bottom:8px;border-radius:8px;background:#16213e;border:1px solid #333}
+.room-entry button{padding:6px 14px;font-size:13px;background:#3b82f6;color:#fff}
+#game{display:flex;gap:16px;padding:20px;max-width:1100px;width:100%}
+#game-left{flex:0 0 620px}
+#board{border-radius:12px;background:#0f172a;display:block}
+#status-bar{display:flex;justify-content:space-between;padding:8px 4px;font-size:14px;color:#888}
+#game-right{flex:1;display:flex;flex-direction:column;gap:12px;min-width:280px}
+#players-panel{display:flex;gap:8px}
+.player-card{flex:1;padding:12px;border-radius:8px;background:#16213e;border:2px solid #333;text-align:center;font-size:13px}
+.player-card.me{border-color:#3b82f6}
+.player-card.solved{border-color:#4ade80}
+.player-card .name{font-weight:700;font-size:15px}
+.player-card .score{color:#888;margin-top:4px}
+#input-panel{padding:12px;border-radius:8px;background:#16213e}
+#input-panel label{display:block;margin-bottom:6px;font-size:14px;color:#888}
+#func-input{width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#0f172a;color:#4ade80;font-size:18px;font-family:monospace}
+#func-input:focus{outline:none;border-color:#3b82f6}
+#input-panel button{margin-top:8px;margin-right:6px}
+#submit-btn{background:#3b82f6;color:#fff}
+#clear-btn{background:#334155;color:#eee}
+#preview-error{margin-top:6px;font-size:13px;color:#f87171;min-height:20px}
+#chat-panel{flex:1;display:flex;flex-direction:column;border-radius:8px;background:#16213e;overflow:hidden}
+#chat-messages{flex:1;padding:10px;overflow-y:auto;font-size:13px;max-height:200px}
+#chat-messages .msg{margin-bottom:4px}
+#chat-messages .system{color:#888}
+#chat-messages .name{font-weight:700;color:#3b82f6}
+#chat-input-row{display:flex;padding:8px;gap:6px;border-top:1px solid #333}
+#chat-input{flex:1;padding:8px;border-radius:6px;border:1px solid #333;background:#0f172a;color:#eee;font-size:13px}
+#chat-send{padding:8px 14px;font-size:13px;background:#3b82f6;color:#fff}
+#rematch-btn{background:#f59e0b;color:#111;font-size:15px;padding:12px;margin-top:8px}
+#leave-btn{background:#ef4444;color:#fff;font-size:14px;padding:10px;margin-top:6px}

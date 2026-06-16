@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>函数棋 — Func Chess</title><link rel="stylesheet" href="/css/game.css">
+</head>
+<body>
+<div id="lobby">
+  <h1>🔢 函数棋</h1>
+  <p>函数经过所有 <span class="green">● 绿点</span>，避开所有 <span class="red">● 红点</span></p>
+  <div id="lobby-controls">
+    <input id="name-input" placeholder="你的昵称" maxlength="12" value="玩家">
+    <button id="create-btn">创建房间</button>
+    <button id="list-btn">刷新房间</button>
+  </div><div id="room-list"></div>
+</div>
+<div id="game" style="display:none">
+  <div id="game-left">
+    <canvas id="board" width="600" height="600"></canvas>
+    <div id="status-bar"><span id="room-code-display"></span><span id="timer">00:00</span></div>
+  </div>
+  <div id="game-right">
+    <div id="players-panel">
+      <div id="player-me" class="player-card"></div>
+      <div id="player-opponent" class="player-card"></div>
+    </div>
+    <div id="input-panel">
+      <label>f(x) =</label>
+      <input id="func-input" type="text" placeholder="例如: 2*x+1, sin(x), x^2-4" autocomplete="off">
+      <button id="submit-btn">提交</button><button id="clear-btn">清除</button>
+      <div id="preview-error"></div>
+    </div>
+    <div id="chat-panel">
+      <div id="chat-messages"></div>
+      <div id="chat-input-row">
+        <input id="chat-input" type="text" placeholder="输入聊天消息..." maxlength="200">
+        <button id="chat-send">发送</button>
+      </div>
+    </div>
+    <button id="rematch-btn" style="display:none">再来一局</button>
+    <button id="leave-btn">离开房间</button>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/13.2.0/math.min.js"></script>
+<script type="module" src="/js/ui.js"></script>
+</body>
+</html>
