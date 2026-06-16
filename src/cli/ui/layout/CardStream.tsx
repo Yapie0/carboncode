@@ -56,11 +56,8 @@ export function computeCardStreamItems<T extends { id: string }>(
 
 export function CardStream({
   suppressLive = false,
-  maxRows,
 }: {
   suppressLive?: boolean;
-  /** Kept for call-site compatibility; native scrollback is handled by Static. */
-  maxRows?: number;
 }): React.ReactElement {
   const cards = useAgentState((s) => s.cards);
   const { committed, live } = React.useMemo(() => splitCardsForNativeScroll(cards), [cards]);
@@ -80,12 +77,7 @@ export function CardStream({
         )}
       </Static>
       {liveItems.length > 0 ? (
-        <Box
-          flexDirection="column"
-          flexShrink={1}
-          maxHeight={maxRows !== undefined ? Math.max(1, maxRows) : undefined}
-          overflow="hidden"
-        >
+        <Box flexDirection="column">
           {liveItems.map((item) =>
             item.kind === "fold" ? (
               <LiveFoldHint key={item.key} count={item.count} />

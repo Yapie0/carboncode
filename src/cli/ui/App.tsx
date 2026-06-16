@@ -4276,10 +4276,6 @@ function AppInner({
   // Suspend cosmetic animations during modal interactions and idle so
   // a quiescent TUI is byte-stable.
   const tickerSuspended = modalOpen || (!busy && !isStreaming);
-  const hasLiveActivity =
-    busy || isStreaming || !!ongoingTool || !!statusLine || subagentActivities.length > 0;
-  const bottomReserveRows = modalOpen ? 12 : hasLiveActivity ? 10 : 4;
-
   if (!bootReady) return <BootSplash />;
 
   return (
@@ -4294,11 +4290,10 @@ function AppInner({
         <ViewportBudgetProvider>
           <InflightProvider inflight={loop.inflight}>
             <ConversationViewport
-              bottomReserveRows={bottomReserveRows}
-              history={({ maxRows }) => (
-                <Box flexDirection="column" flexShrink={1}>
+              history={
+                <Box flexDirection="column">
                   <LiveExpandContext.Provider value={liveExpand}>
-                    <CardStream suppressLive={modalOpen} maxRows={Math.max(1, maxRows - 1)} />
+                    <CardStream suppressLive={modalOpen} />
                   </LiveExpandContext.Provider>
                   {/*
           Welcome card on the empty state. Visible only when nothing
@@ -4315,7 +4310,7 @@ function AppInner({
                     />
                   ) : null}
                 </Box>
-              )}
+              }
               controls={
                 <Box flexDirection="column" flexShrink={0}>
                   <LiveActivityArea

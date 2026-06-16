@@ -352,7 +352,7 @@ describe("Codex-style terminal surface", () => {
     ];
     const { lastFrame, unmount } = render(
       <AgentStoreProvider session={SESSION} initialCards={liveCards}>
-        <CardStream maxRows={12} />
+        <CardStream />
       </AgentStoreProvider>,
     );
     const out = lastFrame() ?? "";
@@ -406,7 +406,7 @@ describe("Codex-style terminal surface", () => {
     ];
     const { lastFrame, unmount } = render(
       <AgentStoreProvider session={SESSION} initialCards={liveCards}>
-        <CardStream maxRows={18} />
+        <CardStream />
       </AgentStoreProvider>,
     );
     const out = lastFrame() ?? "";
