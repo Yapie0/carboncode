@@ -4259,6 +4259,9 @@ function AppInner({
   // Suspend cosmetic animations during modal interactions and idle so
   // a quiescent TUI is byte-stable.
   const tickerSuspended = modalOpen || (!busy && !isStreaming);
+  const hasLiveActivity =
+    busy || isStreaming || !!ongoingTool || !!statusLine || subagentActivities.length > 0;
+  const bottomReserveRows = modalOpen ? 12 : hasLiveActivity ? 10 : 4;
 
   if (!bootReady) return <BootSplash />;
 
@@ -4274,7 +4277,7 @@ function AppInner({
         <ViewportBudgetProvider>
           <InflightProvider inflight={loop.inflight}>
             <ConversationViewport
-              bottomReserveRows={modalOpen ? 12 : 4}
+              bottomReserveRows={bottomReserveRows}
               history={({ maxRows }) => (
                 <Box flexDirection="column" flexShrink={1}>
                   <LiveExpandContext.Provider value={liveExpand}>

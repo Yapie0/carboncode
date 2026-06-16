@@ -18,7 +18,9 @@ export function UserCard({ card }: { card: UserCardData }): React.ReactElement {
   return (
     <Box
       flexDirection="column"
+      flexShrink={0}
       width={cardWidth}
+      minHeight={lines.length + 2}
       marginTop={1}
       paddingX={1}
       borderStyle="round"

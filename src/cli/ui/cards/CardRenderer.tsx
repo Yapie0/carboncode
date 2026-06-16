@@ -25,11 +25,15 @@ import { WarnCard } from "./WarnCard.js";
 // keeps prior cards reference-stable, so unchanged history skips work.
 export const CardRenderer = React.memo(function CardRenderer({
   card,
-}: { card: Card }): React.ReactElement {
-  return <Box flexDirection="column">{renderCard(card)}</Box>;
+  compact = false,
+}: {
+  card: Card;
+  compact?: boolean;
+}): React.ReactElement {
+  return <Box flexDirection="column">{renderCard(card, compact)}</Box>;
 });
 
-function renderCard(card: Card): React.ReactElement {
+function renderCard(card: Card, compact: boolean): React.ReactElement {
   switch (card.kind) {
     case "user":
       return <UserCard card={card} />;
@@ -38,7 +42,7 @@ function renderCard(card: Card): React.ReactElement {
     case "streaming":
       return <StreamingCard card={card} />;
     case "tool":
-      return <ToolCard card={card} />;
+      return <ToolCard card={card} compact={compact} />;
     case "task":
       return <TaskCard card={card} />;
     case "plan":

@@ -40,7 +40,13 @@ function isShellTool(name: string): boolean {
   );
 }
 
-export function ToolCard({ card }: { card: ToolCardData }): React.ReactElement {
+export function ToolCard({
+  card,
+  compact = false,
+}: {
+  card: ToolCardData;
+  compact?: boolean;
+}): React.ReactElement {
   const { stdout } = useStdout();
   const cols = stdout?.columns ?? 80;
   const lineCells = Math.max(20, cols - 4);
@@ -77,8 +83,12 @@ export function ToolCard({ card }: { card: ToolCardData }): React.ReactElement {
   // Rejected calls show a single trailing badge — the verbose JSON error body
   // is already conveyed by the badge, so dropping the body keeps the card tight.
   const readStyleSuccess = isReadStyleTool(card.name) && status === "ok";
+  const compactSuccess = compact && card.done && status === "ok";
   const showBody =
-    !card.rejected && !readStyleSuccess && (subagentMarkdown !== null || visible.length > 0);
+    !card.rejected &&
+    !readStyleSuccess &&
+    !compactSuccess &&
+    (subagentMarkdown !== null || visible.length > 0);
 
   const meta: MetaItem[] = [];
   if (card.retry) {

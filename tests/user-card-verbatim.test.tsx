@@ -39,4 +39,14 @@ describe("UserCard renders verbatim (issue #655)", () => {
     const out = lastFrame();
     expect(out).toContain("    at foo (bar.js:10:5)");
   });
+
+  it("keeps the historical prompt box height instead of collapsing to a border line", () => {
+    const { lastFrame } = render(<UserCard card={userCard("teams开发进度如何?")} />);
+    const lines = (lastFrame() ?? "").split("\n");
+    const promptLine = lines.findIndex((line) => line.includes("> teams开发进度如何?"));
+
+    expect(lines.length).toBeGreaterThanOrEqual(3);
+    expect(promptLine).toBeGreaterThan(0);
+    expect(promptLine).toBeLessThan(lines.length - 1);
+  });
 });

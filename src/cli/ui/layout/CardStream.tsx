@@ -1,12 +1,15 @@
-import { Box, Static } from "ink";
+import { Box, Static, Text } from "ink";
 import React from "react";
+import { t } from "../../../i18n/index.js";
 import { CardRenderer } from "../cards/CardRenderer.js";
 import type { Card } from "../state/cards.js";
 import { useAgentState } from "../state/provider.js";
+import { FG } from "../theme/tokens.js";
 
 /** Buffer of rows kept rendered on each side of the viewport so a single scroll
  * step doesn't reveal an unmeasured card. Larger = smoother but renders more. */
 export const VISIBLE_BUFFER_ROWS = 30;
+const LIVE_CARD_TAIL_LIMIT = 4;
 
 export type CardStreamItem<T> =
   | { kind: "spacer"; rows: number; key: string }
@@ -64,6 +67,8 @@ export function CardStream({
     suppressLive && live.length > 0 && !isFullySettled(live[live.length - 1]!)
       ? live.slice(0, -1)
       : live;
+  const hiddenLive = Math.max(0, visibleLive.length - LIVE_CARD_TAIL_LIMIT);
+  const liveTail = hiddenLive > 0 ? visibleLive.slice(-LIVE_CARD_TAIL_LIMIT) : visibleLive;
 
   return (
     <>
@@ -74,21 +79,30 @@ export function CardStream({
           </Box>
         )}
       </Static>
-      {visibleLive.length > 0 ? (
+      {liveTail.length > 0 ? (
         <Box
           flexDirection="column"
           flexShrink={1}
           maxHeight={maxRows !== undefined ? Math.max(1, maxRows) : undefined}
           overflow="hidden"
         >
-          {visibleLive.map((card) => (
+          {hiddenLive > 0 ? <LiveFoldHint count={hiddenLive} /> : null}
+          {liveTail.map((card) => (
             <Box key={card.id} flexDirection="column">
-              <CardRenderer card={card} />
+              <CardRenderer card={card} compact={isFullySettled(card)} />
             </Box>
           ))}
         </Box>
       ) : null}
     </>
+  );
+}
+
+function LiveFoldHint({ count }: { count: number }): React.ReactElement {
+  return (
+    <Box paddingLeft={2}>
+      <Text color={FG.faint}>{t("cardLabels.more", { count })}</Text>
+    </Box>
   );
 }
 

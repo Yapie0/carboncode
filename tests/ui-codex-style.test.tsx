@@ -11,9 +11,10 @@ import { ReasoningCard } from "../src/cli/ui/cards/ReasoningCard.js";
 import { StreamingCard } from "../src/cli/ui/cards/StreamingCard.js";
 import { ToolCard } from "../src/cli/ui/cards/ToolCard.js";
 import { UserCard } from "../src/cli/ui/cards/UserCard.js";
+import { CardStream } from "../src/cli/ui/layout/CardStream.js";
 import { ModeStatusBar, UndoBanner } from "../src/cli/ui/layout/LiveRows.js";
 import { StatusRow } from "../src/cli/ui/layout/StatusRow.js";
-import type { ReasoningCard as ReasoningCardData } from "../src/cli/ui/state/cards.js";
+import type { Card, ReasoningCard as ReasoningCardData } from "../src/cli/ui/state/cards.js";
 import { AgentStoreProvider, useAgentStore } from "../src/cli/ui/state/provider.js";
 import type { AgentState, SessionInfo } from "../src/cli/ui/state/state.js";
 import { setLanguageRuntime, t } from "../src/i18n/index.js";
@@ -323,6 +324,44 @@ describe("Codex-style terminal surface", () => {
     expect(out).toContain("package.json");
     expect(out).not.toContain("@carboncode/cli");
     expect(out).not.toContain('"version"');
+  });
+
+  it("keeps active turns focused on the most recent live cards", () => {
+    setLanguageRuntime("en");
+    const liveCards: Card[] = [
+      {
+        kind: "reasoning",
+        id: "reasoning-live",
+        ts: 1,
+        text: "I am still thinking through the earlier edits.",
+        paragraphs: 1,
+        tokens: 12,
+        streaming: true,
+      },
+      ...Array.from({ length: 6 }, (_, i) => ({
+        kind: "tool" as const,
+        id: `tool-${i}`,
+        ts: i + 2,
+        name: "write_file",
+        args: { path: `src/file-${i}.ts` },
+        output: `verbose body from tool ${i}`,
+        done: true,
+        exitCode: 0,
+        elapsedMs: 20,
+      })),
+    ];
+    const { lastFrame, unmount } = render(
+      <AgentStoreProvider session={SESSION} initialCards={liveCards}>
+        <CardStream maxRows={12} />
+      </AgentStoreProvider>,
+    );
+    const out = lastFrame() ?? "";
+    unmount();
+
+    expect(out).toContain("+3");
+    expect(out).not.toContain("src/file-0.ts");
+    expect(out).toContain("src/file-5.ts");
+    expect(out).not.toContain("verbose body from tool 5");
   });
 
   it("keeps failed shell summaries ahead of tail output", () => {
