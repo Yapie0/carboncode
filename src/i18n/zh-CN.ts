@@ -347,6 +347,10 @@ export const zhCN: TranslationSchema = {
       description: "浏览可复用 Middlewave Hub 模块，并安装本地参考实现",
       argsHint: "[list|search|show|install]",
     },
+    teams: {
+      description: "管理 Carbon Code Teams 多 agent 团队编排",
+      argsHint: "[create|status|inbox|run|dispatch]",
+    },
     retry: { description: "截断并重发您的最后一条消息（重新采样）" },
     compact: {
       description: "缩小日志中过大的工具结果和工具调用参数；上限为 tokens，默认 4000",

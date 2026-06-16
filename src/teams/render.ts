@@ -1,12 +1,4 @@
-/**
- * Carbon Code Teams — TUI 渲染工具。
- *
- * 将 Team 数据渲染为可展示的文本行，供 slash handler 或 CLI 使用。
- */
-
 import type { Team, TeamAgent, TeamMessage, TeamTaskSummary } from "./types.js";
-
-// ─── 团队概览 ──────────────────────────────────────────────────────
 
 export function renderTeamSummary(team: Team): string {
   const lines: string[] = [
@@ -102,8 +94,6 @@ export function renderAgentInbox(agent: TeamAgent, messages: TeamMessage[]): str
 export function renderDispatchResult(taskId: string, agentId: string, reason: string): string {
   return [`任务已创建: \`${taskId}\``, `分配给: \`${agentId}\``, `原因: ${reason}`].join("\n");
 }
-
-// ─── helper ───────────────────────────────────────────────────────
 
 function statusLabel(status: string): string {
   const labels: Record<string, string> = {

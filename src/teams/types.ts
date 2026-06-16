@@ -1,11 +1,3 @@
-/**
- * Carbon Code Teams — 内置多 agent 团队编排类型定义。
- *
- * 参考 CCteam-creator (MIT) 的角色和协议设计，适配 Carbon Code 产品形态。
- */
-
-// ─── Team ───────────────────────────────────────────────────────────
-
 export type TeamStatus = "active" | "archived";
 
 export interface Team {
@@ -28,8 +20,6 @@ export interface Team {
   /** 团队持久化目录（运行时填充，不持久化到 team.json） */
   rootDir?: string;
 }
-
-// ─── Agent ──────────────────────────────────────────────────────────
 
 export type TeamAgentStatus = "idle" | "busy" | "blocked" | "offline";
 
@@ -85,8 +75,6 @@ export interface TeamAgent {
   outboxPath: string;
 }
 
-// ─── Task ───────────────────────────────────────────────────────────
-
 export type TeamTaskStatus =
   | "queued"
   | "assigned"
@@ -128,8 +116,6 @@ export interface TeamTask {
   taskDir?: string;
 }
 
-// ─── Message ────────────────────────────────────────────────────────
-
 export type TeamMessageType =
   | "note"
   | "task"
@@ -157,8 +143,6 @@ export interface TeamMessage {
   body: Record<string, unknown>;
 }
 
-// ─── Event ──────────────────────────────────────────────────────────
-
 export type TeamEventType =
   | "team_created"
   | "team_archived"
@@ -182,8 +166,6 @@ export interface TeamEvent {
   createdAt: string;
   body: Record<string, unknown>;
 }
-
-// ─── Audit ──────────────────────────────────────────────────────────
 
 export interface TeamAuditEntry {
   id: string;
@@ -210,8 +192,6 @@ export interface TeamAuditEntry {
   /** 操作的详细 metadata（敏感字段自动 redact） */
   metadata: Record<string, unknown>;
 }
-
-// ─── Snapshot ───────────────────────────────────────────────────────
 
 export interface TeamSnapshot {
   /** 格式版本 */
@@ -240,8 +220,6 @@ export interface TeamSnapshotAgent {
   onboardingPrompt: string;
 }
 
-// ─── Decision ───────────────────────────────────────────────────────
-
 export interface TeamDecision {
   id: string;
   title: string;
@@ -253,8 +231,6 @@ export interface TeamDecision {
   status: "active" | "superseded";
 }
 
-// ─── Review Dimension ───────────────────────────────────────────────
-
 export interface ReviewDimension {
   id: string;
   name: string;
@@ -265,8 +241,6 @@ export interface ReviewDimension {
   /** WEAK 的描述 */
   weakDescription: string;
 }
-
-// ─── Golden Rule ────────────────────────────────────────────────────
 
 export interface GoldenRule {
   id: string;
@@ -281,8 +255,6 @@ export interface GoldenRule {
   /** 来源 */
   source: "universal" | "project";
 }
-
-// ─── Dispatch ───────────────────────────────────────────────────────
 
 export interface DispatchInput {
   teamId: string;

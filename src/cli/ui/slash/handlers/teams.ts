@@ -1,21 +1,3 @@
-/**
- * Carbon Code Teams — Slash command handler。
- *
- * 支持 /teams 子命令:
- *   /teams                           — 列出所有团队
- *   /teams create <name> [goal]      — 创建团队
- *   /teams status [id]               — 查看团队状态
- *   /teams inbox <agent> [--unread]  — 查看 agent inbox
- *   /teams resume <id>               — 恢复团队
- *   /teams archive <id>              — 归档团队
- *   /teams agents <id>               — 列出团队 agents
- *   /teams dispatch <id> <task>      — 创建并分配任务
- *   /teams mark-read <agent> [id]     — 标记消息已读
- *   /teams task-status <id> <status>  — 更新任务状态
- *   /teams decide <id> <title> <...>  — 记录架构决策
- *   /teams verify <id>                — 验证审计链完整性
- */
-
 import { readFileSync, writeFileSync } from "node:fs";
 import { verifyAuditIntegrity } from "../../../../teams/audit.js";
 import { updateTaskStatus } from "../../../../teams/dispatcher.js";
@@ -39,12 +21,10 @@ const teams: SlashHandler = (args, _loop, ctx) => {
   const workspaceRoot = ctx.codeRoot ?? process.cwd();
   const sub = (args[0] ?? "").toLowerCase();
 
-  // ── /teams help ──
   if (sub === "help") {
     return { info: teamsHelpText() };
   }
 
-  // ── /teams (bare) / list ──
   if (!sub || sub === "list") {
     const teams = listTeams(workspaceRoot);
     if (teams.length === 0) {
@@ -59,7 +39,6 @@ const teams: SlashHandler = (args, _loop, ctx) => {
     return { info: lines.join("\n") };
   }
 
-  // ── /teams create <name> [goal] ──
   if (sub === "create") {
     const name = args[1];
     if (!name) {
@@ -105,7 +84,6 @@ const teams: SlashHandler = (args, _loop, ctx) => {
     };
   }
 
-  // ── /teams status [id] ──
   if (sub === "status") {
     // 如果只有一个团队，自动选择
     const allTeams = listTeams(workspaceRoot);
@@ -123,7 +101,6 @@ const teams: SlashHandler = (args, _loop, ctx) => {
     return { info: renderTeamSummary(team) };
   }
 
-  // ── /teams inbox <agent> [--unread] ──
   if (sub === "inbox") {
     const agentName = args[1];
     if (!agentName) {
@@ -155,7 +132,6 @@ const teams: SlashHandler = (args, _loop, ctx) => {
     return { info: renderAgentInbox(displayAgent, messages) };
   }
 
-  // ── /teams resume <id> ──
   if (sub === "resume") {
     const teamId = args[1];
     if (!teamId) {
@@ -183,7 +159,6 @@ const teams: SlashHandler = (args, _loop, ctx) => {
     };
   }
 
-  // ── /teams archive <id> ──
   if (sub === "archive") {
     const teamId = args[1];
     if (!teamId) {
@@ -200,7 +175,6 @@ const teams: SlashHandler = (args, _loop, ctx) => {
     return { info: `团队 "${teamId}" 已归档。使用 /teams resume 恢复。` };
   }
 
-  // ── /teams agents <id> ──
   if (sub === "agents") {
     const allTeams = listTeams(workspaceRoot);
     const targetId = args[1] ?? allTeams[0]?.id;
@@ -219,7 +193,6 @@ const teams: SlashHandler = (args, _loop, ctx) => {
     return { info: lines.join("\n") };
   }
 
-  // ── /teams dispatch <id> <task> [--cap <c1,c2>] ──
   if (sub === "dispatch") {
     const teamId = args[1];
     const taskTitle = args[2];
@@ -267,7 +240,6 @@ const teams: SlashHandler = (args, _loop, ctx) => {
     };
   }
 
-  // ── /teams mark-read <agent> [message-id] ──
   if (sub === "mark-read") {
     const agentName = args[1];
     if (!agentName) {
@@ -296,7 +268,6 @@ const teams: SlashHandler = (args, _loop, ctx) => {
     return { info: `已标记 ${count} 条消息为已读。` };
   }
 
-  // ── /teams task-status <task-id> <status> ──
   if (sub === "task-status") {
     const taskId = args[1];
     const status = args[2];
@@ -338,7 +309,6 @@ const teams: SlashHandler = (args, _loop, ctx) => {
     return { info: `任务 "${taskId}" 状态已更新为: ${status}` };
   }
 
-  // ── /teams decide <team-id> <title> <decision...> ──
   if (sub === "decide") {
     const teamId = args[1];
     const title = args[2];
@@ -365,7 +335,6 @@ const teams: SlashHandler = (args, _loop, ctx) => {
     return { info: `决策已记录: "${title}" → ${decisionsPath(workspaceRoot, teamId)}` };
   }
 
-  // ── /teams run <agent-id> [team-id] ──
   if (sub === "run") {
     const agentId = args[1];
     if (!agentId) {
@@ -462,7 +431,6 @@ const teams: SlashHandler = (args, _loop, ctx) => {
     };
   }
 
-  // ── /teams verify <team-id> ──
   if (sub === "verify") {
     const teamId = args[1];
     if (!teamId) {
@@ -479,7 +447,6 @@ const teams: SlashHandler = (args, _loop, ctx) => {
     };
   }
 
-  // ── unknown sub ──
   return { info: `未知命令: /teams ${sub}\n\n${teamsHelpText()}` };
 };
 

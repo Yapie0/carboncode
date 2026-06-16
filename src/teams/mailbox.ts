@@ -1,22 +1,8 @@
-/**
- * Carbon Code Teams — Agent 邮箱操作。
- *
- * 参考 MWH agent-collab-mailbox 模块设计：
- * - 输入验证（assertAgentName、assertNonEmpty）
- * - reply 语义（自动翻转 from/to + 继承 taskId）
- * - ack 快捷回复
- * - readAtMs 时间点已读模型
- * - clone 安全（每次读写深拷贝）
- * - JSONL 文件持久化
- */
-
 import { randomUUID } from "node:crypto";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { inboxJsonlPath, outboxJsonlPath } from "./paths.js";
 import type { TeamMessage, TeamMessageType } from "./types.js";
-
-// ─── 输入验证（参考 MWH core.ts） ─────────────────────────────────
 
 const AGENT_NAME_RE = /^[A-Za-z0-9._-]+$/;
 
@@ -62,13 +48,9 @@ function assertPermissionResponseBody(body: Record<string, unknown>): void {
   }
 }
 
-// ─── Clone 安全（参考 MWH cloneValue / cloneCollabMessage） ─────────
-
 function cloneMessage(msg: TeamMessage): TeamMessage {
   return JSON.parse(JSON.stringify(msg)) as TeamMessage;
 }
-
-// ─── JSONL 读写 ────────────────────────────────────────────────────
 
 function appendJsonl(path: string, entry: Record<string, unknown>): void {
   mkdirSync(dirname(path), { recursive: true });
@@ -89,8 +71,6 @@ function writeJsonl(path: string, entries: Array<Record<string, unknown>>): void
   const lines = entries.map((e) => JSON.stringify(e)).join("\n") + (entries.length > 0 ? "\n" : "");
   writeFileSync(path, lines, "utf-8");
 }
-
-// ─── 消息创建 ──────────────────────────────────────────────────────
 
 export interface SendMessageInput {
   from: string;
@@ -130,8 +110,6 @@ export function createMessage(input: SendMessageInput): TeamMessage {
     body: input.body ?? {},
   };
 }
-
-// ─── Reply（参考 MWH createCollabReply） ────────────────────────────
 
 export interface ReplyInput {
   agent: string;
@@ -173,8 +151,6 @@ export function ack(
   return reply(workspaceRoot, teamId, { agent, replyToId: messageId, type: "ack", body });
 }
 
-// ─── 发送消息 ──────────────────────────────────────────────────────
-
 export function sendMessage(
   workspaceRoot: string,
   teamId: string,
@@ -193,8 +169,6 @@ export function sendMessage(
 
   return cloneMessage(msg);
 }
-
-// ─── 读取 inbox ────────────────────────────────────────────────────
 
 export interface ReadInboxOptions {
   unreadOnly?: boolean;
@@ -223,14 +197,10 @@ export function readInbox(
   return messages.sort((a, b) => a.createdAt.localeCompare(b.createdAt)).map(cloneMessage);
 }
 
-// ─── 读取 outbox ───────────────────────────────────────────────────
-
 export function readOutbox(workspaceRoot: string, teamId: string, agentId: string): TeamMessage[] {
   const messages = readJsonl<TeamMessage>(outboxJsonlPath(workspaceRoot, teamId, agentId));
   return messages.sort((a, b) => a.createdAt.localeCompare(b.createdAt)).map(cloneMessage);
 }
-
-// ─── 标记已读（时间点模型） ────────────────────────────────────────
 
 export function markRead(
   workspaceRoot: string,
@@ -270,14 +240,10 @@ export function markAllRead(workspaceRoot: string, teamId: string, agentId: stri
   return count;
 }
 
-// ─── 未读计数 ──────────────────────────────────────────────────────
-
 export function unreadCount(workspaceRoot: string, teamId: string, agentId: string): number {
   const messages = readJsonl<TeamMessage>(inboxJsonlPath(workspaceRoot, teamId, agentId));
   return messages.filter((m) => m.readAtMs === undefined).length;
 }
-
-// ─── 线程（按 taskId 聚合收发） ───────────────────────────────────
 
 export function thread(
   workspaceRoot: string,

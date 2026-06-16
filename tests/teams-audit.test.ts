@@ -1,9 +1,3 @@
-/**
- * Carbon Code Teams — Audit 测试。
- *
- * 覆盖：redaction、stable hash、sequence chain、verification、query。
- */
-
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

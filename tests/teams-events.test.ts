@@ -1,9 +1,3 @@
-/**
- * Carbon Code Teams — Events 测试。
- *
- * 覆盖：事件写入、按类型/agent/task 过滤、limit。
- */
-
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

@@ -1,10 +1,3 @@
-/**
- * Carbon Code Teams — Mailbox 测试。
- *
- * 覆盖：输入验证、inbox/outbox JSONL 读写、readAtMs 已读模型、
- * reply/ack、消息过滤、线程。
- */
-
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

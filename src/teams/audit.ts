@@ -1,25 +1,10 @@
-/**
- * Carbon Code Teams — 审计日志。
- *
- * 参考 MWH audit-log-trail 模块设计：
- * - stableStringify 确保跨运行 hash 可复现
- * - metadata 自动 redact（password/token/secret/apikey）
- * - sequence 自增序号（检测删除/重排）
- * - outcome 字段（success/failure/denied）
- * - 查询接口（按 actor/resourceType/resourceId/action 过滤）
- */
-
 import { createHash, randomUUID } from "node:crypto";
 import { appendFileSync, readFileSync } from "node:fs";
 import { auditJsonlPath } from "./paths.js";
 import type { TeamAuditEntry } from "./types.js";
 
-// ─── 常量 ──────────────────────────────────────────────────────────
-
 const GENESIS_HASH = "0".repeat(64);
 const SENSITIVE_KEYS = ["password", "token", "secret", "authorization", "apikey"];
-
-// ─── 稳定序列化（参考 MWH stableStringify） ────────────────────────
 
 function stableStringify(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
@@ -32,8 +17,6 @@ function stableStringify(value: unknown): string {
   }
   return JSON.stringify(value);
 }
-
-// ─── Metadata 脱敏（参考 MWH redactValue） ─────────────────────────
 
 function redactValue(value: unknown, keys: Set<string>): unknown {
   if (Array.isArray(value)) return value.map((item) => redactValue(item, keys));
@@ -48,8 +31,6 @@ function redactValue(value: unknown, keys: Set<string>): unknown {
 function redactMetadata(meta: Record<string, unknown>): Record<string, unknown> {
   return redactValue(meta, new Set(SENSITIVE_KEYS)) as Record<string, unknown>;
 }
-
-// ─── Hash 计算（参考 MWH hashAuditEntry + stableStringify） ────────
 
 function computeHash(entry: Omit<TeamAuditEntry, "hash">): string {
   const payload = stableStringify({
@@ -66,8 +47,6 @@ function computeHash(entry: Omit<TeamAuditEntry, "hash">): string {
   });
   return createHash("sha256").update(payload, "utf-8").digest("hex");
 }
-
-// ─── 写审计条目 ────────────────────────────────────────────────────
 
 export interface AppendAuditInput {
   actor: string;
@@ -107,8 +86,6 @@ export function appendAudit(
   return fullEntry;
 }
 
-// ─── 批量读取 ──────────────────────────────────────────────────────
-
 export function readAuditLog(workspaceRoot: string, teamId: string): TeamAuditEntry[] {
   try {
     const raw = readFileSync(auditJsonlPath(workspaceRoot, teamId), "utf-8").trim();
@@ -118,8 +95,6 @@ export function readAuditLog(workspaceRoot: string, teamId: string): TeamAuditEn
     return [];
   }
 }
-
-// ─── 查询（参考 MWH auditEntryMatches） ────────────────────────────
 
 export interface AuditQueryFilter {
   actor?: string;
@@ -147,8 +122,6 @@ export function queryAuditLog(
     )
     .slice(0, limit);
 }
-
-// ─── 完整性验证（参考 MWH verifyAuditChain） ──────────────────────
 
 export interface AuditVerifyResult {
   valid: boolean;
@@ -199,8 +172,6 @@ export function verifyAuditIntegrity(workspaceRoot: string, teamId: string): Aud
 
   return { valid: true };
 }
-
-// ─── helper ───────────────────────────────────────────────────────
 
 function getLatestEntry(path: string): TeamAuditEntry | null {
   try {

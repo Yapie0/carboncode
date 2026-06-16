@@ -1,10 +1,3 @@
-/**
- * Carbon Code Teams — 任务分派器。
- *
- * 参考 MWH agent-task-dispatcher 模块设计。
- * 基于 capability 匹配，为任务选择最合适的 agent。
- */
-
 import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { appendAudit } from "./audit.js";
@@ -26,8 +19,6 @@ import type {
   TeamTaskStatus,
   TeamTaskSummary,
 } from "./types.js";
-
-// ─── 能力匹配 ──────────────────────────────────────────────────────
 
 export interface CapabilityMatchResult {
   agentId: string;
@@ -67,8 +58,6 @@ export function matchBestAgent(
 
   return best;
 }
-
-// ─── 任务创建和分配 ────────────────────────────────────────────────
 
 export interface CreateTaskInput {
   team: Team;
@@ -231,8 +220,6 @@ export function createAndAssignTask(input: CreateTaskInput): CreateTaskResult | 
   };
 }
 
-// ─── 更新任务状态 ──────────────────────────────────────────────────
-
 export function updateTaskStatus(
   team: Team,
   workspaceRoot: string,
@@ -268,8 +255,6 @@ export function updateTaskStatus(
   team.updatedAt = new Date().toISOString();
   return saveTeam(team, workspaceRoot);
 }
-
-// ─── 获取 agent 的任务 ─────────────────────────────────────────────
 
 export function getAgentTasks(team: Team, agentId: string): TeamTaskSummary[] {
   return team.tasks.filter((t) => t.assignedAgentIds.includes(agentId));

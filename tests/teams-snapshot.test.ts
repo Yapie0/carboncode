@@ -1,9 +1,3 @@
-/**
- * Carbon Code Teams — Snapshot 测试。
- *
- * 覆盖：snapshot 生成和 resume、时间戳检查。
- */
-
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

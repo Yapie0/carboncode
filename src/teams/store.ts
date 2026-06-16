@@ -1,9 +1,3 @@
-/**
- * Carbon Code Teams — 团队存储层。
- *
- * 负责 team.json 的创建、读取、更新，以及目录结构的初始化。
- */
-
 import {
   existsSync,
   mkdirSync,
@@ -36,8 +30,6 @@ import {
   validateTeamNotExists,
 } from "./paths.js";
 import type { Team, TeamAgent, TeamAgentStatus, TeamStatus } from "./types.js";
-
-// ─── 创建团队 ──────────────────────────────────────────────────────
 
 export interface CreateTeamInput {
   /** 工作区根目录 */
@@ -190,8 +182,6 @@ export function createTeam(input: CreateTeamInput): CreateTeamResult | CreateTea
   }
 }
 
-// ─── 加载团队 ──────────────────────────────────────────────────────
-
 export function loadTeam(workspaceRoot: string, teamId: string): Team | null {
   const existsErr = validateTeamExists(workspaceRoot, teamId);
   if (existsErr) return null;
@@ -205,8 +195,6 @@ export function loadTeam(workspaceRoot: string, teamId: string): Team | null {
     return null;
   }
 }
-
-// ─── 更新团队 ──────────────────────────────────────────────────────
 
 export function saveTeam(team: Team, workspaceRoot: string): boolean {
   try {
@@ -229,8 +217,6 @@ export function saveTeam(team: Team, workspaceRoot: string): boolean {
     return false;
   }
 }
-
-// ─── 归档团队 ──────────────────────────────────────────────────────
 
 export function archiveTeam(
   workspaceRoot: string,
@@ -286,8 +272,6 @@ export function archiveTeam(
     return { ok: false, error: `归档失败: ${(err as Error).message}` };
   }
 }
-
-// ─── 列出全部团队 ─────────────────────────────────────────────────
 
 export function listTeams(workspaceRoot: string): Team[] {
   const root = teamsRoot(workspaceRoot);

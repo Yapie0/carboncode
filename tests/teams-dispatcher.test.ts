@@ -1,9 +1,3 @@
-/**
- * Carbon Code Teams — Dispatcher 测试。
- *
- * 覆盖：capability 匹配、任务创建和分配、任务状态更新。
- */
-
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

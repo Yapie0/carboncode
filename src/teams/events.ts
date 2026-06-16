@@ -1,15 +1,7 @@
-/**
- * Carbon Code Teams — 事件日志。
- *
- * 基于 JSONL 的追加式事件日志，记录团队级别的操作事件。
- */
-
 import { randomUUID } from "node:crypto";
 import { appendFileSync, readFileSync } from "node:fs";
 import { eventsJsonlPath } from "./paths.js";
 import type { TeamEvent, TeamEventType } from "./types.js";
-
-// ─── 写事件 ────────────────────────────────────────────────────────
 
 export interface LogEventInput {
   type: TeamEventType;
@@ -31,8 +23,6 @@ export function logEvent(workspaceRoot: string, teamId: string, input: LogEventI
   appendFileSync(eventsJsonlPath(workspaceRoot, teamId), `${JSON.stringify(event)}\n`, "utf-8");
   return event;
 }
-
-// ─── 读事件 ────────────────────────────────────────────────────────
 
 export interface ReadEventsOptions {
   type?: TeamEventType;

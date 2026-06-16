@@ -1,9 +1,3 @@
-/**
- * Carbon Code Teams — Templates 测试。
- *
- * 覆盖：7 个默认角色完整性、onboarding prompt 渲染。
- */
-
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_ROLES,

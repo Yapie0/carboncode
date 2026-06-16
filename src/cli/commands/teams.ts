@@ -1,10 +1,3 @@
-/**
- * Carbon Code Teams — CLI 命令入口（Phase 2 骨架）。
- *
- * 注册 `carboncode teams <subcommand>` CLI 命令。
- * MVP 阶段 CLI 入口做轻量包装，主要功能通过 slash commands 提供。
- */
-
 import type { Command } from "commander";
 
 export function registerTeamsCli(program: Command): void {

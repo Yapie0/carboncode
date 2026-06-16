@@ -1,13 +1,4 @@
-/**
- * Carbon Code Teams — 角色模板和 onboarding prompt。
- *
- * 参考 CCteam-creator (MIT) 的 roles/onboarding/templates 设计。
- * 定义 7 个默认角色及其职责、能力标签、输入/输出要求。
- */
-
 import type { Team, TeamAgent, TeamAgentRole, TeamRole } from "./types.js";
-
-// ─── 默认角色定义 ──────────────────────────────────────────────────
 
 export const DEFAULT_ROLES: Record<TeamAgentRole, TeamRole> = {
   "team-lead": {
@@ -109,8 +100,6 @@ export const DEFAULT_ROLES: Record<TeamAgentRole, TeamRole> = {
   },
 };
 
-// ─── 获取默认角色列表 ──────────────────────────────────────────────
-
 /** 返回建议的默认 agent 列表（不含 team-lead，因为 team-lead 是控制面）。 */
 export function getDefaultAgentList(): Omit<TeamAgent, "id" | "inboxPath" | "outboxPath">[] {
   const roles: TeamAgentRole[] = [
@@ -148,8 +137,6 @@ export function getLeanAgentList(): Omit<TeamAgent, "id" | "inboxPath" | "outbox
     };
   });
 }
-
-// ─── Onboarding Prompt 渲染 ────────────────────────────────────────
 
 /** 为指定 agent 渲染 onboarding prompt。 */
 export function renderOnboardingPrompt(team: Team, agent: TeamAgent): string {

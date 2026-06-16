@@ -1,9 +1,3 @@
-/**
- * Carbon Code Teams — Store 测试。
- *
- * 覆盖：team 创建/加载/更新/归档、路径安全、team.json 读写。
- */
-
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

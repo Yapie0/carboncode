@@ -1,17 +1,7 @@
-/**
- * Carbon Code Teams — 团队快照（team-snapshot.md）。
- *
- * 参考 CCteam-creator 的 team-snapshot.md 设计：
- * - 第一次创建 team 时生成包含完整 onboarding prompt 的快照
- * - resume 时比较源文件时间戳，决定用缓存还是重新读取
- */
-
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 import { teamSnapshotPath } from "./paths.js";
 import { renderOnboardingPrompt } from "./templates.js";
 import type { Team, TeamSnapshot, TeamSnapshotAgent } from "./types.js";
-
-// ─── 生成快照 ──────────────────────────────────────────────────────
 
 export function generateSnapshot(team: Team, workspaceRoot: string): TeamSnapshot {
   const now = new Date().toISOString();
@@ -43,8 +33,6 @@ export function generateSnapshot(team: Team, workspaceRoot: string): TeamSnapsho
   return snapshot;
 }
 
-// ─── 读取快照 ──────────────────────────────────────────────────────
-
 export function loadSnapshot(workspaceRoot: string, teamId: string): TeamSnapshot | null {
   try {
     const raw = readFileSync(teamSnapshotPath(workspaceRoot, teamId), "utf-8");
@@ -53,8 +41,6 @@ export function loadSnapshot(workspaceRoot: string, teamId: string): TeamSnapsho
     return null;
   }
 }
-
-// ─── 检查快照是否过期 ──────────────────────────────────────────────
 
 export interface SnapshotStaleness {
   stale: boolean;
@@ -78,8 +64,6 @@ export function checkSnapshotStaleness(snapshot: TeamSnapshot): SnapshotStalenes
   };
 }
 
-// ─── 获取源文件时间戳 ──────────────────────────────────────────────
-
 function getSourceTimestamps(): Record<string, string> {
   const files = ["src/teams/templates.ts", "src/teams/types.ts"];
   const timestamps: Record<string, string> = {};
@@ -93,8 +77,6 @@ function getSourceTimestamps(): Record<string, string> {
   }
   return timestamps;
 }
-
-// ─── Markdown 序列化 ───────────────────────────────────────────────
 
 function renderSnapshotMarkdown(snapshot: TeamSnapshot): string {
   const lines: string[] = [

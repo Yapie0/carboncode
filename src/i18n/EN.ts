@@ -357,6 +357,10 @@ export const EN: TranslationSchema = {
       description: "browse reusable Middlewave Hub modules and install local references",
       argsHint: "[list|search|show|install]",
     },
+    teams: {
+      description: "manage Carbon Code Teams multi-agent orchestration",
+      argsHint: "[create|status|inbox|run|dispatch]",
+    },
     retry: { description: "truncate & resend your last message (fresh sample)" },
     compact: {
       description:
