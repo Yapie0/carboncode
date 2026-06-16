@@ -127,6 +127,8 @@ export interface SlashContext {
   }) => void;
   dispatch?: (event: import("../state/events.js").AgentEvent) => void;
   setPlanMode?: (on: boolean) => void;
+  /** Spawn a Teams agent as a subagent — used by `/teams run`. Accepts agent id, system prompt, and task string. */
+  spawnTeamsAgent?: (agentId: string, system: string, task: string) => void;
   /** Manual escape valve when the model forgot to call `mark_step_complete` — used by `/plans done <id>`. */
   markPlanStepDone?: (stepId: string) => "ok" | "not-in-plan" | "already-done" | "no-plan";
   /** Mark every still-queued step done — used by `/plans done all`. Returns the count newly marked. */

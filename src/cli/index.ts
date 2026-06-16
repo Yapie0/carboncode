@@ -606,6 +606,12 @@ task
     });
   });
 
+// Register teams CLI
+{
+  const { registerTeamsCli } = await import("./commands/teams.js");
+  registerTeamsCli(program);
+}
+
 program
   .command("replay <transcript>")
   .description(t("cli.replay"))

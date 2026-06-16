@@ -275,6 +275,12 @@ export const SLASH_COMMANDS: readonly SlashCommandSpec[] = [
       "enter local collaboration mode and print a prompt for Codex, Claude Code, or another agent",
   },
   {
+    cmd: "teams",
+    group: "extend",
+    argsHint: "[create|status|inbox|resume|archive|agents|dispatch]",
+    summary: "multi-agent team orchestration — create, manage, dispatch tasks, and resume teams",
+  },
+  {
     cmd: "apply",
     group: "code",
     argsHint: "[N|N,M|N-M]",

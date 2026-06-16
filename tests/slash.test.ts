@@ -565,7 +565,7 @@ describe("handleSlash", () => {
     // Case-insensitive.
     expect(suggestSlashCommands("HE").map((s) => s.cmd)).toEqual(["help"]);
     // Empty prefix returns the full non-advanced release list, including code commands.
-    expect(suggestSlashCommands("", true)).toHaveLength(55);
+    expect(suggestSlashCommands("", true)).toHaveLength(56);
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("add-dir");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("vim");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("agents");

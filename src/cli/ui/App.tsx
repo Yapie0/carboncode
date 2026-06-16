@@ -2867,6 +2867,21 @@ function AppInner({
           memoryRoot: currentRootDir,
           planMode,
           setPlanMode: codeMode ? togglePlanMode : undefined,
+          spawnTeamsAgent: (agentId, system, task) => {
+            spawnSubagent({
+              client: loopRef.current?.client!,
+              parentRegistry: tools!,
+              system,
+              task,
+              model: "deepseek-v4-flash",
+              sink: subagentSinkRef.current,
+              skillName: `teams/${agentId}`,
+            }).then((result) => {
+              log.pushInfo(
+                `teams agent ${agentId}: ${result.success ? "done" : "failed"} — ${result.toolIters} tool call(s), ${result.turns} turn(s)`,
+              );
+            });
+          },
           editMode: codeMode ? editMode : undefined,
           setEditMode: codeMode ? setEditMode : undefined,
           vimEnabled,
@@ -3529,6 +3544,8 @@ function AppInner({
       generateCurrentSessionTitle,
       switchWorkspaceRoot,
       addWorkspaceDir,
+      tools,
+      subagentSinkRef,
     ],
   );
 
