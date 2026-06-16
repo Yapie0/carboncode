@@ -364,6 +364,59 @@ describe("Codex-style terminal surface", () => {
     expect(out).not.toContain("verbose body from tool 5");
   });
 
+  it("keeps the latest user prompt visible when an older active plan keeps the turn live", () => {
+    setLanguageRuntime("en");
+    const liveCards: Card[] = [
+      {
+        kind: "plan",
+        id: "plan-active",
+        ts: 1,
+        title: "Teams MVP",
+        variant: "active",
+        steps: [
+          { id: "s1", title: "done step", status: "done" },
+          { id: "s2", title: "queued step", status: "queued" },
+        ],
+      },
+      {
+        kind: "user",
+        id: "user-latest",
+        ts: 2,
+        text: "teams这些的操作有没有help或者文档之类的说明？",
+      },
+      ...Array.from({ length: 6 }, (_, i) => ({
+        kind: "tool" as const,
+        id: `tool-after-user-${i}`,
+        ts: i + 3,
+        name: "run_command",
+        args: { command: `echo ${i}` },
+        output: `verbose output ${i}`,
+        done: true,
+        exitCode: 0,
+        elapsedMs: 20,
+      })),
+      {
+        kind: "streaming",
+        id: "reply-live",
+        ts: 20,
+        text: "全部通过。现在 Teams 有三层帮助。",
+        done: false,
+        userPrompt: "teams这些的操作有没有help或者文档之类的说明？",
+      },
+    ];
+    const { lastFrame, unmount } = render(
+      <AgentStoreProvider session={SESSION} initialCards={liveCards}>
+        <CardStream maxRows={18} />
+      </AgentStoreProvider>,
+    );
+    const out = lastFrame() ?? "";
+    unmount();
+
+    expect(out).toContain("> teams这些的操作有没有help或者文档之类的说明？");
+    expect(out).toContain("+");
+    expect(out).toContain("全部通过。现在 Teams 有三层帮助。");
+  });
+
   it("keeps failed shell summaries ahead of tail output", () => {
     setLanguageRuntime("zh-CN");
     const { lastFrame, unmount } = render(
