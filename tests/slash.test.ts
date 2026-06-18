@@ -165,6 +165,29 @@ describe("handleSlash", () => {
     expect(r.openModelPicker).toBe(true);
   });
 
+  it("/provider lists configured chat providers", () => {
+    const r = handleSlash("provider", [], makeLoop(), {
+      activeChatProvider: () => ({ id: "openrouter", baseUrl: "https://openrouter.ai/api/v1" }),
+      chatProviders: () => [
+        { id: "deepseek", baseUrl: "https://api.deepseek.com" },
+        { id: "openrouter", baseUrl: "https://openrouter.ai/api/v1", model: "openai/gpt-4.1" },
+      ],
+    });
+    expect(r.info).toContain("* openrouter");
+    expect(r.info).toContain("openai/gpt-4.1");
+  });
+
+  it("/provider switches through the live provider callback", () => {
+    const r = handleSlash("provider", ["openrouter"], makeLoop(), {
+      switchChatProvider: (id) => ({
+        ok: true,
+        provider: { id, baseUrl: "https://openrouter.ai/api/v1", model: "openai/gpt-4.1" },
+      }),
+    });
+    expect(r.info).toContain("switched to openrouter");
+    expect(r.info).toContain("openai/gpt-4.1");
+  });
+
   it("/preset with no arg opens the unified picker", () => {
     const r = handleSlash("preset", [], makeLoop());
     expect(r.openModelPicker).toBe(true);
@@ -565,7 +588,7 @@ describe("handleSlash", () => {
     // Case-insensitive.
     expect(suggestSlashCommands("HE").map((s) => s.cmd)).toEqual(["help"]);
     // Empty prefix returns the full non-advanced release list, including code commands.
-    expect(suggestSlashCommands("", true)).toHaveLength(56);
+    expect(suggestSlashCommands("", true)).toHaveLength(57);
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("add-dir");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("vim");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("agents");
@@ -578,6 +601,7 @@ describe("handleSlash", () => {
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("export");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("logs");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("language");
+    expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("provider");
     expect(suggestSlashCommands("lan").map((s) => s.cmd)).toContain("language");
   });
 

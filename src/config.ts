@@ -108,7 +108,27 @@ export interface RateLimitConfig {
   rpm?: number;
 }
 
+export interface ChatProviderConfig {
+  /** OpenAI-compatible chat API key for this provider. */
+  apiKey?: string;
+  /** OpenAI-compatible API base URL, e.g. https://api.deepseek.com or .../compatible-mode/v1. */
+  baseUrl?: string;
+  /** Optional default model used when switching to this provider. */
+  model?: string;
+}
+
+export interface ResolvedChatProviderConfig {
+  id: string;
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+}
+
 export interface ReasonixConfig {
+  /** Active chat provider id. Defaults to `deepseek` for legacy single-provider configs. */
+  provider?: string;
+  /** Named OpenAI-compatible chat providers. Legacy apiKey/baseUrl remain the default DeepSeek provider. */
+  providers?: Record<string, ChatProviderConfig>;
   apiKey?: string;
   baseUrl?: string;
   /** Explicit chat model pin. When absent, the selected preset supplies the model. */
@@ -448,16 +468,106 @@ export function saveLanguage(lang: LanguageCode, path: string = defaultConfigPat
   writeConfig(cfg, path);
 }
 
-/** Resolve the API key from env var first, then the config file. */
-export function loadApiKey(path: string = defaultConfigPath()): string | undefined {
-  if (process.env.DEEPSEEK_API_KEY) return process.env.DEEPSEEK_API_KEY;
-  return readConfig(path).apiKey;
+function normalizeProviderId(id: unknown): string | undefined {
+  if (typeof id !== "string") return undefined;
+  const trimmed = id.trim();
+  if (!/^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/.test(trimmed)) return undefined;
+  return trimmed;
 }
 
-/** env > config > undefined. Client falls back to api.deepseek.com when undefined. */
+function normalizeChatProviderConfig(value: unknown): ChatProviderConfig {
+  if (!isPlainObject(value)) return {};
+  const cfg: ChatProviderConfig = {};
+  if (typeof value.apiKey === "string" && value.apiKey.trim()) cfg.apiKey = value.apiKey.trim();
+  if (typeof value.baseUrl === "string" && value.baseUrl.trim()) {
+    cfg.baseUrl = value.baseUrl.trim();
+  }
+  if (typeof value.model === "string" && value.model.trim()) cfg.model = value.model.trim();
+  return cfg;
+}
+
+export function listChatProviders(
+  path: string = defaultConfigPath(),
+): ResolvedChatProviderConfig[] {
+  const cfg = readConfig(path);
+  const providers = cfg.providers && isPlainObject(cfg.providers) ? cfg.providers : {};
+  const out: ResolvedChatProviderConfig[] = [];
+  const seen = new Set<string>();
+
+  const push = (id: string, value: unknown, legacyFallback = false) => {
+    const provider = normalizeChatProviderConfig(value);
+    if (legacyFallback) {
+      provider.apiKey ??=
+        typeof cfg.apiKey === "string" && cfg.apiKey.trim() ? cfg.apiKey : undefined;
+      provider.baseUrl ??=
+        typeof cfg.baseUrl === "string" && cfg.baseUrl.trim() ? cfg.baseUrl : undefined;
+      provider.model ??= typeof cfg.model === "string" && cfg.model.trim() ? cfg.model : undefined;
+    }
+    if (seen.has(id)) return;
+    seen.add(id);
+    out.push({ id, ...provider });
+  };
+
+  for (const [rawId, value] of Object.entries(providers)) {
+    const id = normalizeProviderId(rawId);
+    if (!id) continue;
+    push(id, value, id === "deepseek");
+  }
+
+  if (!seen.has("deepseek")) {
+    push(
+      "deepseek",
+      {
+        apiKey: cfg.apiKey,
+        baseUrl: cfg.baseUrl,
+        model: cfg.model,
+      },
+      false,
+    );
+  }
+
+  return out;
+}
+
+export function resolveChatProviderConfig(
+  path: string = defaultConfigPath(),
+  providerId?: string,
+): ResolvedChatProviderConfig {
+  const cfg = readConfig(path);
+  const providers = listChatProviders(path);
+  const requested = normalizeProviderId(providerId) ?? normalizeProviderId(cfg.provider);
+  return providers.find((p) => p.id === requested) ?? providers[0] ?? { id: "deepseek" };
+}
+
+export function saveActiveChatProvider(
+  providerId: string,
+  path: string = defaultConfigPath(),
+): ResolvedChatProviderConfig {
+  const id = normalizeProviderId(providerId);
+  if (!id)
+    throw new Error(
+      "provider id must start with a letter and contain only letters, numbers, _ or -",
+    );
+  const providers = listChatProviders(path);
+  const provider = providers.find((p) => p.id === id);
+  if (!provider) throw new Error(`unknown provider: ${providerId}`);
+  const cfg = readConfig(path);
+  cfg.provider = provider.id;
+  if (provider.model) cfg.model = provider.model;
+  writeConfig(cfg, path);
+  return provider;
+}
+
+/** Resolve the API key from env var first, then the active chat provider. */
+export function loadApiKey(path: string = defaultConfigPath()): string | undefined {
+  if (process.env.DEEPSEEK_API_KEY) return process.env.DEEPSEEK_API_KEY;
+  return resolveChatProviderConfig(path).apiKey;
+}
+
+/** env > active provider > undefined. Client falls back to api.deepseek.com when undefined. */
 export function loadBaseUrl(path: string = defaultConfigPath()): string | undefined {
   if (process.env.DEEPSEEK_BASE_URL) return process.env.DEEPSEEK_BASE_URL;
-  return readConfig(path).baseUrl;
+  return resolveChatProviderConfig(path).baseUrl;
 }
 
 function isNonNegativeNumber(value: unknown): value is number {
@@ -491,7 +601,13 @@ export function loadRateLimit(path: string = defaultConfigPath()): RateLimitConf
 export function saveBaseUrl(url: string, path: string = defaultConfigPath()): void {
   const cfg = readConfig(path);
   const trimmed = url.trim();
-  if (trimmed) {
+  const active = normalizeProviderId(cfg.provider);
+  if (active && cfg.providers && isPlainObject(cfg.providers)) {
+    cfg.providers[active] = {
+      ...normalizeChatProviderConfig(cfg.providers[active]),
+      baseUrl: trimmed || undefined,
+    };
+  } else if (trimmed) {
     cfg.baseUrl = trimmed;
   } else {
     cfg.baseUrl = undefined;
@@ -650,7 +766,16 @@ export function webSearchEndpoint(path: string = defaultConfigPath()): string {
 
 export function saveApiKey(key: string, path: string = defaultConfigPath()): void {
   const cfg = readConfig(path);
-  cfg.apiKey = key.trim();
+  const trimmed = key.trim();
+  const active = normalizeProviderId(cfg.provider);
+  if (active && cfg.providers && isPlainObject(cfg.providers)) {
+    cfg.providers[active] = {
+      ...normalizeChatProviderConfig(cfg.providers[active]),
+      apiKey: trimmed,
+    };
+  } else {
+    cfg.apiKey = trimmed;
+  }
   writeConfig(cfg, path);
 }
 

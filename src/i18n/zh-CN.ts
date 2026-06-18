@@ -267,6 +267,7 @@ export const zhCN: TranslationSchema = {
     },
     model: { description: "切换 DeepSeek 模型 ID", argsHint: "<id>" },
     models: { description: "列出从 DeepSeek /models 获取的可用模型" },
+    provider: { description: "列出或切换已配置的模型供应商", argsHint: "[name]" },
     theme: {
       description: "显示或持久化终端主题偏好。无参数时打开选择器。",
       argsHint: "[auto|default|dark|light|tokyo-night|github-dark|github-light|high-contrast]",

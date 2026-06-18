@@ -93,6 +93,7 @@ Type `/` mid-chat to open the picker. Aliases shown in parentheses. Code-mode-on
 |---|---|
 | `/preset <auto\|flash\|pro>` | Switch model bundle. Bare opens picker |
 | `/model <id>` | Switch DeepSeek model id. Bare opens picker |
+| `/provider [name]` | List or switch configured OpenAI-compatible chat providers |
 | `/language <EN\|zh-CN>` (`/lang`) | Switch the runtime language |
 | `/theme <name>` | Show or persist terminal theme. Bare opens picker |
 | `/config` | Open configuration guidance and current config paths |
