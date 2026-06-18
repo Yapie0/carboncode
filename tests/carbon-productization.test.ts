@@ -205,11 +205,7 @@ describe("Carbon broad Reasonix import", () => {
   });
 
   test("published Markdown docs use Carbon command names", () => {
-    const docs = [
-      "docs/CLI-REFERENCE.md",
-      "docs/qq-connect.md",
-      "docs/qq-connect.zh-CN.md",
-    ];
+    const docs = ["docs/CLI-REFERENCE.md", "docs/qq-connect.md", "docs/qq-connect.zh-CN.md"];
 
     for (const file of docs) {
       const content = readFileSync(resolve(file), "utf8");

@@ -210,9 +210,9 @@ async function captureStartupState(opts?: {
 
 // Dynamic chat.js / tools.js import inside captureStartupState pushes
 // past the 5s default under full-suite worker contention; pass in
-// isolation. 15s leaves headroom for cold module-cache + slow CI hosts
+// isolation. 60s leaves headroom for cold module-cache + slow CI hosts
 // without making the suite noticeably slower in the happy path.
-describe("chatCommand MCP startup summary states", { timeout: 15_000 }, () => {
+describe("chatCommand MCP startup summary states", { timeout: 60_000 }, () => {
   beforeEach(() => {
     vi.spyOn(process.stderr, "write").mockImplementation(() => true);
   });

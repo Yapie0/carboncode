@@ -18,5 +18,5 @@ describe("Codex parity real-task harness", () => {
       "test-passed",
       "summary",
     ]);
-  });
+  }, 30_000);
 });

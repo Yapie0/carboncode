@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setLanguageRuntime } from "../src/i18n/index.js";
 
 const mocks = vi.hoisted(() => {
@@ -56,7 +56,7 @@ vi.mock("../src/mcp/transport-from-spec.js", () => ({
 }));
 
 describe("acp --mcp loader", () => {
-  afterEach(() => {
+  beforeEach(() => {
     setLanguageRuntime("EN");
     mocks.initializeMock.mockReset();
     mocks.closeMock.mockReset();
@@ -69,6 +69,10 @@ describe("acp --mcp loader", () => {
       registeredNames: [`${opts.namePrefix ?? ""}echo`],
     }));
     vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   async function callLoader(specs: string[], prefix?: string) {
