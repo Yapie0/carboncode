@@ -496,6 +496,7 @@ function AppInner({
   const chatScroll = useChatScrollActions();
   const [input, setInput] = useState("");
   const [composerCursor, setComposerCursor] = useState(0);
+  const [promptHistorySearchOpen, setPromptHistorySearchOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [slashUsage, setSlashUsage] = useState<Readonly<Record<string, number>>>(() =>
     loadSlashUsage(),
@@ -732,6 +733,7 @@ function AppInner({
     !!pendingPlan ||
     !!pendingReviseEditor ||
     !!pendingSessionsPicker ||
+    promptHistorySearchOpen ||
     !!pendingWorkspacePicker ||
     !!pendingCheckpointPicker ||
     !!pendingMcpHub ||
@@ -1552,6 +1554,19 @@ function AppInner({
     setSlashSelected,
     recallPrev,
   ]);
+
+  const handleHistorySearchChoose = useCallback(
+    (value: string) => {
+      setInput(value);
+      resetCursor();
+      setPromptHistorySearchOpen(false);
+    },
+    [resetCursor],
+  );
+
+  const handleHistorySearchCancel = useCallback(() => {
+    setPromptHistorySearchOpen(false);
+  }, []);
   const handleHistoryNext = useCallback(() => {
     if (atState && atState.entries.length > 0) {
       setAtSelected((i) => Math.min(atState.entries.length - 1, i + 1));
@@ -1729,6 +1744,11 @@ function AppInner({
         loop,
         quitProcess,
       });
+      return;
+    }
+    if (promptHistorySearchOpen) return;
+    if (key.ctrl && key.input.toLowerCase() === "r" && !busy && !modalOpen) {
+      setPromptHistorySearchOpen(true);
       return;
     }
     // Esc dismisses any composer-level picker (slash / @ / slash-arg)
@@ -4691,6 +4711,10 @@ function AppInner({
                       onSubmit={handleSubmit}
                       onHistoryPrev={handleHistoryPrev}
                       onHistoryNext={handleHistoryNext}
+                      promptHistory={promptHistory}
+                      historySearchOpen={promptHistorySearchOpen}
+                      onHistorySearchChoose={handleHistorySearchChoose}
+                      onHistorySearchCancel={handleHistorySearchCancel}
                       onOpenExternalEditor={handleOpenExternalEditor}
                       onCursorChange={setComposerCursor}
                       vimEnabled={vimEnabled}
