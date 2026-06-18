@@ -1,6 +1,6 @@
 # PR review record
 
-Last refreshed: 2026-06-11
+Last refreshed: 2026-06-18
 
 Source: GitHub API, open PRs for `Yapie0/carboncode`.
 
@@ -64,4 +64,25 @@ Use this for each PR:
 - Contributor note:
 - Outcome:
 - Follow-up:
+```
+
+### 2026-06-18 — PR review cycle
+
+**PR #102** — `[codex] 增加 Ctrl+R 输入历史搜索`
+- Classification: merge-candidate ✅
+- Date: 2026-06-18
+- Base checked: `9b6b461` vs `origin/main` — 已 stale 但无冲突
+- Diff summary: 10 files (+318/-13). 新增 PromptHistoryPicker 组件，集成 Ctrl+R 快捷键，i18n 完整
+- Risks: 低 — 独立新组件，不修改核心逻辑
+- Tests run: 339 files (3914 passed, 4 skipped) — 已通过
+- Maintainer action: `gh pr merge --squash` ✅
+- Outcome: Merged at `ecd6a608`
+
+**PR #103** — `[codex] Add multi-provider chat switching`
+- Classification: draft-only (marked as draft)
+- Date: 2026-06-18
+- Maintainer action: skip — draft PR
+- Contributor note: Draft PR out of merge queue; will review when ready
+- Follow-up: Review after draft status removed
+
 ```
