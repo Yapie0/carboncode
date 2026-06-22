@@ -11,6 +11,7 @@ import { t } from "../../i18n/index.js";
 import type { JobRegistry } from "../../tools/jobs.js";
 
 import { AtMentionSuggestions } from "./AtMentionSuggestions.js";
+import { PromptHistoryPicker } from "./PromptHistoryPicker.js";
 import { PromptInput } from "./PromptInput.js";
 import type { SlashArgPickerProps } from "./SlashArgPicker.js";
 import { SlashArgPicker } from "./SlashArgPicker.js";
@@ -45,6 +46,10 @@ export interface ComposerAreaProps {
   onSubmit: (raw: string) => Promise<void>;
   onHistoryPrev: () => void;
   onHistoryNext: () => void;
+  promptHistory: readonly string[];
+  historySearchOpen: boolean;
+  onHistorySearchChoose: (value: string) => void;
+  onHistorySearchCancel: () => void;
   onOpenExternalEditor: () => void;
   onCursorChange: (cursor: number) => void;
   /** Vim editing layer for the composer (toggled by /vim). */
@@ -102,6 +107,10 @@ export const ComposerArea: React.FC<ComposerAreaProps> = React.memo(
     onSubmit,
     onHistoryPrev,
     onHistoryNext,
+    promptHistory,
+    historySearchOpen,
+    onHistorySearchChoose,
+    onHistorySearchCancel,
     onOpenExternalEditor,
     onCursorChange,
     vimEnabled,
@@ -140,16 +149,25 @@ export const ComposerArea: React.FC<ComposerAreaProps> = React.memo(
             />
           ) : null}
         </Box>
-        <PromptInput
-          value={input}
-          onChange={setInput}
-          onSubmit={onSubmit}
-          onHistoryPrev={onHistoryPrev}
-          onHistoryNext={onHistoryNext}
-          onOpenExternalEditor={onOpenExternalEditor}
-          onCursorChange={onCursorChange}
-          vimEnabled={vimEnabled}
-        />
+        {historySearchOpen ? (
+          <PromptHistoryPicker
+            history={promptHistory}
+            initialQuery={input}
+            onChoose={onHistorySearchChoose}
+            onCancel={onHistorySearchCancel}
+          />
+        ) : (
+          <PromptInput
+            value={input}
+            onChange={setInput}
+            onSubmit={onSubmit}
+            onHistoryPrev={onHistoryPrev}
+            onHistoryNext={onHistoryNext}
+            onOpenExternalEditor={onOpenExternalEditor}
+            onCursorChange={onCursorChange}
+            vimEnabled={vimEnabled}
+          />
+        )}
         {busy || queuedSubmitCount > 0 ? (
           <Box>
             <Text color={FG.faint}>

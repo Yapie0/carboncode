@@ -50,6 +50,12 @@ desktop/src-tauri/target/
 desktop/src-tauri/gen/
 desktop/src-tauri/binaries/
 
+# Desktop app source now lives in https://github.com/Yapie0/carboncode_app.
+/desktop/
+/.github/workflows/desktop.yml
+/tests/desktop-*.test.ts
+/tests/installer-nsh-no-placeholders.test.ts
+
 # Design mock-up reference (local, not part of repo)
 .design-ref/
 *.cpuprofile

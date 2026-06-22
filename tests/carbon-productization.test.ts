@@ -101,37 +101,6 @@ describe("Carbon broad Reasonix import", () => {
     expect(mcpCatalog).toContain("debugging your Carbon Code setup");
   });
 
-  test("desktop visible surfaces are Carbon-branded", () => {
-    const tauri = readFileSync(resolve("desktop/src-tauri/tauri.conf.json"), "utf8");
-    const desktopEn = readFileSync(resolve("desktop/src/i18n/en.ts"), "utf8");
-    const desktopZh = readFileSync(resolve("desktop/src/i18n/zh-CN.ts"), "utf8");
-    const about = readFileSync(resolve("desktop/src/ui/about.tsx"), "utf8");
-    const indexHtml = readFileSync(resolve("desktop/index.html"), "utf8");
-
-    expect(tauri).toContain('"productName": "Carbon Code"');
-    expect(tauri).toContain('"title": "Carbon Code"');
-    expect(tauri).toContain("github.com/Yapie0/carboncode");
-    expect(desktopEn).toContain("About Carbon Code");
-    expect(desktopEn).toContain("Carbon Code v{version}");
-    expect(desktopZh).toContain("关于 Carbon Code");
-    expect(desktopZh).toContain("Carbon Code v{version}");
-    expect(about).toContain('<div className="about-name">Carbon Code</div>');
-    expect(about).toContain("Yapie0/carboncode");
-    expect(indexHtml).toContain("<title>Carbon Code</title>");
-  });
-
-  test("desktop developer env vars prefer Carbon names with legacy fallback", () => {
-    const rpc = readFileSync(resolve("desktop/src-tauri/src/rpc.rs"), "utf8");
-    const main = readFileSync(resolve("desktop/src-tauri/src/main.rs"), "utf8");
-
-    expect(rpc).toContain('"CARBONCODE_CLI"');
-    expect(rpc).toContain('"REASONIX_CLI"');
-    expect(rpc.indexOf('"CARBONCODE_CLI"')).toBeLessThan(rpc.indexOf('"REASONIX_CLI"'));
-    expect(main).toContain('"CARBONCODE_DEVTOOLS"');
-    expect(main).toContain('"REASONIX_DEVTOOLS"');
-    expect(main.indexOf('"CARBONCODE_DEVTOOLS"')).toBeLessThan(main.indexOf('"REASONIX_DEVTOOLS"'));
-  });
-
   test("CLI startup and empty-session branding uses Carbon Code", () => {
     const bootSplash = readFileSync(resolve("src/cli/ui/BootSplash.tsx"), "utf8");
     const welcomeBanner = readFileSync(resolve("src/cli/ui/WelcomeBanner.tsx"), "utf8");
@@ -236,12 +205,7 @@ describe("Carbon broad Reasonix import", () => {
   });
 
   test("published Markdown docs use Carbon command names", () => {
-    const docs = [
-      "docs/CLI-REFERENCE.md",
-      "docs/qq-connect.md",
-      "docs/qq-connect.zh-CN.md",
-      "desktop/SIGNING.md",
-    ];
+    const docs = ["docs/CLI-REFERENCE.md", "docs/qq-connect.md", "docs/qq-connect.zh-CN.md"];
 
     for (const file of docs) {
       const content = readFileSync(resolve(file), "utf8");

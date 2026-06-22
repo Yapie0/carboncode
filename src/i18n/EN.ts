@@ -1353,6 +1353,12 @@ export const EN: TranslationSchema = {
     hintHistory: "history",
     hintAbort: "abort",
     hintQuit: "quit",
+    historySearchTitle: "Prompt history",
+    historySearchPrompt: "search: ",
+    historySearchCount: " · {shown}/{total}",
+    historySearchEmpty: "No prompts submitted in this session yet.",
+    historySearchNoMatch: "No matching prompts.",
+    historySearchHint: "type to filter · ↑/↓ select · Ctrl+R next · Enter use · Esc cancel",
     abortedHint: "turn aborted by user \u00b7 esc again to clear \u00b7 \u23ce to ask a follow-up",
     editorNoRawMode:
       "external editor unavailable \u2014 stdin doesn't support raw-mode toggling on this terminal",

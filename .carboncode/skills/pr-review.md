@@ -14,8 +14,9 @@ Triage, review, and merge Carbon Code pull requests following the project's cont
   - Server-side operation — does NOT trigger local `pre-push` / `verify` hooks.
   - Auto-closes the PR on success.
   - Fails cleanly on conflicts → fall back to manual path.
-- **Merge (fallback — conflict resolution)**: `git fetch origin pull/<id>/head:pr-<id>` → `git merge --squash` → resolve conflicts → commit → `git push origin main --no-verify`. Then leave PR open with a comment (code is on main; `gh pr merge` can't retroactively mark it).
-- **Close / comment**: `gh pr close` for rejected PRs only. For merged PRs, `gh pr merge` auto-closes.
+- **Merge (fallback — conflict resolution)**: `git fetch origin pull/<id>/head:pr-<id>` → `git merge --squash` → resolve conflicts → commit → `git push origin main --no-verify`.
+- **Comment on PRs**: `gh pr comment <number> --repo Yapie0/carboncode --body "..."` (terminal) or `github_add_issue_comment` (API).
+- **Close PR**: `gh pr close <number> --repo Yapie0/carboncode` for rejected PRs only.
   **Never use `gh pr close` on a merged PR** — it marks the PR as "Closed" (rejected) instead of "Merged" (purple badge).
 
 ## Pre-flight
@@ -52,6 +53,7 @@ Triage, review, and merge Carbon Code pull requests following the project's cont
 9. During the early project phase, prefer maintainer repair over rejection for harmless, useful PRs.
 10. Keep contributor-facing comments specific, respectful, and encouraging.
 11. **Always prefer `gh pr merge --squash`** over manual git push. It is faster, safer, and correctly marks PRs as merged.
+12. **Always leave a PR comment** after every review action — merge, close, or draft-skip. `gh pr merge` auto-closes the PR but does NOT post a visible comment; the contributor gets no notification without one.
 
 ## Classification
 
@@ -144,6 +146,25 @@ This is the preferred path. It creates the squash merge on GitHub's servers, aut
 
 **The body must be filled in from the PR review** — extract test file names and pass counts from the PR description's Verification section, write a one-line summary of the actual code change, and give specific praise.
 
+**After merge succeeds**, immediately post a PR comment so the contributor is notified. Use this exact format (modeled after #101):
+
+```bash
+gh pr comment <number> --repo Yapie0/carboncode --body "## Review Summary
+
+Reviewed & merged by Carbon Code
+
+Tests: <verification> — <N>/<N> passed
+<Type>: <one-line summary>
+
+Thanks @<author> for <specific contribution>.
+
+Co-Authored-By: Carbon Code <carboncode@code.ai6666.com>
+
+-- Carbon Code"
+```
+
+The comment should mirror the merge body but use `## Review Summary` as the header so it renders as a structured review on the PR page.
+
 **Fallback path — local conflict resolution:**
 
 When `gh pr merge` fails with "the merge commit cannot be cleanly created".
@@ -218,6 +239,16 @@ Steps:
 1. Comment on the PR explaining the stale base and requesting a rebase.
 2. If the contributor is unresponsive and the change is simple, cherry-pick locally onto current main (same squash flow as Step 3).
 3. Record the decision.
+
+### Step 4.5 — If draft-only
+
+1. **Leave a comment** acknowledging the draft:
+   ```bash
+   gh pr comment <number> --repo Yapie0/carboncode --body "👋 Thanks for the PR @<author>! This is marked as draft — I'll review it when it's ready for merge. No action needed now.
+
+   — Carbon Code"
+   ```
+2. Record in `docs/pr-review-record.md`.
 
 ### Step 5 — If close / superseded
 
