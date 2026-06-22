@@ -1680,7 +1680,8 @@ function AppInner({
     };
   }, [startupUpdateCheck, log]);
 
-  // Esc handles "abort the current turn" separately; Ctrl+C is the universal "I'm done" key.
+  // Esc handles "abort the current turn" separately. Ctrl+C first clears a
+  // non-empty composer draft; only an empty composer interrupts/quits.
   const quitProcess = useQuit(transcriptRef);
   const cleanupInterruptedTurn = useCallback(() => {
     const ts = Date.now();
@@ -1698,10 +1699,10 @@ function AppInner({
     if (ev.ctrl && ev.input === "d") quitProcess();
   });
 
-  // Esc/Ctrl+C during an active model turn forward to the loop as an
-  // abort signal. Generic busy states such as `!cmd` and `/btw` are
-  // excluded so a stray Esc cannot poison the next turn's abort
-  // controller.
+  // Esc/Ctrl+C during an active model turn forward to the loop as an abort
+  // signal, after the Ctrl+C composer-clear guard above. Generic busy states
+  // such as `!cmd` and `/btw` are excluded so a stray Esc cannot poison the
+  // next turn's abort controller.
   //
   // Prompt history and multi-line cursor movement are handed off from PromptInput via
   // recallPrev/recallNext below —parent-level useInput is simpler
@@ -1730,6 +1731,9 @@ function AppInner({
         stopLoop,
         loop,
         quitProcess,
+        composerText: input,
+        clearComposer: () => setInput(""),
+        resetComposerCursor: resetCursor,
       });
       return;
     }

@@ -1,5 +1,11 @@
 export type TurnInterruptKey = "escape" | "ctrl-c";
-export type TurnInterruptOutcome = "aborted" | "already-aborted" | "stopped-loop" | "idle" | "quit";
+export type TurnInterruptOutcome =
+  | "cleared-input"
+  | "aborted"
+  | "already-aborted"
+  | "stopped-loop"
+  | "idle"
+  | "quit";
 
 export interface TurnInterruptController {
   turnActiveRef: { readonly current: boolean };
@@ -10,6 +16,9 @@ export interface TurnInterruptController {
   stopLoop: () => void;
   loop: { abort: () => void };
   quitProcess: () => void;
+  composerText?: string;
+  clearComposer?: () => void;
+  resetComposerCursor?: () => void;
 }
 
 export function handleTurnInterrupt(
@@ -23,8 +32,17 @@ export function handleTurnInterrupt(
     stopLoop,
     loop,
     quitProcess,
+    composerText,
+    clearComposer,
+    resetComposerCursor,
   }: TurnInterruptController,
 ): TurnInterruptOutcome {
+  if (key === "ctrl-c" && composerText && composerText.length > 0) {
+    clearComposer?.();
+    resetComposerCursor?.();
+    return "cleared-input";
+  }
+
   if (turnActiveRef.current) {
     if (abortedThisTurn.current) return "already-aborted";
     abortedThisTurn.current = true;
