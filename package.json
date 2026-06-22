@@ -1,0 +1,113 @@
+{
+  "name": "@carboncode/cli",
+  "version": "0.2.9",
+  "description": "Chinese-first DeepSeek-powered terminal coding agent for personal developer workflows.",
+  "type": "module",
+  "bin": {
+    "carboncode": "dist/cli/index.js",
+    "ccode": "dist/cli/index.js"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "data/deepseek-tokenizer.json.gz",
+    "dashboard/index.html",
+    "dashboard/app.css",
+    "dashboard/dist",
+    "README.md",
+    "README.en.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "LICENSES"
+  ],
+  "scripts": {
+    "build": "tsup && node scripts/copy-dashboard-vendor-css.mjs",
+    "dev": "tsx src/cli/index.ts",
+    "chat": "tsx src/cli/index.ts chat",
+    "prepack": "npm run verify",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:mutation": "stryker run",
+    "lint": "biome check src tests",
+    "lint:fix": "biome check --write src tests",
+    "format": "biome format --write src tests",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p dashboard",
+    "verify": "npm run build && npm run lint && npm run typecheck && npm run test --silent",
+    "prepare": "simple-git-hooks || true",
+    "prepublishOnly": "npm run lint && npm run typecheck && npm run test && npm run build"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npm run lint",
+    "pre-push": "npm run verify"
+  },
+  "keywords": [
+    "agent",
+    "llm",
+    "deepseek",
+    "r1",
+    "tool-use",
+    "prompt-cache",
+    "cli",
+    "tui"
+  ],
+  "author": "Yapie0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/Yapie0/carboncode.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Yapie0/carboncode/issues"
+  },
+  "homepage": "https://github.com/Yapie0/carboncode#readme",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "cli-highlight": "^2.1.11",
+    "commander": "^12.1.0",
+    "eventsource-parser": "^3.0.0",
+    "ignore": "^7.0.5",
+    "ink": "^7.0.2",
+    "ink-text-input": "^6.0.0",
+    "node-html-parser": "^7.1.0",
+    "picomatch": "^4.0.4",
+    "react": "^19.2.6",
+    "string-width": "^7.2.0",
+    "undici": "^8.2.0",
+    "ws": "^8.20.1",
+    "zod": "^4.4.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
+    "@types/node": "^22.9.0",
+    "@types/picomatch": "^4.0.3",
+    "@types/react": "^19.2.14",
+    "@types/ws": "^8.18.1",
+    "@vitest/coverage-v8": "^2.1.5",
+    "esbuild": "^0.21.5",
+    "highlight.js": "^11.10.0",
+    "htm": "^3.1.1",
+    "ink-testing-library": "^4.0.0",
+    "marked": "^15.0.12",
+    "preact": "^10.22.0",
+    "simple-git-hooks": "^2.13.1",
+    "strip-ansi": "^7.1.0",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "uplot": "^1.6.31",
+    "vitest": "^2.1.5"
+  }
+}
