@@ -7,6 +7,8 @@ description: Triage, review, and merge Carbon Code pull requests using the proje
 
 Triage, review, and merge Carbon Code pull requests following the project's contributor-friendly governance policy.
 
+**Governing document**: `docs/pr-review-governance.md` — this skill implements it. When in doubt, governance rules.
+
 ## Toolset
 
 - **Read PRs**: use `github_list_pull_requests`, `github_get_pull_request`, `github_get_pull_request_files`.
@@ -55,6 +57,17 @@ Triage, review, and merge Carbon Code pull requests following the project's cont
 11. **Always prefer `gh pr merge --squash`** over manual git push. It is faster, safer, and correctly marks PRs as merged.
 12. **Always leave a PR comment** after every review action — merge, close, or draft-skip. `gh pr merge` auto-closes the PR but does NOT post a visible comment; the contributor gets no notification without one.
 
+## Review order (from governance)
+
+Review in this priority:
+
+1. Security, data loss, auth, and crash fixes.
+2. Failing-test fixes or CI unblockers.
+3. Small correctness fixes with focused tests.
+4. User-visible product polish with screenshots or clear reproduction.
+5. Docs-only cleanup.
+6. Large features and draft PRs.
+
 ## Classification
 
 | Label | Condition |
@@ -67,7 +80,25 @@ Triage, review, and merge Carbon Code pull requests following the project's cont
 | `close` | Not useful, unsafe, directionally wrong, abandoned/broken, or unreviewable |
 | `draft-only` | Draft PR — skip, no merge review yet |
 
-## Merge Gate (from AGENTS.md)
+For external contributors, also classify maintainer action:
+
+| Action | When |
+|--------|------|
+| `repair-and-merge` | Useful and safe after small maintainer edits (formatting, naming, test gaps, copy) |
+| `comment-for-author` | Useful but requires author intent, larger design choice, or unavailable branch permissions |
+| `maintainer-follow-up` | Useful contribution should be incorporated through a separate maintainer branch |
+
+## New PR triage checklist (from governance)
+
+For every new PR, answer:
+
+- Does it solve one understandable problem?
+- Does it include focused verification?
+- Does it preserve Carbon Code naming and Chinese-first defaults?
+- Does it avoid unrelated product, UI, docs, and generated-file churn?
+- Does it avoid modifying review-governance files unless authored by a project member?
+
+## Merge Gate (from AGENTS.md + governance)
 
 - It fixes a real issue or advances Carbon Code productization.
 - It has no known bug after review.
@@ -259,6 +290,10 @@ Steps:
 ### Step 6 — Record the decision
 
 Update `docs/pr-review-record.md` with: PR number, title, classification, action taken, date.
+
+## Protected review branch (from governance)
+
+The review-governance branch is `codex/pr-review-governance`. Only project members may propose PRs targeting it. If a PR targets this branch and the author is not a project member, classify as `close` with a note redirecting to `main`.
 
 ---
 
