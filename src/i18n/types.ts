@@ -729,6 +729,7 @@ export interface TranslationSchema {
     };
   };
   webErrors: {
+    searchTimeout: string;
     status: string;
     rateLimit429: string;
     forbidden403: string;

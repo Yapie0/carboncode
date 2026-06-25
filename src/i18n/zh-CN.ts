@@ -1552,6 +1552,8 @@ export const zhCN: TranslationSchema = {
     },
   },
   webErrors: {
+    searchTimeout:
+      "web_search: 搜索 {ms}ms 超时 — try: 检查网络/代理（国内直连 Mojeek 等国外引擎常被墙）；或用 /search-engine metaso 切到国内引擎",
     status:
       "web_search {status} — try: 搜索后端返回错误；请改写查询，或使用 /search-engine mojeek|searxng 切换引擎",
     rateLimit429:

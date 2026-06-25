@@ -149,7 +149,7 @@ export interface ReasonixConfig {
   session?: string | null;
   setupCompleted?: boolean;
   search?: boolean;
-  /** Web search engine backend: "mojeek" (default, scrapes Mojeek), "searxng" (self-hosted SearXNG), or "metaso" (Metaso API). */
+  /** Web search engine backend: "metaso" (default, Metaso API — reachable from mainland China), "mojeek" (scrapes Mojeek), or "searxng" (self-hosted SearXNG). */
   webSearchEngine?: "mojeek" | "searxng" | "metaso";
   /** Base URL for SearXNG instance (default http://localhost:8080). */
   webSearchEndpoint?: string;
@@ -638,8 +638,8 @@ export function webSearchEngine(
 ): "mojeek" | "searxng" | "metaso" {
   const cfg = readConfig(path).webSearchEngine;
   if (cfg === "searxng") return "searxng";
-  if (cfg === "metaso") return "metaso";
-  return "mojeek";
+  if (cfg === "mojeek") return "mojeek";
+  return "metaso";
 }
 
 export function webSearchEndpoint(path: string = defaultConfigPath()): string {

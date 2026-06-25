@@ -1,6 +1,7 @@
 /** web_search uses Mojeek (DDG returns anti-bot 202 to unauthenticated POSTs); web_fetch sniffs HTML to text. */
 
 import { parse as parseHtml } from "node-html-parser";
+import { type Dispatcher, ProxyAgent } from "undici";
 import {
   loadMetasoApiKey,
   webSearchEndpoint as loadWebSearchEndpoint,
@@ -51,6 +52,63 @@ const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 const MOJEEK_ENDPOINT = "https://www.mojeek.com/search";
 const METASO_ENDPOINT = "https://metaso.cn/api/v1";
+/** Search/fetch hard timeout. Without it a blackholed connection (e.g. an
+ * international engine blocked by a firewall) hangs until the caller aborts,
+ * which can stall the whole agent stream until an upstream gateway cuts it. */
+const SEARCH_TIMEOUT_MS = 15_000;
+
+type FetchInit = RequestInit & { dispatcher?: Dispatcher };
+
+/** Outbound proxy for the international web tools (Mojeek search + web_fetch).
+ * Domestic engines (Metaso) and self-hosted SearXNG skip it. Built once from
+ * CARBONCODE_WEB_PROXY / HTTPS_PROXY / HTTP_PROXY / ALL_PROXY; null when unset. */
+let _webProxy: Dispatcher | null | undefined;
+function webProxyDispatcher(): Dispatcher | undefined {
+  if (_webProxy === undefined) {
+    const url =
+      process.env.CARBONCODE_WEB_PROXY ||
+      process.env.HTTPS_PROXY ||
+      process.env.https_proxy ||
+      process.env.HTTP_PROXY ||
+      process.env.http_proxy ||
+      process.env.ALL_PROXY ||
+      process.env.all_proxy ||
+      "";
+    _webProxy = url ? new ProxyAgent(url) : null;
+  }
+  return _webProxy ?? undefined;
+}
+
+/** fetch with an internal timeout (fail fast instead of hanging the stream),
+ * caller-signal forwarding, and an optional outbound proxy. */
+async function fetchWeb(
+  url: string,
+  init: FetchInit,
+  o: { timeoutMs: number; signal?: AbortSignal; proxy?: boolean },
+): Promise<Response> {
+  const ctl = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    ctl.abort();
+  }, o.timeoutMs);
+  const cancel = () => ctl.abort();
+  o.signal?.addEventListener("abort", cancel, { once: true });
+  const dispatcher = o.proxy ? webProxyDispatcher() : undefined;
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: ctl.signal,
+      ...(dispatcher ? { dispatcher } : {}),
+    } as FetchInit);
+  } catch (err) {
+    if (timedOut) throw new Error(t("webErrors.searchTimeout", { ms: o.timeoutMs }));
+    throw err;
+  } finally {
+    clearTimeout(timer);
+    o.signal?.removeEventListener("abort", cancel);
+  }
+}
 
 /** Pick a status-specific webErrors key so the model gets an actionable hint, not a bare status. */
 function searchStatusError(status: number): string {
@@ -83,15 +141,18 @@ export async function webSearch(
 
 async function searchMojeek(query: string, opts: WebSearchOptions = {}): Promise<SearchResult[]> {
   const topK = Math.max(1, Math.min(10, opts.topK ?? DEFAULT_TOPK));
-  const resp = await fetch(`${MOJEEK_ENDPOINT}?q=${encodeURIComponent(query)}`, {
-    headers: {
-      "User-Agent": USER_AGENT,
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9",
-      "Accept-Language": "en-US,en;q=0.9",
+  const resp = await fetchWeb(
+    `${MOJEEK_ENDPOINT}?q=${encodeURIComponent(query)}`,
+    {
+      headers: {
+        "User-Agent": USER_AGENT,
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      redirect: "follow",
     },
-    signal: opts.signal,
-    redirect: "follow",
-  });
+    { timeoutMs: SEARCH_TIMEOUT_MS, signal: opts.signal, proxy: true },
+  );
   if (!resp.ok) throw new Error(searchStatusError(resp.status));
   const html = await resp.text();
   const results = parseMojeekResults(html).slice(0, topK);
@@ -132,13 +193,11 @@ async function searchSearxng(query: string, opts: WebSearchOptions = {}): Promis
   const url = `${baseUrl}/search?format=html&q=${encodeURIComponent(query)}`;
   let resp: Response;
   try {
-    resp = await fetch(url, {
-      headers: {
-        "User-Agent": USER_AGENT,
-        Accept: "text/html",
-      },
-      signal: opts.signal,
-    });
+    resp = await fetchWeb(
+      url,
+      { headers: { "User-Agent": USER_AGENT, Accept: "text/html" } },
+      { timeoutMs: SEARCH_TIMEOUT_MS, signal: opts.signal },
+    );
   } catch (err) {
     if (err instanceof TypeError && (err as Error).message.includes("fetch")) {
       throw new Error(
@@ -181,20 +240,19 @@ async function searchMetaso(query: string, opts: WebSearchOptions = {}): Promise
 
   let resp: Response;
   try {
-    resp = await fetch(`${METASO_ENDPOINT}/search`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        Authorization: `Bearer ${apiKey}`,
+    resp = await fetchWeb(
+      `${METASO_ENDPOINT}/search`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({ q: query, scope: "webpage", size: topK }),
       },
-      body: JSON.stringify({
-        q: query,
-        scope: "webpage",
-        size: topK,
-      }),
-      signal: opts.signal,
-    });
+      { timeoutMs: SEARCH_TIMEOUT_MS, signal: opts.signal },
+    );
   } catch (err) {
     if (err instanceof TypeError && (err as Error).message.includes("fetch")) {
       throw new Error(t("webErrors.cannotReach", { endpoint: METASO_ENDPOINT }));
@@ -344,11 +402,13 @@ export async function webFetch(url: string, opts: WebFetchOptions = {}): Promise
   opts.signal?.addEventListener("abort", cancel, { once: true });
   let resp: Response;
   try {
+    const dispatcher = webProxyDispatcher();
     resp = await fetch(url, {
       headers: { "User-Agent": USER_AGENT, Accept: "text/html,text/plain,*/*" },
       signal: ctl.signal,
       redirect: "follow",
-    });
+      ...(dispatcher ? { dispatcher } : {}),
+    } as FetchInit);
   } catch (err) {
     if (timedOut) {
       throw new Error(t("webErrors.fetchTimeout", { ms: timeoutMs, url }));

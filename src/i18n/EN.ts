@@ -1634,6 +1634,8 @@ export const EN: TranslationSchema = {
     },
   },
   webErrors: {
+    searchTimeout:
+      "web_search: timed out after {ms}ms \u2014 try: check network/proxy (international engines like Mojeek may be blocked on some networks); or switch with /search-engine metaso",
     status:
       "web_search {status} \u2014 try: the search backend returned an error; rephrase the query, or switch engine with /search-engine mojeek|searxng",
     rateLimit429:
