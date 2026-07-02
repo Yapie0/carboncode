@@ -44,6 +44,8 @@ import {
   saveSemanticEmbeddingConfig,
   saveTheme,
   searchEnabled,
+  webSearchEndpoint,
+  webSearchEngine,
   writeConfig,
 } from "../src/config.js";
 
@@ -53,6 +55,10 @@ describe("config", () => {
   const originalEnv = process.env.DEEPSEEK_API_KEY;
   const originalCarbonSearch = process.env.CARBONCODE_SEARCH;
   const originalSearch = process.env.REASONIX_SEARCH;
+  const originalCarbonWebSearchEngine = process.env.CARBONCODE_WEB_SEARCH_ENGINE;
+  const originalReasonixWebSearchEngine = process.env.REASONIX_WEB_SEARCH_ENGINE;
+  const originalCarbonWebSearchEndpoint = process.env.CARBONCODE_WEB_SEARCH_ENDPOINT;
+  const originalReasonixWebSearchEndpoint = process.env.REASONIX_WEB_SEARCH_ENDPOINT;
   const originalBaseUrl = process.env.DEEPSEEK_BASE_URL;
   const originalCarbonEmbedModel = process.env.CARBONCODE_EMBED_MODEL;
   const originalReasonixEmbedModel = process.env.REASONIX_EMBED_MODEL;
@@ -66,6 +72,14 @@ describe("config", () => {
     delete process.env.CARBONCODE_SEARCH;
     // biome-ignore lint/performance/noDelete: same reason
     delete process.env.REASONIX_SEARCH;
+    // biome-ignore lint/performance/noDelete: same reason
+    delete process.env.CARBONCODE_WEB_SEARCH_ENGINE;
+    // biome-ignore lint/performance/noDelete: same reason
+    delete process.env.REASONIX_WEB_SEARCH_ENGINE;
+    // biome-ignore lint/performance/noDelete: same reason
+    delete process.env.CARBONCODE_WEB_SEARCH_ENDPOINT;
+    // biome-ignore lint/performance/noDelete: same reason
+    delete process.env.REASONIX_WEB_SEARCH_ENDPOINT;
     // biome-ignore lint/performance/noDelete: same reason
     delete process.env.DEEPSEEK_BASE_URL;
     // biome-ignore lint/performance/noDelete: same reason
@@ -106,6 +120,30 @@ describe("config", () => {
       delete process.env.REASONIX_SEARCH;
     } else {
       process.env.REASONIX_SEARCH = originalSearch;
+    }
+    if (originalCarbonWebSearchEngine === undefined) {
+      // biome-ignore lint/performance/noDelete: same reason
+      delete process.env.CARBONCODE_WEB_SEARCH_ENGINE;
+    } else {
+      process.env.CARBONCODE_WEB_SEARCH_ENGINE = originalCarbonWebSearchEngine;
+    }
+    if (originalReasonixWebSearchEngine === undefined) {
+      // biome-ignore lint/performance/noDelete: same reason
+      delete process.env.REASONIX_WEB_SEARCH_ENGINE;
+    } else {
+      process.env.REASONIX_WEB_SEARCH_ENGINE = originalReasonixWebSearchEngine;
+    }
+    if (originalCarbonWebSearchEndpoint === undefined) {
+      // biome-ignore lint/performance/noDelete: same reason
+      delete process.env.CARBONCODE_WEB_SEARCH_ENDPOINT;
+    } else {
+      process.env.CARBONCODE_WEB_SEARCH_ENDPOINT = originalCarbonWebSearchEndpoint;
+    }
+    if (originalReasonixWebSearchEndpoint === undefined) {
+      // biome-ignore lint/performance/noDelete: same reason
+      delete process.env.REASONIX_WEB_SEARCH_ENDPOINT;
+    } else {
+      process.env.REASONIX_WEB_SEARCH_ENDPOINT = originalReasonixWebSearchEndpoint;
     }
     if (originalBaseUrl === undefined) {
       // biome-ignore lint/performance/noDelete: same reason
@@ -310,6 +348,36 @@ describe("config", () => {
     writeConfig({ apiKey: "sk-test123abcdefghijkl", search: true }, path);
     process.env.CARBONCODE_SEARCH = "off";
     expect(searchEnabled(path)).toBe(false);
+  });
+
+  it("webSearchEngine lets CARBONCODE_WEB_SEARCH_ENGINE override config", () => {
+    writeConfig({ webSearchEngine: "mojeek" }, path);
+    process.env.CARBONCODE_WEB_SEARCH_ENGINE = " metaso ";
+    expect(webSearchEngine(path)).toBe("metaso");
+  });
+
+  it("webSearchEngine keeps REASONIX_WEB_SEARCH_ENGINE as a legacy override", () => {
+    writeConfig({ webSearchEngine: "mojeek" }, path);
+    process.env.REASONIX_WEB_SEARCH_ENGINE = "searxng";
+    expect(webSearchEngine(path)).toBe("searxng");
+  });
+
+  it("webSearchEngine lets CARBONCODE_WEB_SEARCH_ENGINE override legacy env", () => {
+    process.env.CARBONCODE_WEB_SEARCH_ENGINE = "metaso";
+    process.env.REASONIX_WEB_SEARCH_ENGINE = "searxng";
+    expect(webSearchEngine(path)).toBe("metaso");
+  });
+
+  it("webSearchEngine ignores invalid env values", () => {
+    writeConfig({ webSearchEngine: "searxng" }, path);
+    process.env.CARBONCODE_WEB_SEARCH_ENGINE = "unknown";
+    expect(webSearchEngine(path)).toBe("searxng");
+  });
+
+  it("webSearchEndpoint lets CARBONCODE_WEB_SEARCH_ENDPOINT override config", () => {
+    writeConfig({ webSearchEndpoint: "http://configured.local:8080" }, path);
+    process.env.CARBONCODE_WEB_SEARCH_ENDPOINT = " http://env.local:8888 ";
+    expect(webSearchEndpoint(path)).toBe("http://env.local:8888");
   });
 
   it("loadProjectShellAllowed returns [] when nothing stored", () => {

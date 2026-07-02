@@ -1451,6 +1451,43 @@ describe("CacheFirstLoop (streaming) — tool_call_delta emission", () => {
     expect(events[events.length - 1]?.role).toBe("done");
   });
 
+  it("stops cleanly when an established streaming response is aborted", async () => {
+    let bodyCancelled = false;
+    const client = new DeepSeekClient({
+      apiKey: "sk-test",
+      fetch: vi.fn(async () => {
+        const body = new ReadableStream<Uint8Array>({
+          cancel() {
+            bodyCancelled = true;
+          },
+        });
+        return new Response(body, {
+          status: 200,
+          headers: { "Content-Type": "text/event-stream" },
+        });
+      }) as any,
+      retry: { maxAttempts: 1 },
+    });
+    const loop = new CacheFirstLoop({
+      client,
+      prefix: new ImmutablePrefix({ system: "s" }),
+      stream: true,
+    });
+
+    const events: Array<{ role: string; error?: string }> = [];
+    const stepPromise = (async () => {
+      for await (const ev of loop.step("hi")) {
+        events.push({ role: ev.role, error: ev.error });
+      }
+    })();
+    setTimeout(() => loop.abort(), 10);
+    await stepPromise;
+
+    expect(bodyCancelled).toBe(true);
+    expect(events.find((e) => e.role === "error")).toBeUndefined();
+    expect(events[events.length - 1]?.role).toBe("done");
+  });
+
   it("blocks on confirmation gate without letting the model retry in the same turn", async () => {
     // An auto-approving gate so the tool doesn't block forever in tests.
     // In production, the singleton gate shows the ShellConfirm modal.

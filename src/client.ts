@@ -3,6 +3,14 @@ import { loadRateLimit } from "./config.js";
 import { type RetryOptions, fetchWithRetry } from "./retry.js";
 import type { ChatMessage, ChatRequestOptions, RawUsage, ToolCall, ToolSpec } from "./types.js";
 
+function abortError(signal?: AbortSignal): Error {
+  if (signal?.reason instanceof Error) return signal.reason;
+  if (typeof DOMException !== "undefined") return new DOMException("Aborted", "AbortError");
+  const err = new Error("Aborted");
+  err.name = "AbortError";
+  return err;
+}
+
 export class Usage {
   constructor(
     public promptTokens = 0,
@@ -322,21 +330,43 @@ export class DeepSeekClient {
 
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
+    const cancelReader = () => {
+      void reader.cancel(abortError(signal)).catch(() => undefined);
+    };
+    if (signal.aborted) {
+      cancelReader();
+    } else {
+      signal.addEventListener("abort", cancelReader, { once: true });
+    }
+    const throwIfAborted = () => {
+      if (signal.aborted) throw abortError(signal);
+    };
     try {
       while (true) {
+        throwIfAborted();
         if (queue.length > 0) {
           yield queue.shift()!;
           continue;
         }
+        throwIfAborted();
         if (done) break;
         const { value, done: streamDone } = await reader.read();
+        throwIfAborted();
         if (streamDone) break;
         parser.feed(decoder.decode(value, { stream: true }));
       }
-      while (queue.length > 0) yield queue.shift()!;
+      while (queue.length > 0) {
+        throwIfAborted();
+        yield queue.shift()!;
+      }
     } finally {
+      signal.removeEventListener("abort", cancelReader);
       clearTimeout(timer);
-      reader.releaseLock();
+      try {
+        reader.releaseLock();
+      } catch {
+        // Already cancelled/released by the abort path.
+      }
     }
   }
 }

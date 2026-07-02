@@ -1,6 +1,7 @@
 import { render } from "ink-testing-library";
 import React from "react";
 import { describe, expect, it } from "vitest";
+import { SlashArgPicker } from "../src/cli/ui/SlashArgPicker.js";
 import { SlashSuggestions, truncateCells } from "../src/cli/ui/SlashSuggestions.js";
 import { stringCells } from "../src/cli/ui/prompt-viewport.js";
 import {
@@ -10,6 +11,7 @@ import {
   countAdvancedCommands,
   suggestSlashCommands,
 } from "../src/cli/ui/slash.js";
+import { getLanguage, setLanguageRuntime } from "../src/i18n/index.js";
 
 function makeCommands(count: number): SlashCommandSpec[] {
   const groups = ["chat", "setup", "info", "session", "extend", "code", "jobs"] as const;
@@ -142,6 +144,31 @@ describe("SlashSuggestions", () => {
 
   it("surfaces /language for typed language prefixes", () => {
     expect(suggestSlashCommands("lan").map((spec) => spec.cmd)).toContain("language");
+  });
+
+  it("localizes slash argument picker summaries", () => {
+    const previousLanguage = getLanguage();
+    const spec = SLASH_COMMANDS.find((command) => command.cmd === "language");
+    expect(spec).toBeDefined();
+
+    setLanguageRuntime("zh-CN");
+    const { lastFrame, unmount } = render(
+      React.createElement(SlashArgPicker, {
+        matches: ["zh-CN", "EN"],
+        selectedIndex: 0,
+        spec: spec!,
+        kind: "picker",
+        partial: "",
+      }),
+    );
+    try {
+      const frame = lastFrame() ?? "";
+      expect(frame).toContain("切换运行时语言");
+      expect(frame).not.toContain("switch the runtime language");
+    } finally {
+      unmount();
+      setLanguageRuntime(previousLanguage);
+    }
   });
 
   it("keeps the command order stable while the selected row moves in grouped browse mode", () => {

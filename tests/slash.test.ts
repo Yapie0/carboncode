@@ -406,6 +406,13 @@ describe("handleSlash", () => {
       expect(ctx!.spec.argCompleter).toBe("models");
     });
 
+    it("lists Simplified Chinese before English for /language", () => {
+      const ctx = detectSlashArgContext("/language ");
+      expect(ctx).not.toBeNull();
+      expect(ctx!.kind).toBe("picker");
+      expect(ctx!.spec.argCompleter).toEqual(["zh-CN", "EN"]);
+    });
+
     it("activates enum picker for /plan in code mode", () => {
       const ctx = detectSlashArgContext("/plan o", true);
       expect(ctx).not.toBeNull();

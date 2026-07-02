@@ -80,6 +80,9 @@ export interface DesktopOptions {
 }
 
 type InMessage = { tabId?: string } & (
+  | { cmd: "runtime_hello"; clientId?: string; protocolVersion?: number }
+  | { cmd: "runtime_ping"; clientId?: string }
+  | { cmd: "runtime_bye"; clientId?: string }
   | { cmd: "user_input"; text: string }
   | { cmd: "abort" }
   | { cmd: "confirm_response"; id: number; response: ConfirmationChoice }
@@ -180,6 +183,18 @@ interface TabOpenedEvent {
 
 interface TabClosedEvent {
   type: "$tab_closed";
+}
+
+interface RuntimeSnapshotEvent {
+  type: "$runtime_snapshot";
+  protocolVersion: number;
+  tabs: { id: string; workspaceDir: string }[];
+  activeTabId: string | null;
+}
+
+interface RuntimePongEvent {
+  type: "$runtime_pong";
+  ts: number;
 }
 
 type LoadedSegment =
@@ -376,6 +391,8 @@ type EmittableEvent =
   | MentionPreviewEvent
   | TabOpenedEvent
   | TabClosedEvent
+  | RuntimeSnapshotEvent
+  | RuntimePongEvent
   | McpSpecsEvent
   | SkillsEvent
   | CtxBreakdownEvent
@@ -1052,6 +1069,39 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
     emit({ type: "$jobs", items });
   }
 
+  function emitRuntimeSnapshot(): void {
+    const activeTabId = first?.id ?? tabs.values().next().value?.id ?? null;
+    emit({
+      type: "$runtime_snapshot",
+      protocolVersion: 1,
+      tabs: Array.from(tabs.values()).map((tab) => ({
+        id: tab.id,
+        workspaceDir: tab.rootDir,
+      })),
+      activeTabId,
+    });
+  }
+
+  function replayTabState(tab: Tab): void {
+    emitSettings(tab);
+    emitSessions(tab);
+    emitMcpSpecs(tab);
+    emitSkills(tab);
+    emitMemory(tab);
+    if (tab.runtime) {
+      emit({ type: "$ready" }, tab.id);
+      void emitBalance(tab);
+    } else if (!loadApiKey()) {
+      emit({ type: "$needs_setup", reason: "no_api_key" }, tab.id);
+    }
+  }
+
+  function replayRuntimeState(): void {
+    emitRuntimeSnapshot();
+    for (const tab of tabs.values()) replayTabState(tab);
+    emitJobs();
+  }
+
   async function stopJob(jobId: number): Promise<boolean> {
     for (const t of tabs.values()) {
       const reg = t.toolset?.jobs;
@@ -1094,12 +1144,20 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
   // surviving tab when its source closes.
   let first: Tab;
 
+  const FRONTEND_IDLE_EXIT_MS = 75_000;
+  const FRONTEND_IDLE_CHECK_MS = 15_000;
+  let lastFrontendSeenAt = Date.now();
+
   let shuttingDown = false;
   async function gracefulShutdown(): Promise<void> {
     if (shuttingDown) return;
     shuttingDown = true;
+    for (const tab of tabs.values()) abortTurn(tab);
     await Promise.allSettled(
-      [...tabs.values()].map((t) => t.toolset?.jobs.shutdown(1500) ?? Promise.resolve()),
+      [...tabs.values()].flatMap((t) => [
+        t.toolset?.jobs.shutdown(1500) ?? Promise.resolve(),
+        t.mcpRuntime?.closeAll() ?? Promise.resolve(),
+      ]),
     );
     process.exit(0);
   }
@@ -1109,6 +1167,15 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
   process.on("SIGINT", () => {
     void gracefulShutdown();
   });
+
+  const frontendIdleTimer = setInterval(() => {
+    if (shuttingDown) return;
+    if (Date.now() - lastFrontendSeenAt >= FRONTEND_IDLE_EXIT_MS) {
+      process.stderr.write("[desktop] frontend heartbeat expired; shutting down sidecar\n");
+      void gracefulShutdown();
+    }
+  }, FRONTEND_IDLE_CHECK_MS);
+  frontendIdleTimer.unref?.();
 
   pauseGate.on((req) => {
     const tab = activeRunningTab();
@@ -1330,7 +1397,20 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
       emit({ type: "$error", message: `bad json on stdin: ${trimmed.slice(0, 80)}` });
       return;
     }
+    lastFrontendSeenAt = Date.now();
 
+    if (msg.cmd === "runtime_hello") {
+      replayRuntimeState();
+      return;
+    }
+    if (msg.cmd === "runtime_ping") {
+      emit({ type: "$runtime_pong", ts: Date.now() });
+      return;
+    }
+    if (msg.cmd === "runtime_bye") {
+      void gracefulShutdown();
+      return;
+    }
     if (msg.cmd === "tab_open") {
       try {
         bootstrapTab(msg.workspaceDir);

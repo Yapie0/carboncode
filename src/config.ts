@@ -636,6 +636,12 @@ export function searchEnabled(path: string = defaultConfigPath()): boolean {
 export function webSearchEngine(
   path: string = defaultConfigPath(),
 ): "mojeek" | "searxng" | "metaso" {
+  const env = (process.env.CARBONCODE_WEB_SEARCH_ENGINE ?? process.env.REASONIX_WEB_SEARCH_ENGINE)
+    ?.trim()
+    .toLowerCase();
+  if (env === "searxng") return "searxng";
+  if (env === "metaso") return "metaso";
+  if (env === "mojeek") return "mojeek";
   const cfg = readConfig(path).webSearchEngine;
   if (cfg === "searxng") return "searxng";
   if (cfg === "mojeek") return "mojeek";
@@ -643,6 +649,10 @@ export function webSearchEngine(
 }
 
 export function webSearchEndpoint(path: string = defaultConfigPath()): string {
+  const env = (
+    process.env.CARBONCODE_WEB_SEARCH_ENDPOINT ?? process.env.REASONIX_WEB_SEARCH_ENDPOINT
+  )?.trim();
+  if (env) return env;
   const cfg = readConfig(path).webSearchEndpoint;
   if (cfg && typeof cfg === "string") return cfg;
   return "http://localhost:8080";
