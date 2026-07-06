@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { existsSync, statSync, writeSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
 import { stdin } from "node:process";
@@ -69,6 +69,7 @@ import { countTokensBounded } from "../../tokenizer.js";
 import type { ChoiceOption } from "../../tools/choice.js";
 import type { ChatMessage } from "../../types.js";
 import { VERSION } from "../../version.js";
+import { writeJsonLineSync } from "../jsonl-stdio.js";
 import { canonicalPresetName, resolvePreset } from "../ui/presets.js";
 import { type McpRuntime, createMcpRuntime } from "./mcp-runtime.js";
 
@@ -401,7 +402,7 @@ type EmittableEvent =
 
 function emit(ev: EmittableEvent, tabId?: string): void {
   const payload = tabId ? { ...ev, tabId } : ev;
-  writeSync(1, Buffer.from(`${JSON.stringify(payload)}\n`, "utf8"));
+  writeJsonLineSync(1, payload);
 }
 
 function tailLines(s: string, n: number): string {

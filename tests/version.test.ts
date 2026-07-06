@@ -5,6 +5,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -249,7 +250,7 @@ describe("detectNpmInstallPrefix", () => {
       const link = join(dir, "bin", "carboncode");
       symlinkSync(target, link);
 
-      expect(detectNpmInstallPrefix(link)).toBe(dir.replace(/\\/g, "/"));
+      expect(detectNpmInstallPrefix(link)).toBe(realpathSync(dir).replace(/\\/g, "/"));
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
