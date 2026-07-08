@@ -95,6 +95,12 @@ export const SLASH_COMMANDS: readonly SlashCommandSpec[] = [
     argCompleter: "models",
   },
   {
+    cmd: "provider",
+    group: "setup",
+    argsHint: "[name]",
+    summary: "list or switch configured chat providers",
+  },
+  {
     cmd: "language",
     group: "setup",
     argsHint: "<zh-CN|EN>",

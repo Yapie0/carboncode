@@ -10,6 +10,7 @@ import {
   defaultConfigPath,
   editModeHintShown,
   isPlausibleKey,
+  listChatProviders,
   loadApiKey,
   loadBaseUrl,
   loadDesktopOpenTabs,
@@ -31,8 +32,10 @@ import {
   redactSemanticEmbeddingConfig,
   removeProjectPathAllowed,
   removeProjectShellAllowed,
+  resolveChatProviderConfig,
   resolveSemanticEmbeddingConfig,
   resolveThemePreference,
+  saveActiveChatProvider,
   saveApiKey,
   saveBaseUrl,
   saveDesktopOpenTabs,
@@ -241,6 +244,89 @@ describe("config", () => {
     saveBaseUrl("https://self-hosted.example.com", path);
     saveBaseUrl("", path);
     expect(loadBaseUrl(path)).toBeUndefined();
+  });
+
+  it("resolves the active chat provider from providers config", () => {
+    writeConfig(
+      {
+        provider: "dashscope",
+        apiKey: "sk-legacy1234567890",
+        baseUrl: "https://api.deepseek.com",
+        providers: {
+          dashscope: {
+            apiKey: "dash-key-1234567890",
+            baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            model: "qwen3-coder-plus",
+          },
+          openrouter: {
+            apiKey: "or-key-1234567890",
+            baseUrl: "https://openrouter.ai/api/v1",
+          },
+        },
+      },
+      path,
+    );
+
+    expect(resolveChatProviderConfig(path)).toEqual({
+      id: "dashscope",
+      apiKey: "dash-key-1234567890",
+      baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      model: "qwen3-coder-plus",
+    });
+    expect(loadApiKey(path)).toBe("dash-key-1234567890");
+    expect(loadBaseUrl(path)).toBe("https://dashscope.aliyuncs.com/compatible-mode/v1");
+    expect(listChatProviders(path).map((p) => p.id)).toEqual([
+      "dashscope",
+      "openrouter",
+      "deepseek",
+    ]);
+  });
+
+  it("switches the active chat provider and applies its default model", () => {
+    writeConfig(
+      {
+        provider: "deepseek",
+        providers: {
+          deepseek: { apiKey: "sk-deepseek1234567890", model: "deepseek-v4-flash" },
+          openrouter: {
+            apiKey: "sk-openrouter1234567890",
+            baseUrl: "https://openrouter.ai/api/v1",
+            model: "anthropic/claude-sonnet-4",
+          },
+        },
+      },
+      path,
+    );
+
+    expect(saveActiveChatProvider("openrouter", path)).toMatchObject({
+      id: "openrouter",
+      model: "anthropic/claude-sonnet-4",
+    });
+    expect(readConfig(path).provider).toBe("openrouter");
+    expect(readConfig(path).model).toBe("anthropic/claude-sonnet-4");
+  });
+
+  it("saves API key and base URL into the active provider when providers are configured", () => {
+    writeConfig(
+      {
+        provider: "openrouter",
+        providers: {
+          openrouter: { apiKey: "old-key-1234567890", baseUrl: "https://old.example.com" },
+        },
+      },
+      path,
+    );
+
+    saveApiKey("  new-key-1234567890  ", path);
+    saveBaseUrl("https://new.example.com", path);
+
+    expect(readConfig(path).apiKey).toBeUndefined();
+    expect(readConfig(path).baseUrl).toBeUndefined();
+    expect(resolveChatProviderConfig(path)).toMatchObject({
+      id: "openrouter",
+      apiKey: "new-key-1234567890",
+      baseUrl: "https://new.example.com",
+    });
   });
 
   it("loads pricingOverride with valid non-negative fields", () => {

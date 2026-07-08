@@ -1,4 +1,4 @@
-import type { EditMode } from "../../../config.js";
+import type { EditMode, ResolvedChatProviderConfig } from "../../../config.js";
 import type { McpServerSummary } from "../../../mcp/summary.js";
 import type { JobRegistry } from "../../../tools/jobs.js";
 import type { PlanStep } from "../../../tools/plan.js";
@@ -152,6 +152,11 @@ export interface SlashContext {
   /** `null` → in flight / failed; `[]` → API answered empty. `/model <id>` warn-only since list can lag. */
   models?: string[] | null;
   refreshModels?: () => void;
+  chatProviders?: () => ResolvedChatProviderConfig[];
+  activeChatProvider?: () => ResolvedChatProviderConfig;
+  switchChatProvider?: (
+    id: string,
+  ) => { ok: true; provider: ResolvedChatProviderConfig } | { ok: false; error: string };
   /** Ask the current model to summarize the active session into a short title and rename it. */
   generateSessionTitle?: () => Promise<string>;
   armPro?: () => void;

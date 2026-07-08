@@ -271,6 +271,7 @@ export const EN: TranslationSchema = {
       argsHint: "<auto|flash|pro>",
     },
     model: { description: "switch DeepSeek model id", argsHint: "<id>" },
+    provider: { description: "list or switch configured chat providers", argsHint: "[name]" },
     models: { description: "list available models fetched from DeepSeek /models" },
     theme: {
       description: "show or persist the terminal theme preference. Bare opens picker.",

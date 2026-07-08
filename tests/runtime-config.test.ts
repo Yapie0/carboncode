@@ -27,12 +27,14 @@ describe("runtime connection config", () => {
     const source = new RuntimeConnectionConfigSource(path, {});
 
     expect(source.read()).toEqual({
+      providerId: "deepseek",
       apiKey: "sk-old",
       baseUrl: "https://old.example.com",
     });
 
     writeConfig({ apiKey: "sk-new", baseUrl: "https://new.example.com" }, path);
     expect(source.read()).toEqual({
+      providerId: "deepseek",
       apiKey: "sk-new",
       baseUrl: "https://new.example.com",
     });
@@ -59,8 +61,56 @@ describe("runtime connection config", () => {
 
     writeConfig({ apiKey: "sk-new", baseUrl: "https://new.example.com" }, path);
     expect(source.read()).toEqual({
+      providerId: "deepseek",
       apiKey: "sk-env",
       baseUrl: "https://env.example.com",
+    });
+  });
+
+  it("re-reads active provider changes from the config file", () => {
+    const path = configPath();
+    writeConfig(
+      {
+        provider: "deepseek",
+        providers: {
+          deepseek: { apiKey: "sk-deepseek", baseUrl: "https://api.deepseek.com" },
+          openrouter: {
+            apiKey: "sk-openrouter",
+            baseUrl: "https://openrouter.ai/api/v1",
+            model: "openai/gpt-4.1",
+          },
+        },
+      },
+      path,
+    );
+    const source = new RuntimeConnectionConfigSource(path, {});
+
+    expect(source.read()).toEqual({
+      providerId: "deepseek",
+      apiKey: "sk-deepseek",
+      baseUrl: "https://api.deepseek.com",
+      model: undefined,
+    });
+
+    writeConfig(
+      {
+        provider: "openrouter",
+        providers: {
+          deepseek: { apiKey: "sk-deepseek", baseUrl: "https://api.deepseek.com" },
+          openrouter: {
+            apiKey: "sk-openrouter",
+            baseUrl: "https://openrouter.ai/api/v1",
+            model: "openai/gpt-4.1",
+          },
+        },
+      },
+      path,
+    );
+    expect(source.read()).toEqual({
+      providerId: "openrouter",
+      apiKey: "sk-openrouter",
+      baseUrl: "https://openrouter.ai/api/v1",
+      model: "openai/gpt-4.1",
     });
   });
 
@@ -77,7 +127,17 @@ describe("runtime connection config", () => {
   });
 
   it("compares connection snapshots", () => {
-    expect(sameRuntimeConnectionConfig({ apiKey: "a" }, { apiKey: "a" })).toBe(true);
-    expect(sameRuntimeConnectionConfig({ apiKey: "a" }, { apiKey: "b" })).toBe(false);
+    expect(
+      sameRuntimeConnectionConfig(
+        { providerId: "a", apiKey: "a" },
+        { providerId: "a", apiKey: "a" },
+      ),
+    ).toBe(true);
+    expect(
+      sameRuntimeConnectionConfig(
+        { providerId: "a", apiKey: "a" },
+        { providerId: "b", apiKey: "a" },
+      ),
+    ).toBe(false);
   });
 });

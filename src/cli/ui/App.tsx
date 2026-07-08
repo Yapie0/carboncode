@@ -35,6 +35,7 @@ import {
   type PresetName,
   defaultConfigPath,
   editModeHintShown,
+  listChatProviders,
   loadBaseUrl,
   loadReasoningEffort,
   loadTheme,
@@ -44,7 +45,9 @@ import {
   markMouseClipboardHintShown,
   mouseClipboardHintShown,
   readConfig,
+  resolveChatProviderConfig,
   resolveThemePreference,
+  saveActiveChatProvider,
   saveEditMode,
   saveModel,
   savePreset,
@@ -1271,6 +1274,7 @@ function AppInner({
 
   useEffect(() => {
     let applied = initialRuntimeConfigRef.current ?? {
+      providerId: resolveChatProviderConfig().id,
       apiKey: loop.client.apiKey,
       baseUrl: loop.client.baseUrl,
     };
@@ -1285,17 +1289,22 @@ function AppInner({
       }
       try {
         loop.replaceClient(new DeepSeekClient({ apiKey: next.apiKey, baseUrl: next.baseUrl }));
+        if (next.model) {
+          loop.configure({ model: next.model, autoEscalate: false });
+          agentStore.dispatch({ type: "session.model.change", model: next.model });
+          agentStore.dispatch({ type: "session.preset.change", preset: null });
+        }
         applied = next;
         refreshBalance();
         refreshModels();
-        log.pushInfo("config: DeepSeek connection reloaded");
+        log.pushInfo(`config: provider ${next.providerId} connection reloaded`);
       } catch (err) {
         log.pushWarning("config reload failed", (err as Error).message);
       }
     }, 1000);
     timer.unref();
     return () => clearInterval(timer);
-  }, [log, loop, refreshBalance, refreshModels, runtimeConfigSource]);
+  }, [agentStore, log, loop, refreshBalance, refreshModels, runtimeConfigSource]);
 
   // Keep the dashboard-server ref-mirrors in sync with their state.
   // These four are the load-bearing live reads for the attached
@@ -2991,6 +3000,27 @@ function AppInner({
           refreshLatestVersion,
           models,
           refreshModels,
+          chatProviders: () => listChatProviders(),
+          activeChatProvider: () => resolveChatProviderConfig(),
+          switchChatProvider: (id: string) => {
+            try {
+              const provider = saveActiveChatProvider(id);
+              const apiKey = process.env.DEEPSEEK_API_KEY ?? provider.apiKey;
+              const baseUrl = process.env.DEEPSEEK_BASE_URL ?? provider.baseUrl;
+              if (!apiKey) return { ok: false, error: `provider ${provider.id} has no API key` };
+              loop.replaceClient(new DeepSeekClient({ apiKey, baseUrl }));
+              if (provider.model) {
+                loop.configure({ model: provider.model, autoEscalate: false });
+                agentStore.dispatch({ type: "session.model.change", model: provider.model });
+                agentStore.dispatch({ type: "session.preset.change", preset: null });
+              }
+              refreshBalance();
+              refreshModels();
+              return { ok: true, provider };
+            } catch (err) {
+              return { ok: false, error: (err as Error).message };
+            }
+          },
           generateSessionTitle: generateCurrentSessionTitle,
         });
         if (

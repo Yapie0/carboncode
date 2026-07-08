@@ -144,9 +144,35 @@ const budget: SlashHandler = (args, loop) => {
   };
 };
 
+const provider: SlashHandler = (args, _loop, ctx) => {
+  const providers = ctx.chatProviders?.() ?? [];
+  const active = ctx.activeChatProvider?.();
+  const id = args[0]?.trim();
+  if (!id) {
+    if (providers.length === 0)
+      return { info: "provider: deepseek (legacy single-provider config)" };
+    const rows = providers.map((p) => {
+      const marker = p.id === active?.id ? "*" : " ";
+      const endpoint = p.baseUrl ?? "https://api.deepseek.com";
+      const model = p.model ? ` · model ${p.model}` : "";
+      return `${marker} ${p.id} · ${endpoint}${model}`;
+    });
+    return { info: `providers:\n${rows.join("\n")}\n\nUse /provider <name> to switch.` };
+  }
+
+  if (!ctx.switchChatProvider) {
+    return { info: "provider switching is not available in this session." };
+  }
+  const result = ctx.switchChatProvider(id);
+  if (!result.ok) return { info: `provider: ${result.error}` };
+  const model = result.provider.model ? ` · model ${result.provider.model}` : "";
+  return { info: `provider: switched to ${result.provider.id}${model}` };
+};
+
 export const handlers: Record<string, SlashHandler> = {
   model,
   preset,
   pro,
   budget,
+  provider,
 };
