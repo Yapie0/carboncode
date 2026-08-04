@@ -1,6 +1,7 @@
 import { Box, Text, useStdout } from "ink";
 import React, { useState } from "react";
 import { t } from "../../i18n/index.js";
+import { SELECTABLE_MODEL_IDS, modelCapabilities } from "../../models.js";
 import { useKeystroke } from "./keystroke-context.js";
 import { PRESETS, PRESET_DESCRIPTIONS } from "./presets.js";
 import { PILL_MODEL, Pill, modelBadgeFor } from "./primitives/Pill.js";
@@ -38,7 +39,9 @@ export function ModelPicker({
   onChoose,
   onRefresh,
 }: ModelPickerProps): React.ReactElement {
-  const modelList = (models && models.length > 0 ? models : FALLBACK_MODELS).slice();
+  const modelList = (models && models.length > 0 ? models : FALLBACK_MODELS).filter(
+    (model) => modelCapabilities(model)?.retired !== true,
+  );
   if (!modelList.includes(current)) modelList.unshift(current);
   const presetRows: Row[] = PRESET_NAMES.map((name) => ({ kind: "preset", name }));
   const modelRows: Row[] = modelList.map((id) => ({ kind: "model", id }));
@@ -211,9 +214,4 @@ function detectActivePreset(
 }
 
 /** Hard-coded known DeepSeek ids — used when the API catalog hasn't loaded yet so the picker isn't empty on first open. */
-const FALLBACK_MODELS: ReadonlyArray<string> = [
-  "deepseek-v4-flash",
-  "deepseek-v4-pro",
-  "deepseek-chat",
-  "deepseek-reasoner",
-];
+const FALLBACK_MODELS: ReadonlyArray<string> = SELECTABLE_MODEL_IDS;

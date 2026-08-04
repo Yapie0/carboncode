@@ -4,7 +4,6 @@ import { pauseGate as defaultPauseGate } from "./core/pause-gate.js";
 import { type HookPayload, type ResolvedHook, runHooks } from "./hooks.js";
 import {
   DEFAULT_MAX_RESULT_CHARS,
-  DEFAULT_MAX_RESULT_TOKENS,
   truncateForModel,
   truncateForModelByTokens,
 } from "./mcp/registry.js";
@@ -55,12 +54,33 @@ import {
   loadSessionMeta,
   rewriteSession,
 } from "./memory/session.js";
+import {
+  ESCALATION_MODEL_ID,
+  FLASH_MODEL_ID,
+  type ThinkingPreference,
+  maxOutputTokensForModel,
+  migrateRetiredModel,
+  toolResultBudgetForModel,
+} from "./models.js";
 import { type RepairReport, ToolCallRepair } from "./repair/index.js";
-import { SessionStats, type TurnStats } from "./telemetry/stats.js";
+import {
+  SessionStats,
+  type TurnStats,
+  contextTokensFor,
+  hasKnownContextWindow,
+  pricingFor,
+} from "./telemetry/stats.js";
 import { ToolRegistry } from "./tools.js";
 import type { ChatMessage, ToolCall } from "./types.js";
 
-const ESCALATION_MODEL = "deepseek-v4-pro";
+const ESCALATION_MODEL = ESCALATION_MODEL_ID;
+
+function finishReasonError(reason: string | undefined): string | null {
+  if (reason === "length") return t("loop.finishReasonLength");
+  if (reason === "content_filter") return t("loop.finishReasonContentFilter");
+  if (reason === "insufficient_system_resource") return t("loop.finishReasonResource");
+  return null;
+}
 
 export {
   fixToolCallPairing,
@@ -85,6 +105,9 @@ export interface CacheFirstLoopOptions {
   model?: string;
   stream?: boolean;
   reasoningEffort?: "high" | "max";
+  thinkingMode?: ThinkingPreference;
+  maxOutputTokens?: number | null;
+  userId?: string;
   autoEscalate?: boolean;
   /** Soft USD cap — warns at 80%, refuses next turn at 100%. Opt-in (default no cap). */
   budgetUsd?: number;
@@ -102,8 +125,11 @@ export interface CacheFirstLoopOptions {
 export interface ReconfigurableOptions {
   model?: string;
   stream?: boolean;
-  /** V4 thinking mode only; deepseek-chat ignores. */
+  /** Reasoning effort for V4 thinking mode. */
   reasoningEffort?: "high" | "max";
+  thinkingMode?: ThinkingPreference;
+  maxOutputTokens?: number | null;
+  userId?: string;
   /** `false` pins to `model` — disables the model-marker scavenge that flips flash→pro. */
   autoEscalate?: boolean;
 }
@@ -122,10 +148,14 @@ export class CacheFirstLoop {
   model: string;
   stream: boolean;
   reasoningEffort: "high" | "max";
+  thinkingMode: ThinkingPreference;
+  maxOutputTokens: number | undefined;
+  userId: string | undefined;
   autoEscalate = true;
   budgetUsd: number | null;
   /** One-shot 80% warning latch — cleared by setBudget so a bump re-arms at the new boundary. */
   private _budgetWarned = false;
+  private readonly _modelCapabilityWarned = new Set<string>();
   sessionName: string | null;
 
   hooks: ResolvedHook[];
@@ -187,8 +217,19 @@ export class CacheFirstLoop {
     this._client = opts.client;
     this.prefix = opts.prefix;
     this.tools = opts.tools ?? new ToolRegistry();
-    this.model = opts.model ?? "deepseek-v4-flash";
+    const initialModel = migrateRetiredModel(opts.model ?? FLASH_MODEL_ID);
+    this.model = initialModel.model;
     this.reasoningEffort = opts.reasoningEffort ?? "max";
+    // Retired aliases encode their historical thinking behavior. Preserve that
+    // semantic during migration even when the caller loaded an "auto" default.
+    this.thinkingMode = initialModel.thinking ?? opts.thinkingMode ?? "auto";
+    this.maxOutputTokens =
+      typeof opts.maxOutputTokens === "number" &&
+      Number.isInteger(opts.maxOutputTokens) &&
+      opts.maxOutputTokens > 0
+        ? opts.maxOutputTokens
+        : undefined;
+    this.userId = opts.userId?.trim() || undefined;
     if (opts.autoEscalate !== undefined) this.autoEscalate = opts.autoEscalate;
     this.budgetUsd =
       typeof opts.budgetUsd === "number" && opts.budgetUsd > 0 ? opts.budgetUsd : null;
@@ -221,9 +262,13 @@ export class CacheFirstLoop {
     this.sessionName = opts.session ?? null;
     if (this.sessionName) {
       const prior = loadSessionMessages(this.sessionName);
-      const shrunk = healLoadedMessagesByTokens(prior, DEFAULT_MAX_RESULT_TOKENS);
+      const shrunk = healLoadedMessagesByTokens(prior, toolResultBudgetForModel(this.model));
       // Thinking-mode sessions: API 400s if any historical assistant turn lacks reasoning_content.
-      const stamped = stampMissingReasoningForThinkingMode(shrunk.messages, this.model);
+      const stamped = stampMissingReasoningForThinkingMode(
+        shrunk.messages,
+        this.model,
+        this.thinkingMode,
+      );
       const messages = stamped.messages;
       const healedCount = shrunk.healedCount + stamped.stampedCount;
       const tokensSaved = shrunk.tokensSaved;
@@ -264,6 +309,7 @@ export class CacheFirstLoop {
       sessionName: this.sessionName,
       getAbortSignal: () => this._turnAbort.signal,
       getCurrentTurn: () => this._turn,
+      getThinkingPreference: () => this.thinkingMode,
     });
   }
 
@@ -361,12 +407,47 @@ export class CacheFirstLoop {
   }
 
   configure(opts: ReconfigurableOptions): void {
-    if (opts.model !== undefined) this.model = opts.model;
+    let nextModel = this.model;
+    let nextThinking = opts.thinkingMode ?? this.thinkingMode;
+    if (opts.model !== undefined) {
+      const migrated = migrateRetiredModel(opts.model);
+      nextModel = migrated.model;
+      if (opts.thinkingMode === undefined && migrated.thinking) nextThinking = migrated.thinking;
+    }
+    const modeChanged = nextModel !== this.model || nextThinking !== this.thinkingMode;
+    this.model = nextModel;
+    this.thinkingMode = nextThinking;
+    if (modeChanged) {
+      const stamped = stampMissingReasoningForThinkingMode(
+        [...this.log.entries],
+        this.model,
+        this.thinkingMode,
+      );
+      if (stamped.stampedCount > 0) {
+        this.log.compactInPlace(stamped.messages);
+        if (this.sessionName) {
+          try {
+            rewriteSession(this.sessionName, stamped.messages);
+          } catch {
+            // Keep the repaired in-memory history when persistence is unavailable.
+          }
+        }
+      }
+    }
     if (opts.stream !== undefined) {
       this._streamPreference = opts.stream;
       this.stream = opts.stream;
     }
     if (opts.reasoningEffort !== undefined) this.reasoningEffort = opts.reasoningEffort;
+    if (opts.maxOutputTokens !== undefined) {
+      this.maxOutputTokens =
+        typeof opts.maxOutputTokens === "number" &&
+        Number.isInteger(opts.maxOutputTokens) &&
+        opts.maxOutputTokens > 0
+          ? opts.maxOutputTokens
+          : undefined;
+    }
+    if (opts.userId !== undefined) this.userId = opts.userId.trim() || undefined;
     if (opts.autoEscalate !== undefined) this.autoEscalate = opts.autoEscalate;
   }
 
@@ -406,6 +487,14 @@ export class CacheFirstLoop {
 
   private modelForCurrentCall(): string {
     return this._escalateThisTurn ? ESCALATION_MODEL : this.model;
+  }
+
+  private maxTokensForCurrentCall(model: string): number | undefined {
+    if (this.maxOutputTokens === undefined) return undefined;
+    const providerMax = maxOutputTokensForModel(model);
+    return providerMax === undefined
+      ? this.maxOutputTokens
+      : Math.min(this.maxOutputTokens, providerMax);
   }
 
   /** A call counts as mutating when its definition reports `readOnly !== true` and any dynamic `readOnlyCheck` doesn't override that for these args. */
@@ -477,7 +566,7 @@ export class CacheFirstLoop {
 
       const result = await this.tools.dispatch(name, args, {
         signal,
-        maxResultTokens: DEFAULT_MAX_RESULT_TOKENS,
+        maxResultTokens: toolResultBudgetForModel(this.model),
         confirmationGate: this.confirmationGate,
         onInteractiveWait: (elapsedMs) => {
           interactiveWaitMs += Math.max(0, elapsedMs);
@@ -604,6 +693,20 @@ export class CacheFirstLoop {
       }
     }
     this._turn++;
+    if (
+      !this._modelCapabilityWarned.has(this.model) &&
+      (!hasKnownContextWindow(this.model) || !pricingFor(this.model))
+    ) {
+      this._modelCapabilityWarned.add(this.model);
+      yield {
+        turn: this._turn,
+        role: "warning",
+        content: t("loop.unknownModelCapabilities", {
+          model: this.model,
+          context: contextTokensFor(this.model).toLocaleString(),
+        }),
+      };
+    }
     this.scratch.reset();
     // A fresh user turn is a new intent — don't let StormBreaker's
     // old sliding window of (name, args) signatures keep blocking
@@ -701,7 +804,9 @@ export class CacheFirstLoop {
         // every assistant message, so we attach an empty-string
         // placeholder to satisfy the validator without inventing
         // reasoning we don't have. V3 gets a plain message as before.
-        this.appendAndPersist(buildSyntheticAssistantMessage(stoppedMsg, this.model));
+        this.appendAndPersist(
+          buildSyntheticAssistantMessage(stoppedMsg, this.model, this.thinkingMode),
+        );
         yield {
           turn: this._turn,
           role: "assistant_final",
@@ -814,6 +919,8 @@ export class CacheFirstLoop {
       let reasoningContent = "";
       let toolCalls: ToolCall[] = [];
       let usage: TurnStats["usage"] | null = null;
+      let finishReason: string | undefined;
+      let malformedFrameCount = 0;
 
       try {
         if (this.stream) {
@@ -840,8 +947,10 @@ export class CacheFirstLoop {
             messages,
             tools: toolSpecs.length ? toolSpecs : undefined,
             signal,
-            thinking: thinkingModeForModel(callModel),
+            thinking: thinkingModeForModel(callModel, this.thinkingMode),
             reasoningEffort: this.reasoningEffort,
+            maxTokens: this.maxTokensForCurrentCall(callModel),
+            userId: this.userId,
           })) {
             // DeepSeek transition chunks carry both reasoning_content and
             // content; emit reasoning first so consumers can merge
@@ -888,8 +997,9 @@ export class CacheFirstLoop {
                 };
               }
             }
-            if (chunk.toolCallDelta) {
-              const d = chunk.toolCallDelta;
+            const toolCallDeltas =
+              chunk.toolCallDeltas ?? (chunk.toolCallDelta ? [chunk.toolCallDelta] : []);
+            for (const d of toolCallDeltas) {
               const cur = callBuf.get(d.index) ?? {
                 id: d.id,
                 type: "function" as const,
@@ -926,8 +1036,12 @@ export class CacheFirstLoop {
               }
             }
             if (chunk.usage) usage = chunk.usage;
+            if (chunk.finishReason) finishReason = chunk.finishReason;
+            if (chunk.malformedFrameCount) malformedFrameCount += chunk.malformedFrameCount;
           }
-          toolCalls = [...callBuf.values()];
+          toolCalls = [...callBuf.entries()]
+            .sort(([left], [right]) => left - right)
+            .map(([, call]) => call);
           // Stream ended before the escalation buffer got flushed —
           // either a short response or a partial marker match. If the
           // buffer ISN'T the marker, flush it as the final delta so
@@ -948,13 +1062,16 @@ export class CacheFirstLoop {
             messages,
             tools: toolSpecs.length ? toolSpecs : undefined,
             signal,
-            thinking: thinkingModeForModel(callModel),
+            thinking: thinkingModeForModel(callModel, this.thinkingMode),
             reasoningEffort: this.reasoningEffort,
+            maxTokens: this.maxTokensForCurrentCall(callModel),
+            userId: this.userId,
           });
           assistantContent = resp.content;
           reasoningContent = resp.reasoningContent ?? "";
           toolCalls = resp.toolCalls;
           usage = resp.usage;
+          finishReason = resp.finishReason;
         }
       } catch (err) {
         // An aborted signal here is almost always our own doing —
@@ -984,6 +1101,31 @@ export class CacheFirstLoop {
           role: "error",
           content: "",
           error: formatLoopError(err as Error, probe),
+        };
+        return;
+      }
+
+      if (malformedFrameCount > 0) {
+        yield {
+          turn: this._turn,
+          role: "warning",
+          content: t("loop.malformedSseFrames", { count: malformedFrameCount }),
+        };
+      }
+
+      const terminalError = finishReasonError(finishReason);
+      if (terminalError) {
+        const failedStats = this.stats.record(
+          this._turn,
+          this.modelForCurrentCall(),
+          usage ?? new Usage(),
+        );
+        yield {
+          turn: this._turn,
+          role: "error",
+          content: "",
+          error: terminalError,
+          stats: failedStats,
         };
         return;
       }
@@ -1046,6 +1188,7 @@ export class CacheFirstLoop {
           repairedCalls,
           this.modelForCurrentCall(),
           reasoningContent,
+          this.thinkingMode,
         ),
       );
 
@@ -1072,6 +1215,7 @@ export class CacheFirstLoop {
             toolCalls,
             this.modelForCurrentCall(),
             reasoningContent,
+            this.thinkingMode,
           ),
         );
         for (const call of toolCalls) {

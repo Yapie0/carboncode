@@ -7,11 +7,8 @@ import { buildAssistantMessage } from "./loop/messages.js";
 import { DEFAULT_MAX_RESULT_CHARS } from "./mcp/registry.js";
 import type { AppendOnlyLog } from "./memory/runtime.js";
 import { rewriteSession } from "./memory/session.js";
-import {
-  DEEPSEEK_CONTEXT_TOKENS,
-  DEFAULT_CONTEXT_TOKENS,
-  type SessionStats,
-} from "./telemetry/stats.js";
+import { SUMMARY_MODEL_ID, type ThinkingPreference } from "./models.js";
+import { type SessionStats, contextTokensFor } from "./telemetry/stats.js";
 import {
   countTokensBounded,
   estimateConversationTokens,
@@ -52,6 +49,7 @@ export interface ContextManagerDeps {
   sessionName: string | null;
   getAbortSignal: () => AbortSignal;
   getCurrentTurn: () => number;
+  getThinkingPreference: () => ThinkingPreference;
 }
 
 export type PostUsageDecisionKind = "none" | "fold" | "exit-with-summary";
@@ -113,7 +111,7 @@ export class ContextManager {
     model: string,
     alreadyFoldedThisTurn: boolean,
   ): PostUsageDecision {
-    const ctxMax = DEEPSEEK_CONTEXT_TOKENS[model] ?? DEFAULT_CONTEXT_TOKENS;
+    const ctxMax = contextTokensFor(model);
     if (!usage) return { kind: "none", promptTokens: 0, ctxMax, ratio: 0 };
     const ratio = usage.promptTokens / ctxMax;
     const base = { promptTokens: usage.promptTokens, ctxMax, ratio };
@@ -146,7 +144,7 @@ export class ContextManager {
     toolSpecs: ReadonlyArray<unknown> | undefined | null,
     model: string,
   ): PreflightDecision {
-    const ctxMax = DEEPSEEK_CONTEXT_TOKENS[model] ?? DEFAULT_CONTEXT_TOKENS;
+    const ctxMax = contextTokensFor(model);
     const estimate = estimateRequestTokens(messages, toolSpecs ?? null, true);
     return {
       needsAction: estimate / ctxMax > PREFLIGHT_EMERGENCY_THRESHOLD,
@@ -157,7 +155,7 @@ export class ContextManager {
 
   /** Replace older turns with one summary message; keep tail within keepRecentTokens budget. */
   async fold(model: string, opts?: { keepRecentTokens?: number }): Promise<FoldResult> {
-    const ctxMax = DEEPSEEK_CONTEXT_TOKENS[model] ?? DEFAULT_CONTEXT_TOKENS;
+    const ctxMax = contextTokensFor(model);
     const tailBudget = opts?.keepRecentTokens ?? Math.floor(ctxMax * HISTORY_FOLD_TAIL_FRACTION);
     const all = this.deps.log.toMessages();
     const noop: FoldResult = {
@@ -202,6 +200,7 @@ export class ContextManager {
       [],
       model,
       summary.reasoningContent,
+      this.deps.getThinkingPreference(),
     );
     const replacement = [summaryMsg, ...tail];
     this.deps.log.compactInPlace(replacement);
@@ -219,7 +218,7 @@ export class ContextManager {
     model: string,
     opts?: { targetTokens?: number; allowEmpty?: boolean },
   ): FoldResult {
-    const ctxMax = DEEPSEEK_CONTEXT_TOKENS[model] ?? DEFAULT_CONTEXT_TOKENS;
+    const ctxMax = contextTokensFor(model);
     const targetTokens =
       opts?.targetTokens ?? Math.floor(ctxMax * PREFLIGHT_MECHANICAL_TARGET_FRACTION);
     const all = this.deps.log.toMessages();
@@ -291,7 +290,7 @@ export class ContextManager {
   private async summarizeForFold(
     messagesToSummarize: ChatMessage[],
   ): Promise<{ content: string; reasoningContent: string }> {
-    const summaryModel = "deepseek-v4-flash";
+    const summaryModel = SUMMARY_MODEL_ID;
     const systemPrompt =
       "You compress conversation history for a coding agent. Output one prose recap that preserves: the user's overall goal, decisions and conclusions reached, files inspected or modified, important tool results still relevant to ongoing work, and any open todos. Skip turn-by-turn play-by-play. No tool calls, no markdown headings, no SEARCH/REPLACE blocks — plain prose only.";
     const healed = healLoadedMessages(messagesToSummarize, DEFAULT_MAX_RESULT_CHARS).messages;

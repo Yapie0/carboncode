@@ -272,6 +272,14 @@ export const EN: TranslationSchema = {
     },
     model: { description: "switch DeepSeek model id", argsHint: "<id>" },
     models: { description: "list available models fetched from DeepSeek /models" },
+    thinking: {
+      description: "show or set DeepSeek thinking mode",
+      argsHint: "[auto|on|off]",
+    },
+    "max-output": {
+      description: "show, cap, or clear the maximum output token count",
+      argsHint: "[positive-token-count|off]",
+    },
     theme: {
       description: "show or persist the terminal theme preference. Bare opens picker.",
       argsHint: "[auto|default|dark|light|tokyo-night|github-dark|github-light|high-contrast]",
@@ -519,7 +527,7 @@ export const EN: TranslationSchema = {
       },
       pro: {
         headline: "v4-pro always",
-        cost: "~3× flash (5/31 discount) / ~12× full price · for hard multi-turn work",
+        cost: "~3x flash at current pricing; best for hard multi-turn work",
       },
     },
     mcpCatalog: {
@@ -761,6 +769,15 @@ export const EN: TranslationSchema = {
     preflightNoFold:
       "preflight: request ~{estimate}/{ctxMax} tokens ({pct}%) and nothing left to truncate — DeepSeek will likely 400. Run /clear or /new to start fresh.",
     flashEscalation: "⇧ flash requested escalation — retrying this turn on {model}{reasonSuffix}",
+    malformedSseFrames:
+      "Ignored {count} malformed streaming frame(s). The provider response may be incomplete.",
+    unknownModelCapabilities:
+      "Model {model} is not in the capability registry. Using a {context}-token fallback context window and unknown pricing; configure contextWindowOverride and pricingOverride for accurate limits and cost.",
+    finishReasonLength:
+      "The model stopped because it reached the output-token limit. Increase maxOutputTokens or ask for a narrower response.",
+    finishReasonContentFilter: "The provider stopped this response because of its content filter.",
+    finishReasonResource:
+      "The provider stopped this response because capacity was unavailable. Retry the turn.",
     harvestStatus: "extracting plan state from reasoning…",
     repeatToolCallWarning:
       "Caught a repeated tool call — let the model see the issue and retry with a different approach.",
@@ -849,8 +866,7 @@ export const EN: TranslationSchema = {
         "  auto   v4-flash → v4-pro on hard turns  ← default · cheap when easy, smart when hard",
       helpPresetFlash:
         "  flash  v4-flash always                  cheapest · predictable per-turn cost",
-      helpPresetPro:
-        "  pro    v4-pro   always                  ~3× flash (5/31) · hard multi-turn work",
+      helpPresetPro: "  pro    v4-pro   always                  ~3x flash · hard multi-turn work",
       helpSessionsTitle: "Sessions (auto-enabled by default, named 'default'):",
       helpSessionCustom: "  carboncode chat --session <name>   use a different named session",
       helpSessionNone: "  carboncode chat --no-session       disable persistence for this run",
@@ -994,6 +1010,13 @@ export const EN: TranslationSchema = {
       presetFlash: "preset → flash  (v4-flash always · cheapest · /pro still bumps one turn)",
       presetPro: "preset → pro  (v4-pro always · ~3× flash · for hard multi-turn work)",
       presetUsage: "usage: /preset <auto|flash|pro>",
+      thinkingStatus: "thinking: {mode} (effective: {effective})",
+      thinkingSet: "thinking → {mode} (effective: {effective})",
+      thinkingUsage: "usage: /thinking <auto|on|off>",
+      maxOutputStatus: "max output: {tokens} tokens",
+      maxOutputSet: "max output → {tokens} tokens",
+      maxOutputOff: "max output → provider default",
+      maxOutputUsage: "usage: /max-output <positive-token-count|off>",
       proNothingArmed: "nothing armed — /pro with no args will arm pro for your next turn",
       proDisarmed: "▸ /pro disarmed — next turn falls back to the current preset",
       proUsage:
@@ -1847,6 +1870,12 @@ export const EN: TranslationSchema = {
     footer: "\u2191\u2193 pick \u00b7 [r] reconnect \u00b7 [d] disable \u00b7 esc quit",
   },
   mcpLifecycle: {
+    profileSkipped:
+      'tool profile auto · skipped redundant code-mode MCP servers: {servers} · set mcpToolProfile to "full" to restore',
+    toolBudget: "request tools: {nativeTools} native + {mcpTools} MCP = {activeTools}/{maxTools}",
+    toolBudgetExceededTitle: "MCP tool limit exceeded",
+    toolBudgetExceeded:
+      "tool limit exceeded: {activeTools}/{maxTools}. Disable unused MCP servers before sending a task.",
     handshake: "handshake\u2026",
     connected: "connected",
     failed: "failed",

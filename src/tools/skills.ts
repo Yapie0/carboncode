@@ -166,7 +166,7 @@ export function registerSkillTools(
         model: {
           type: "string",
           description:
-            "Optional model override for subagent skills (e.g. 'deepseek-chat'). Ignored for runAs=inline. Only `deepseek-*` ids are honored.",
+            "Optional model override for subagent skills (e.g. 'deepseek-v4-pro'). Ignored for runAs=inline. Only `deepseek-*` ids are honored.",
         },
         allowedTools: {
           type: "array",

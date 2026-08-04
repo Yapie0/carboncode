@@ -26,14 +26,14 @@ function renderPicker(props: {
 }
 
 describe("ModelPicker (#371)", () => {
-  it("lists API models when the catalog has loaded", () => {
+  it("lists current API models and hides retired aliases", () => {
     const text = renderPicker({
       models: ["deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner"],
       current: "deepseek-v4-flash",
     });
     expect(text).toContain("deepseek-v4-flash");
     expect(text).toContain("deepseek-v4-pro");
-    expect(text).toContain("deepseek-reasoner");
+    expect(text).not.toContain("deepseek-reasoner");
   });
 
   it("lists the three presets above the model list", () => {

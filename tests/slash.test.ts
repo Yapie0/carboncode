@@ -142,10 +142,11 @@ describe("handleSlash", () => {
     expect(r.info).toMatch(/effort=max/);
   });
 
-  it("/model switches the model", () => {
+  it("/model migrates retired aliases while preserving thinking semantics", () => {
     const loop = makeLoop();
     handleSlash("model", ["deepseek-reasoner"], loop);
-    expect(loop.model).toBe("deepseek-reasoner");
+    expect(loop.model).toBe("deepseek-v4-flash");
+    expect(loop.thinkingMode).toBe("enabled");
   });
 
   it("/model soft-warns when id is not in the fetched catalog but still switches", () => {
@@ -246,6 +247,24 @@ describe("handleSlash", () => {
   it("/preset with bad name returns usage", () => {
     const r = handleSlash("preset", ["nonsense"], makeLoop());
     expect(r.info).toMatch(/usage/);
+  });
+
+  it("/thinking controls V4 thinking independently from the model", () => {
+    const loop = makeLoop();
+    handleSlash("thinking", ["off"], loop);
+    expect(loop.model).toBe("deepseek-v4-flash");
+    expect(loop.thinkingMode).toBe("disabled");
+
+    const status = handleSlash("thinking", [], loop);
+    expect(status.info).toMatch(/disabled/);
+  });
+
+  it("/max-output sets and clears the response token cap", () => {
+    const loop = makeLoop();
+    handleSlash("max-output", ["32768"], loop);
+    expect(loop.maxOutputTokens).toBe(32_768);
+    handleSlash("max-output", ["off"], loop);
+    expect(loop.maxOutputTokens).toBeUndefined();
   });
 
   it("/help mentions presets", () => {
@@ -572,7 +591,7 @@ describe("handleSlash", () => {
     // Case-insensitive.
     expect(suggestSlashCommands("HE").map((s) => s.cmd)).toEqual(["help"]);
     // Empty prefix returns the full non-advanced release list, including code commands.
-    expect(suggestSlashCommands("", true)).toHaveLength(56);
+    expect(suggestSlashCommands("", true)).toHaveLength(58);
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("add-dir");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("vim");
     expect(suggestSlashCommands("", true).map((s) => s.cmd)).toContain("agents");

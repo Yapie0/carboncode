@@ -1,3 +1,4 @@
+import type { ThinkingPreference } from "../models.js";
 import type { ChatMessage, ToolCall } from "../types.js";
 import { shrinkOversizedToolResults, shrinkOversizedToolResultsByTokens } from "./shrink.js";
 import { isThinkingModeModel } from "./thinking.js";
@@ -72,8 +73,9 @@ export function healLoadedMessages(
 export function stampMissingReasoningForThinkingMode(
   messages: ChatMessage[],
   model: string,
+  preference: ThinkingPreference = "auto",
 ): { messages: ChatMessage[]; stampedCount: number } {
-  if (!isThinkingModeModel(model)) {
+  if (!isThinkingModeModel(model, preference)) {
     return { messages, stampedCount: 0 };
   }
   let stampedCount = 0;

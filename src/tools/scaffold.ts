@@ -4,6 +4,7 @@ import { defaultConfigPath, loadResolvedSkillPaths, readConfig, writeConfig } fr
 import { MCP_CATALOG, buildCatalogSpec } from "../mcp/catalog.js";
 import { preflightStdioSpec } from "../mcp/preflight.js";
 import { type McpSpec, parseMcpSpec } from "../mcp/spec.js";
+import { FLASH_MODEL_ID, PRO_MODEL_ID, SELECTABLE_MODEL_IDS } from "../models.js";
 import { SkillStore } from "../skills.js";
 import type { ToolRegistry } from "../tools.js";
 
@@ -66,9 +67,8 @@ export function registerScaffoldTools(
         },
         model: {
           type: "string",
-          enum: ["deepseek-v4-flash", "deepseek-v4-pro"],
-          description:
-            "Subagent model override (only meaningful for `run_as: subagent`). Default is the same as `spawn_subagent` — `deepseek-v4-flash`. Set to `deepseek-v4-pro` only when the playbook empirically needs the stronger model.",
+          enum: [...SELECTABLE_MODEL_IDS],
+          description: `Subagent model override (only meaningful for run_as=subagent). Default is ${FLASH_MODEL_ID}; use ${PRO_MODEL_ID} when the playbook empirically needs the stronger model.`,
         },
       },
       required: ["name", "description", "body"],

@@ -8,6 +8,7 @@ import { listThemeNames } from "../cli/ui/theme/tokens.js";
 import { type CheckpointMeta, fmtAgo, restoreCheckpoint } from "../code/checkpoints.js";
 import { loadQQConfig, resolveThemePreference, saveQQConfig } from "../config.js";
 import { type SessionInfo, freshSessionName } from "../memory/session.js";
+import { SELECTABLE_MODEL_IDS, modelCapabilities } from "../models.js";
 import type { ChoiceOption } from "../tools/choice.js";
 import type { PlanStep } from "../tools/plan.js";
 import { describeQQAccess } from "./access.js";
@@ -650,17 +651,12 @@ export function useQQChannel({
     [completedStepIdsRef, planStepsRef, sendText],
   );
 
-  const buildModelChoices = useCallback(
-    (models: string[] | null | undefined) => [
-      "auto",
-      "flash",
-      "pro",
-      ...((models && models.length > 0
-        ? models
-        : ["deepseek-v4-flash", "deepseek-v4-pro"]) as string[]),
-    ],
-    [],
-  );
+  const buildModelChoices = useCallback((models: string[] | null | undefined) => {
+    const available = (models?.length ? models : SELECTABLE_MODEL_IDS).filter(
+      (model) => !modelCapabilities(model)?.retired,
+    );
+    return ["auto", "flash", "pro", ...available];
+  }, []);
 
   const buildThemeChoices = useCallback((): ThemeChoice[] => ["auto", ...listThemeNames()], []);
 

@@ -16,6 +16,7 @@ import {
   loadEditMode,
   loadIndexConfig,
   loadIndexUserConfig,
+  loadMcpToolProfile,
   loadModel,
   loadPricingOverride,
   loadProjectPathAllowed,
@@ -292,6 +293,14 @@ describe("config", () => {
     expect(loaded.mcp).toHaveLength(2);
     expect(loaded.session).toBe("work");
     expect(loaded.setupCompleted).toBe(true);
+  });
+
+  it("uses the lean code-mode MCP profile by default and allows an explicit full override", () => {
+    expect(loadMcpToolProfile(path)).toBe("auto");
+    writeConfig({ mcpToolProfile: "full" }, path);
+    expect(loadMcpToolProfile(path)).toBe("full");
+    writeConfig({ mcpToolProfile: "invalid" as "full" }, path);
+    expect(loadMcpToolProfile(path)).toBe("auto");
   });
 
   it("session: null in the config means the user opted out of persistence", () => {

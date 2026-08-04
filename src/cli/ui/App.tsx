@@ -36,9 +36,12 @@ import {
   defaultConfigPath,
   editModeHintShown,
   loadBaseUrl,
+  loadMaxOutputTokens,
+  loadProviderUserId,
   loadReasoningEffort,
   loadTheme,
   loadThemeEnv,
+  loadThinkingMode,
   loadVimMode,
   markEditModeHintShown,
   markMouseClipboardHintShown,
@@ -69,6 +72,13 @@ import {
   renameSession,
   sanitizeName,
 } from "../../memory/session.js";
+import {
+  DEEPSEEK_MAX_TOOLS,
+  FLASH_MODEL_ID,
+  PRO_MODEL_ID,
+  SUMMARY_MODEL_ID,
+  type ThinkingPreference,
+} from "../../models.js";
 import type { QQChannel } from "../../qq/channel.js";
 import { useQQChannel } from "../../qq/use-qq-channel.js";
 import {
@@ -89,11 +99,7 @@ import {
   shouldAutoNameSession,
 } from "../../session-title.js";
 import { loadSlashUsage, recordSlashUse } from "../../slash-usage.js";
-import {
-  DEEPSEEK_CONTEXT_TOKENS,
-  DEFAULT_CONTEXT_TOKENS,
-  type SessionSummary,
-} from "../../telemetry/stats.js";
+import { type SessionSummary, contextTokensFor } from "../../telemetry/stats.js";
 import { defaultUsageLogPath } from "../../telemetry/usage.js";
 import type { ToolRegistry } from "../../tools.js";
 import type { ChoiceOption } from "../../tools/choice.js";
@@ -167,7 +173,6 @@ import { useKeystroke } from "./keystroke-context.js";
 import { CardStream } from "./layout/CardStream.js";
 import { ConversationViewport } from "./layout/ConversationViewport.js";
 import { InputAreaWithHistoryHint } from "./layout/InputAreaWithHistoryHint.js";
-import { LiveExpandContext } from "./layout/LiveExpandContext.js";
 import { ModeStatusBar } from "./layout/LiveRows.js";
 import { StatusRow, resolveRuntimeStatusBarConfig } from "./layout/StatusRow.js";
 import type { StatusBarConfig } from "./layout/StatusRow.js";
@@ -217,6 +222,7 @@ interface QueuedSubmit {
 
 export interface AppProps {
   model: string;
+  thinkingMode?: ThinkingPreference;
   system: string;
   /** Re-runs the prompt builder on /new so project-rule edits don't need a restart. Must produce the same shape as `system` was built from. */
   rebuildSystem?: () => string;
@@ -443,6 +449,7 @@ type AppInnerProps = AppProps & {
 
 function AppInner({
   model,
+  thinkingMode,
   system,
   rebuildSystem,
   transcript,
@@ -479,9 +486,7 @@ function AppInner({
   const cardCount = useAgentState((s) => s.cards.length);
   const sessionModel = useAgentState((s) => s.session.model);
   const ctxTokens = useAgentState((s) => s.status.promptTokens);
-  const ctxCap = useAgentState(
-    (s) => s.status.promptCap ?? DEEPSEEK_CONTEXT_TOKENS[s.session.model] ?? DEFAULT_CONTEXT_TOKENS,
-  );
+  const ctxCap = useAgentState((s) => s.status.promptCap ?? contextTokensFor(s.session.model));
   const sessionCostUsd = useAgentState((s) => s.status.sessionCost);
   const lastTurnCostUsd = useAgentState((s) => s.status.cost);
   const cacheHitRatio = useAgentState((s) => s.status.cacheHit);
@@ -501,12 +506,6 @@ function AppInner({
   const [slashUsage, setSlashUsage] = useState<Readonly<Record<string, number>>>(() =>
     loadSlashUsage(),
   );
-  // ctrl-o toggles full-tail view on the live streaming card.
-  // Auto-resets at the end of every turn so the next reply starts collapsed.
-  const [liveExpand, setLiveExpand] = useState(false);
-  useEffect(() => {
-    if (!isStreaming && liveExpand) setLiveExpand(false);
-  }, [isStreaming, liveExpand]);
   const languageVersion = useLanguageReload();
   // Boot splash: skip when config has banner:false, otherwise show
   // one full whale-spout cycle (~1.4s) so the brand mark lands clean.
@@ -998,11 +997,14 @@ function AppInner({
       // `/effort high` silently reverted to `max` on relaunch —the
       // loop's constructor default wins over persisted state.
       reasoningEffort: loadReasoningEffort(),
+      thinkingMode: thinkingMode ?? loadThinkingMode(),
+      maxOutputTokens: loadMaxOutputTokens(),
+      userId: loadProviderUserId(),
       rebuildSystem,
     });
     loopRef.current = l;
     return l;
-  }, [model, system, rebuildSystem, budgetUsd, session, tools, codeMode]);
+  }, [model, thinkingMode, system, rebuildSystem, budgetUsd, session, tools, codeMode]);
 
   // Loop is rebuilt on session switch with seeded carryover totals from
   // the resumed session's meta; mirror them into summary state so the
@@ -1175,9 +1177,9 @@ function AppInner({
   // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only seed
   useEffect(() => {
     const canonical: "auto" | "flash" | "pro" | null =
-      loop.model === "deepseek-v4-pro"
+      loop.model === PRO_MODEL_ID
         ? "pro"
-        : loop.model === "deepseek-v4-flash"
+        : loop.model === FLASH_MODEL_ID
           ? loop.autoEscalate
             ? "auto"
             : "flash"
@@ -1199,6 +1201,7 @@ function AppInner({
     let toolsReady = 0;
     let disabled = 0;
     let failed = 0;
+    const nativeTools = loop.prefix.toolSpecs.length;
     agentStore.dispatch({ type: "mcp.loading", ready, total });
     const bumpReady = () => {
       ready = Math.min(ready + 1, total);
@@ -1249,16 +1252,29 @@ function AppInner({
       }
     };
     void Promise.all(mcpSpecs.map(startSpec)).then(() => {
+      const activeTools = loop.prefix.toolSpecs.length;
       log.pushInfo(
         formatMcpStartupSummary({
           total,
           connected,
           tools: toolsReady,
+          nativeTools,
+          activeTools,
+          maxTools: DEEPSEEK_MAX_TOOLS,
           disabled,
           failed,
         }),
-        failed > 0 ? "warn" : "ok",
+        failed > 0 || activeTools > DEEPSEEK_MAX_TOOLS ? "warn" : "ok",
       );
+      if (activeTools > DEEPSEEK_MAX_TOOLS) {
+        log.pushWarning(
+          t("mcpLifecycle.toolBudgetExceededTitle"),
+          t("mcpLifecycle.toolBudgetExceeded", {
+            activeTools,
+            maxTools: DEEPSEEK_MAX_TOOLS,
+          }),
+        );
+      }
     });
   }, [mcpRuntime, mcpSpecs, loop, log, agentStore]);
 
@@ -1869,30 +1885,6 @@ function AppInner({
       toggleUndoPause();
       return;
     }
-    // Ctrl-O toggles full-tail view on the live streaming reply so a long
-    // plan / todo can be read while it's still being written. Resets at
-    // turn end so each new reply starts collapsed.
-    if (
-      key.ctrl &&
-      key.input === "o" &&
-      isStreaming &&
-      !pendingShell &&
-      !pendingPath &&
-      !pendingPlan &&
-      !pendingReviseEditor &&
-      !pendingSessionsPicker &&
-      !pendingCheckpointPicker &&
-      !pendingMcpHub &&
-      !stagedInput &&
-      !pendingEditReview &&
-      !walkthroughActive &&
-      !pendingChoice &&
-      !stagedChoiceCustom &&
-      !pendingRevision
-    ) {
-      setLiveExpand((v) => !v);
-      return;
-    }
     if (busy) return;
     // ShellConfirm owns the full keyboard while it's showing. If we
     // kept handling ↑/↓ / Tab here they'd race with its SingleSelect
@@ -2196,11 +2188,7 @@ function AppInner({
             });
             agentStore.dispatch({ type: "session.model.change", model: settings.model });
             const canonical: "auto" | "flash" | "pro" =
-              settings.model === "deepseek-v4-pro"
-                ? "pro"
-                : settings.autoEscalate
-                  ? "auto"
-                  : "flash";
+              settings.model === PRO_MODEL_ID ? "pro" : settings.autoEscalate ? "auto" : "flash";
             setPreset(canonical);
             agentStore.dispatch({ type: "session.preset.change", preset: canonical });
             try {
@@ -2262,7 +2250,7 @@ function AppInner({
             // StatsPanel reads). `balance` comes from useSessionInfo via a
             // ref-mirror so this callback stays cheap.
             const s = loop.stats.summary();
-            const ctxCap = DEEPSEEK_CONTEXT_TOKENS[loop.model] ?? DEFAULT_CONTEXT_TOKENS;
+            const ctxCap = contextTokensFor(loop.model);
             return {
               turns: s.turns,
               totalCostUsd: s.totalCostUsd,
@@ -2614,8 +2602,7 @@ function AppInner({
 
       loop.configure({ model: target, autoEscalate: false });
       agentStore.dispatch({ type: "session.model.change", model: target });
-      const inferred =
-        target === "deepseek-v4-pro" ? "pro" : target === "deepseek-v4-flash" ? "flash" : null;
+      const inferred = target === PRO_MODEL_ID ? "pro" : target === FLASH_MODEL_ID ? "flash" : null;
       setPreset(inferred ?? "flash");
       agentStore.dispatch({ type: "session.preset.change", preset: inferred });
       if (inferred) {
@@ -2897,7 +2884,7 @@ function AppInner({
               parentRegistry: tools!,
               system,
               task,
-              model: "deepseek-v4-flash",
+              model: SUMMARY_MODEL_ID,
               sink: subagentSinkRef.current,
               skillName: `teams/${agentId}`,
             }).then((result) => {
@@ -3349,7 +3336,7 @@ function AppInner({
               armUndoBanner,
               pendingEdits,
               syncPendingCount,
-              ctxMax: DEEPSEEK_CONTEXT_TOKENS[loop.model] ?? DEFAULT_CONTEXT_TOKENS,
+              ctxMax: contextTokensFor(loop.model),
             });
             if (session) {
               const m = loadSessionMeta(session);
@@ -4316,9 +4303,7 @@ function AppInner({
             <ConversationViewport
               history={
                 <Box flexDirection="column">
-                  <LiveExpandContext.Provider value={liveExpand}>
-                    <CardStream suppressLive={modalOpen} />
-                  </LiveExpandContext.Provider>
+                  <CardStream suppressLive={modalOpen} />
                   {/*
           Welcome card on the empty state. Visible only when nothing
           has happened yet (no past events, nothing in flight, no
@@ -4561,9 +4546,9 @@ function AppInner({
                           loop.configure({ model: outcome.id, autoEscalate: false });
                           agentStore.dispatch({ type: "session.model.change", model: outcome.id });
                           const inferred =
-                            outcome.id === "deepseek-v4-pro"
+                            outcome.id === PRO_MODEL_ID
                               ? "pro"
-                              : outcome.id === "deepseek-v4-flash"
+                              : outcome.id === FLASH_MODEL_ID
                                 ? "flash"
                                 : null;
                           setPreset(inferred ?? "flash");

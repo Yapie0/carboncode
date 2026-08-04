@@ -7,6 +7,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname } from "node:path";
+import { FLASH_MODEL_ID } from "../models.js";
 import { appendAudit } from "./audit.js";
 import { logEvent } from "./events.js";
 import {
@@ -74,7 +75,7 @@ export function createTeam(input: CreateTeamInput): CreateTeamResult | CreateTea
       displayName: a.displayName,
       capabilities: a.capabilities ?? [],
       status: "idle" as TeamAgentStatus,
-      modelPreference: a.modelPreference ?? "deepseek-v4-flash",
+      modelPreference: a.modelPreference ?? FLASH_MODEL_ID,
       inboxPath: `agents/${agentId}/inbox.jsonl`,
       outboxPath: `agents/${agentId}/outbox.jsonl`,
     };

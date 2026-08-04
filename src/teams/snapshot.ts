@@ -1,4 +1,5 @@
 import { readFileSync, statSync, writeFileSync } from "node:fs";
+import { FLASH_MODEL_ID } from "../models.js";
 import { teamSnapshotPath } from "./paths.js";
 import { renderOnboardingPrompt } from "./templates.js";
 import type { Team, TeamSnapshot, TeamSnapshotAgent } from "./types.js";
@@ -167,7 +168,7 @@ function parseSnapshotMarkdown(raw: string, teamId: string): TeamSnapshot | null
             displayName,
             role: "researcher",
             capabilities: [],
-            modelPreference: "deepseek-v4-flash",
+            modelPreference: FLASH_MODEL_ID,
             onboardingPrompt: "",
           };
           inPrompt = false;

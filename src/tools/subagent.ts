@@ -5,6 +5,7 @@ import { CacheFirstLoop } from "../loop.js";
 import { applyProjectMemory } from "../memory/project.js";
 import { ImmutablePrefix } from "../memory/runtime.js";
 import { timestampSuffix } from "../memory/session.js";
+import { FLASH_MODEL_ID, PRO_MODEL_ID, SELECTABLE_MODEL_IDS } from "../models.js";
 import {
   NEGATIVE_CLAIM_RULE,
   TUI_FORMATTING_RULES,
@@ -107,10 +108,10 @@ function defaultSubagentSystem(modelId: string): string {
 
 const DEFAULT_MAX_RESULT_CHARS = 8000;
 // Subagents default to flash — their work is read-and-synthesize
-// (explore, research), which doesn't need the 12× pro tier. Skill
+// (explore, research), which usually doesn't need the pro tier. Skill
 // frontmatter `model: deepseek-v4-pro` is the opt-in override for
 // skills that empirically benefit from the stronger model.
-const DEFAULT_SUBAGENT_MODEL = "deepseek-v4-flash";
+const DEFAULT_SUBAGENT_MODEL = FLASH_MODEL_ID;
 // Subagents default to effort=high — less thinking budget than a
 // main turn (which defaults to `max` in the preset). The parent's
 // task arg is already a distilled prompt; explore/research rarely
@@ -443,9 +444,8 @@ export function registerSubagentTool(
         },
         model: {
           type: "string",
-          enum: ["deepseek-v4-flash", "deepseek-v4-pro"],
-          description:
-            "Which DeepSeek model the subagent runs on. Default is 'deepseek-v4-flash' — cheap and fast, fine for explore/research-style subtasks. Override to 'deepseek-v4-pro' (~12× more expensive) when the subtask genuinely needs the stronger model: cross-file architecture, subtle bug hunts, anything where flash has empirically underperformed.",
+          enum: [...SELECTABLE_MODEL_IDS],
+          description: `Which DeepSeek model the subagent runs on. Default is '${FLASH_MODEL_ID}' for bounded subtasks. Override to '${PRO_MODEL_ID}' for cross-file architecture or subtle bug hunts that need the stronger model.`,
         },
         resume_session: {
           type: "string",

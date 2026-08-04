@@ -111,7 +111,7 @@ describe("SlashSuggestions", () => {
     );
   });
 
-  it("renders the bare slash release command surface as 56 total commands", () => {
+  it("renders the bare slash release command surface as 58 total commands", () => {
     const matches = suggestSlashCommands("", true);
     const names = matches.map((spec) => spec.cmd);
     const { lastFrame, unmount } = render(
@@ -120,7 +120,7 @@ describe("SlashSuggestions", () => {
     const frame = lastFrame() ?? "";
     unmount();
 
-    expect(matches).toHaveLength(56);
+    expect(matches).toHaveLength(58);
     expect(names).toContain("add-dir");
     expect(names).toContain("vim");
     expect(names).toContain("agents");
@@ -138,7 +138,7 @@ describe("SlashSuggestions", () => {
     expect(names).toContain("language");
     expect(names).toContain("btw");
     expect(countAdvancedCommands(true)).toBe(11);
-    expect(frame).toContain("56 commands");
+    expect(frame).toContain("58 commands");
     expect(frame).toContain("+ 11 advanced");
   });
 

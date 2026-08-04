@@ -1,11 +1,9 @@
 import { Box, Text, useStdout } from "ink";
 // biome-ignore lint/style/useImportType: tsconfig jsx=react needs React in value scope for JSX compilation
-import React, { useContext } from "react";
+import React from "react";
 import { clipToCells } from "../../../frame/width.js";
 import { t } from "../../../i18n/index.js";
 import { countTokensBounded } from "../../../tokenizer.js";
-import { LiveExpandContext } from "../layout/LiveExpandContext.js";
-import { useReserveRows } from "../layout/viewport-budget.js";
 import { Markdown } from "../markdown.js";
 import { Card } from "../primitives/Card.js";
 import { CardHeader } from "../primitives/CardHeader.js";
@@ -15,10 +13,6 @@ import { GLYPH } from "../theme.js";
 import { FG, TONE, TONE_ACTIVE } from "../theme/tokens.js";
 import { useSlowTick } from "../ticker.js";
 import { useIncrementalWrap } from "./useIncrementalWrap.js";
-
-/** Expanded mode shows up to this many lines so the card can't swallow the whole viewport. */
-const EXPANDED_MAX_LINES = 60;
-const LIVE_PREVIEW_LINES = 12;
 
 const LIVE_TOKEN_CALIBRATION_CHARS = 1000;
 const ESTIMATED_CHARS_PER_TOKEN = 4;
@@ -64,12 +58,6 @@ export function estimateLiveTokenCount(
 export function StreamingCard({ card }: { card: StreamingCardData }): React.ReactElement {
   const { stdout } = useStdout();
   const cols = stdout?.columns ?? 80;
-  const expanded = useContext(LiveExpandContext);
-  const reserveCap = (expanded ? EXPANDED_MAX_LINES : LIVE_PREVIEW_LINES) + 3;
-  useReserveRows("stream", {
-    min: 1,
-    max: reserveCap,
-  });
   // Re-render at 1Hz so the rate keeps updating even when chunks stall.
   // Frozen once `card.done` is true — settled cards render via Static.
   useSlowTick();
@@ -86,9 +74,6 @@ export function StreamingCard({ card }: { card: StreamingCardData }): React.Reac
     );
   }
 
-  const maxVisible = expanded ? EXPANDED_MAX_LINES : LIVE_PREVIEW_LINES;
-  const hiddenLines = Math.max(0, visualLines.length - maxVisible);
-  const visible = hiddenLines > 0 ? visualLines.slice(-maxVisible) : visualLines;
   const aborted = !!card.aborted;
   const headColor = aborted ? TONE.err : TONE_ACTIVE.brand;
   const glyph = aborted ? "⊘" : GLYPH.event;
@@ -103,14 +88,7 @@ export function StreamingCard({ card }: { card: StreamingCardData }): React.Reac
         right={aborted ? null : <Spinner kind="braille" color={TONE_ACTIVE.brand} />}
       />
       {card.userPrompt ? <ReplyPrompt text={card.userPrompt} cols={cols} /> : null}
-      {hiddenLines > 0 ? (
-        <Text color={FG.faint}>
-          {t(hiddenLines === 1 ? "cardLabels.earlierLine" : "cardLabels.earlierLines", {
-            count: hiddenLines,
-          })}
-        </Text>
-      ) : null}
-      {visible.map((line, i) => (
+      {visualLines.map((line, i) => (
         <Box key={`${card.id}:${i}`} flexDirection="row">
           <Text color={aborted ? FG.meta : FG.body}>{clipToCells(line, lineCells)}</Text>
         </Box>

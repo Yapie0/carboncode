@@ -1,19 +1,13 @@
 import type { Usage } from "../client.js";
-import { loadPricingOverride } from "../config.js";
+import { loadContextWindowOverride, loadPricingOverride } from "../config.js";
+import { DEFAULT_CONTEXT_TOKENS, MODEL_CAPABILITIES, type ModelPricing } from "../models.js";
 
 /** USD per 1M tokens; display currency conversion happens at the UI boundary. */
-export const DEEPSEEK_PRICING: Record<
-  string,
-  { inputCacheHit: number; inputCacheMiss: number; output: number }
-> = {
-  "deepseek-v4-flash": { inputCacheHit: 0.0028, inputCacheMiss: 0.14, output: 0.28 },
-  "deepseek-v4-pro": { inputCacheHit: 0.003625, inputCacheMiss: 0.435, output: 0.87 },
-  // Compat aliases — priced as v4-flash per the deprecation notice.
-  "deepseek-chat": { inputCacheHit: 0.0028, inputCacheMiss: 0.14, output: 0.28 },
-  "deepseek-reasoner": { inputCacheHit: 0.0028, inputCacheMiss: 0.14, output: 0.28 },
-};
+export const DEEPSEEK_PRICING: Record<string, ModelPricing> = Object.fromEntries(
+  Object.values(MODEL_CAPABILITIES).map((model) => [model.id, model.pricing]),
+);
 
-export type ModelPricing = (typeof DEEPSEEK_PRICING)[string];
+export type { ModelPricing };
 
 export function pricingFor(model: string, path?: string): ModelPricing | undefined {
   const defaults = DEEPSEEK_PRICING[model];
@@ -35,14 +29,28 @@ export const CLAUDE_SONNET_PRICING = { input: 3.0, output: 15.0 };
 
 /** Prompt-side window only; completion caps live server-side and don't affect this gauge. */
 export const DEEPSEEK_CONTEXT_TOKENS: Record<string, number> = {
-  "deepseek-v4-flash": 1_000_000,
-  "deepseek-v4-pro": 1_000_000,
-  "deepseek-chat": 1_000_000,
-  "deepseek-reasoner": 1_000_000,
+  ...Object.fromEntries(
+    Object.values(MODEL_CAPABILITIES).map((model) => [model.id, model.contextTokens]),
+  ),
 };
 
 /** Fallback when the caller's model id isn't in the table — safe lower bound. */
-export const DEFAULT_CONTEXT_TOKENS = 131_072;
+export { DEFAULT_CONTEXT_TOKENS };
+
+export function contextTokensFor(model: string, path?: string): number {
+  return (
+    loadContextWindowOverride(path)[model] ??
+    DEEPSEEK_CONTEXT_TOKENS[model] ??
+    DEFAULT_CONTEXT_TOKENS
+  );
+}
+
+export function hasKnownContextWindow(model: string, path?: string): boolean {
+  return (
+    loadContextWindowOverride(path)[model] !== undefined ||
+    DEEPSEEK_CONTEXT_TOKENS[model] !== undefined
+  );
+}
 
 export function costUsd(model: string, usage: Usage, path?: string): number {
   const p = pricingFor(model, path);

@@ -60,4 +60,8 @@ export interface ChatRequestOptions {
   responseFormat?: { type: "json_object" | "text" };
   thinking?: "enabled" | "disabled";
   reasoningEffort?: "high" | "max";
+  /** Stable, non-PII identifier used by compatible providers for cache isolation. */
+  userId?: string;
+  /** Request a terminal usage-only SSE chunk. Defaults to true for streaming calls. */
+  includeUsage?: boolean;
 }

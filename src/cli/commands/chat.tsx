@@ -8,6 +8,7 @@ import {
   webSearchEngine,
 } from "../../config.js";
 import { loadDotenv } from "../../env.js";
+import { t } from "../../i18n/index.js";
 import {
   deleteSession,
   freshSessionName,
@@ -15,6 +16,7 @@ import {
   renameSession,
   resolveSession,
 } from "../../memory/session.js";
+import { type ThinkingPreference, migrateRetiredModel } from "../../models.js";
 import { QQChannel } from "../../qq/channel.js";
 import { ToolRegistry } from "../../tools.js";
 import { registerChoiceTool } from "../../tools/choice.js";
@@ -42,6 +44,8 @@ export type { McpLifecycleNotice, McpLifecycleSink, McpRuntime, ProgressInfo };
 
 export interface ChatOptions {
   model: string;
+  /** Initial thinking preference, primarily used while migrating retired model aliases. */
+  thinkingMode?: ThinkingPreference;
   system: string;
   /** Re-runs the prompt builder on /new so project-rule edits don't need a restart. Should produce the same string `system` was built from. */
   rebuildSystem?: () => string;
@@ -58,6 +62,8 @@ export interface ChatOptions {
   mcp?: string[];
   /** Global prefix — only used when a single anonymous server is given. */
   mcpPrefix?: string;
+  /** MCP servers omitted by the active tool profile, surfaced once at startup. */
+  mcpProfileSkipped?: string[];
   /**
    * Pre-built ToolRegistry used as a seed. MCP bridges (if any) are
    * layered on top of whatever's already registered. Used by
@@ -222,6 +228,7 @@ function Root({
       <App
         key={activeSession ?? "__new__"}
         model={appProps.model}
+        thinkingMode={appProps.thinkingMode}
         system={appProps.system}
         rebuildSystem={appProps.rebuildSystem}
         transcript={appProps.transcript}
@@ -251,11 +258,17 @@ function Root({
 
 export async function chatCommand(opts: ChatOptions): Promise<void> {
   markPhase("chat_command_enter");
+  const migratedModel = migrateRetiredModel(opts.model);
+  const runtimeOpts: ChatOptions = {
+    ...opts,
+    model: migratedModel.model,
+    thinkingMode: migratedModel.thinking ?? opts.thinkingMode,
+  };
   loadDotenv();
   const initialKey = loadApiKey();
   markPhase("config_loaded");
 
-  const requestedSpecs = opts.mcp ?? [];
+  const requestedSpecs = runtimeOpts.mcp ?? [];
   // Shared progress sink: the bridge's onProgress callback writes
   // through `progressSink.current`, which App.tsx sets to its UI
   // updater on mount. Started null so early progress frames (before
@@ -265,12 +278,12 @@ export async function chatCommand(opts: ChatOptions): Promise<void> {
   // filesystem tools) — MCP bridges layer on top rather than
   // replacing. When no seed AND no MCP, tools stays undefined and
   // the loop runs as a bare chat.
-  let tools: ToolRegistry | undefined = opts.seedTools;
+  let tools: ToolRegistry | undefined = runtimeOpts.seedTools;
   if (requestedSpecs.length > 0 && !tools) tools = new ToolRegistry();
 
   const runtime = createMcpRuntime({
     getTools: () => tools,
-    getMcpPrefix: () => opts.mcpPrefix,
+    getMcpPrefix: () => runtimeOpts.mcpPrefix,
     getRequestedCount: () => requestedSpecs.length,
     progressSink,
   });
@@ -281,6 +294,13 @@ export async function chatCommand(opts: ChatOptions): Promise<void> {
   const mcpServers: McpServerSummary[] = [];
   const cfg = readConfig();
   const startupInfoHints: string[] = [];
+  if (runtimeOpts.mcpProfileSkipped && runtimeOpts.mcpProfileSkipped.length > 0) {
+    startupInfoHints.push(
+      t("mcpLifecycle.profileSkipped", {
+        servers: runtimeOpts.mcpProfileSkipped.join(", "),
+      }),
+    );
+  }
   const startupUpdateCheck = createStartupUpdateCheck(cfg);
 
   // Register web search/fetch tools unless explicitly disabled. DDG
@@ -301,7 +321,7 @@ export async function chatCommand(opts: ChatOptions): Promise<void> {
   // `run_skill` is registered later in App.tsx (where the client
   // exists) so it can wire the subagent runner for runAs:subagent
   // skills.
-  if (!opts.seedTools) {
+  if (!runtimeOpts.seedTools) {
     if (!tools) tools = new ToolRegistry();
     registerMemoryTools(tools, {});
     // `ask_choice` — branching primitive, useful in chat too (stylistic
@@ -314,12 +334,12 @@ export async function chatCommand(opts: ChatOptions): Promise<void> {
   // and --resume (latest prefixed). Default falls through to the latest
   // prefixed-or-base.
   const { resolved: resolvedSession } = resolveSession(
-    opts.session,
-    opts.forceNew,
-    opts.forceResume,
+    runtimeOpts.session,
+    runtimeOpts.forceNew,
+    runtimeOpts.forceResume,
   );
-  const launchWorkspace = opts.codeMode?.rootDir ?? process.cwd();
-  if (opts.codeMode) {
+  const launchWorkspace = runtimeOpts.codeMode?.rootDir ?? process.cwd();
+  if (runtimeOpts.codeMode) {
     const ruleSummary = formatRuleSummary(
       launchWorkspace,
       collectStartupRuleFiles(launchWorkspace),
@@ -327,7 +347,9 @@ export async function chatCommand(opts: ChatOptions): Promise<void> {
     if (ruleSummary) startupInfoHints.push(`▸ ${ruleSummary}`);
   }
   const showPicker =
-    !opts.session && !opts.forceResume && listSessionsForWorkspace(launchWorkspace).length > 0;
+    !runtimeOpts.session &&
+    !runtimeOpts.forceResume &&
+    listSessionsForWorkspace(launchWorkspace).length > 0;
 
   markPhase("ink_render_call");
 
@@ -369,7 +391,7 @@ export async function chatCommand(opts: ChatOptions): Promise<void> {
       startupInfoHints={startupInfoHints}
       startupUpdateCheck={startupUpdateCheck}
       showPicker={showPicker}
-      {...opts}
+      {...runtimeOpts}
       session={resolvedSession}
       qqChannel={qqChannel}
       qqSubmitRef={qqSubmitRef}

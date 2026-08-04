@@ -13,6 +13,7 @@ interface FakeResponseShape {
   reasoning_content?: string;
   tool_calls?: any[];
   usage?: Record<string, number>;
+  finish_reason?: string;
 }
 
 function fakeFetch(responses: FakeResponseShape[]): typeof fetch {
@@ -32,7 +33,7 @@ function fakeFetch(responses: FakeResponseShape[]): typeof fetch {
               reasoning_content: resp.reasoning_content ?? null,
               tool_calls: resp.tool_calls ?? undefined,
             },
-            finish_reason: resp.tool_calls ? "tool_calls" : "stop",
+            finish_reason: resp.finish_reason ?? (resp.tool_calls ? "tool_calls" : "stop"),
           },
         ],
         usage: resp.usage ?? {
@@ -74,6 +75,27 @@ describe("CacheFirstLoop (non-streaming)", () => {
     expect(loop.stats.turns.length).toBe(1);
     expect(loop.log.length).toBe(2); // user + assistant
   });
+
+  it.each(["length", "content_filter", "insufficient_system_resource"])(
+    "surfaces finish_reason=%s as an incomplete response",
+    async (finishReason) => {
+      const client = makeClient([{ content: "partial", finish_reason: finishReason }]);
+      const loop = new CacheFirstLoop({
+        client,
+        prefix: new ImmutablePrefix({ system: "be brief" }),
+        stream: false,
+      });
+
+      const events: LoopEvent[] = [];
+      for await (const event of loop.step("hello")) events.push(event);
+
+      expect(events.some((event) => event.role === "assistant_final")).toBe(false);
+      expect(events.at(-1)).toMatchObject({ role: "error" });
+      expect(events.at(-1)?.error).toBeTruthy();
+      expect(loop.stats.turns).toHaveLength(1);
+      expect(loop.log.length).toBe(1);
+    },
+  );
 
   it("records cache hit telemetry from API usage", async () => {
     const client = makeClient([
@@ -1314,6 +1336,36 @@ describe("CacheFirstLoop - self-reported escalation via <<<NEEDS_PRO>>>", () => 
 });
 
 describe("CacheFirstLoop (streaming) — tool_call_delta emission", () => {
+  it("stops with an error when a streaming response hits its output limit", async () => {
+    const client = new DeepSeekClient({
+      apiKey: "sk-test",
+      fetch: (async () => {
+        const frames = [
+          `data: ${JSON.stringify({ choices: [{ delta: { content: "partial" } }] })}\n\n`,
+          `data: ${JSON.stringify({ choices: [{ finish_reason: "length", delta: {} }], usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 } })}\n\n`,
+          "data: [DONE]\n\n",
+        ];
+        return new Response(frames.join(""), {
+          status: 200,
+          headers: { "Content-Type": "text/event-stream" },
+        });
+      }) as typeof fetch,
+    });
+    const loop = new CacheFirstLoop({
+      client,
+      prefix: new ImmutablePrefix({ system: "be brief" }),
+      model: "deepseek-v4-pro",
+      stream: true,
+    });
+
+    const events: LoopEvent[] = [];
+    for await (const event of loop.step("hello")) events.push(event);
+
+    expect(events.some((event) => event.role === "assistant_delta")).toBe(true);
+    expect(events.at(-1)).toMatchObject({ role: "error" });
+    expect(events.some((event) => event.role === "assistant_final")).toBe(false);
+  });
+
   it("yields tool_call_delta events carrying growing arg-char count", async () => {
     const client = new DeepSeekClient({
       apiKey: "sk-test",

@@ -233,6 +233,8 @@ const config: SlashHandler = () => {
     ["output style", loadOutputStyle(), "/output-style"],
     ["status bar", cfg.statusBar ? "custom" : "default", "/statusline"],
     ["reasoning", cfg.reasoningEffort ?? "default", "/pro"],
+    ["thinking", cfg.thinkingMode ?? "auto", "/thinking"],
+    ["max output", cfg.maxOutputTokens?.toLocaleString() ?? "provider default", "/max-output"],
     ["auto-update", cfg.autoUpdate === false ? "off" : "on", ""],
   ];
   const labelW = Math.max(...rows.map((r) => r[0].length));

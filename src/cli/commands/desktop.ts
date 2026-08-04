@@ -22,11 +22,14 @@ import {
   loadDesktopOpenTabs,
   loadEditMode,
   loadEditor,
+  loadMaxOutputTokens,
   loadModel,
   loadPreset,
+  loadProviderUserId,
   loadReasoningEffort,
   loadRecentWorkspaces,
   loadResolvedSkillPaths,
+  loadThinkingMode,
   loadWorkspaceDir,
   pushRecentWorkspace,
   readConfig,
@@ -64,6 +67,7 @@ import {
   timestampSuffix,
 } from "../../memory/session.js";
 import { MemoryStore } from "../../memory/user.js";
+import { type ThinkingPreference, migrateRetiredModel } from "../../models.js";
 import { SkillStore } from "../../skills.js";
 import { countTokensBounded } from "../../tokenizer.js";
 import type { ChoiceOption } from "../../tools/choice.js";
@@ -75,6 +79,7 @@ import { type McpRuntime, createMcpRuntime } from "./mcp-runtime.js";
 
 export interface DesktopOptions {
   model: string;
+  thinkingMode?: ThinkingPreference;
   budgetUsd?: number;
   /** Root directory the agent's filesystem tools operate inside. Defaults to cwd. */
   dir?: string;
@@ -619,6 +624,7 @@ interface Tab {
   currentSession: string;
   currentPreset: "auto" | "flash" | "pro";
   currentModel: string;
+  thinkingMode: ThinkingPreference;
   budgetUsd: number | undefined;
   /** null while the tab is bootstrapping — see `initTabToolset`. UI gates input on `$ready`, which only fires once this is set. */
   toolset: Awaited<ReturnType<typeof buildCodeToolset>> | null;
@@ -673,6 +679,9 @@ function buildRuntimeFor(tab: Tab): RuntimeState {
     budgetUsd: tab.budgetUsd,
     session: tab.currentSession,
     reasoningEffort,
+    thinkingMode: tab.thinkingMode,
+    maxOutputTokens: loadMaxOutputTokens(),
+    userId: loadProviderUserId(),
     autoEscalate,
   });
   const eventizer = new Eventizer();
@@ -798,13 +807,15 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
     pushRecentWorkspace(dir);
     const preset = canonicalPresetName(loadPreset());
     const resolved = resolvePreset(preset);
-    const model = opts.model || loadModel() || resolved.model;
+    const modelSelection = migrateRetiredModel(opts.model || loadModel() || resolved.model);
+    const model = modelSelection.model;
     const tab: Tab = {
       id: nextTabId(),
       rootDir: dir,
       currentSession: "",
       currentPreset: preset,
       currentModel: model,
+      thinkingMode: modelSelection.thinking ?? opts.thinkingMode ?? loadThinkingMode(),
       budgetUsd: opts.budgetUsd,
       toolset: null,
       system: "",
@@ -1686,6 +1697,7 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
           tab.currentPreset = canonicalPresetName(msg.preset);
           const resolved = resolvePreset(tab.currentPreset);
           tab.currentModel = resolved.model;
+          tab.thinkingMode = loadThinkingMode();
           savePreset(tab.currentPreset);
           // If the toolset isn't built yet (mid-bootstrap), let initTabToolset
           // see the updated currentModel and compute system + runtime once.

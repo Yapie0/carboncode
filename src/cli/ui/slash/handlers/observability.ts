@@ -8,12 +8,7 @@ import {
   resolveThemePreference,
 } from "@/config.js";
 import { getLanguage, t } from "@/i18n/index.js";
-import {
-  DEEPSEEK_CONTEXT_TOKENS,
-  DEEPSEEK_PRICING,
-  DEFAULT_CONTEXT_TOKENS,
-  pricingFor,
-} from "@/telemetry/stats.js";
+import { DEEPSEEK_PRICING, contextTokensFor, pricingFor } from "@/telemetry/stats.js";
 import { countTokensBounded } from "@/tokenizer.js";
 import { VERSION } from "@/version.js";
 import { writeClipboard } from "../../clipboard.js";
@@ -40,7 +35,7 @@ const context: SlashHandler = (_args, loop) => {
 };
 
 const status: SlashHandler = (_args, loop, ctx) => {
-  const ctxMax = DEEPSEEK_CONTEXT_TOKENS[loop.model] ?? DEFAULT_CONTEXT_TOKENS;
+  const ctxMax = contextTokensFor(loop.model);
   const summary = loop.stats.summary();
   const lastPromptTokens = summary.lastPromptTokens;
   const ctxPct = ctxMax > 0 ? Math.round((lastPromptTokens / ctxMax) * 100) : 0;
@@ -176,7 +171,7 @@ const cost: SlashHandler = (args, loop, ctx) => {
     return { info: t("handlers.observability.costNeedsTui") };
   }
   const summary = loop.stats.summary();
-  const ctxMax = DEEPSEEK_CONTEXT_TOKENS[loop.model] ?? DEFAULT_CONTEXT_TOKENS;
+  const ctxMax = contextTokensFor(loop.model);
   ctx.postUsage({
     turn: turn.turn,
     promptTokens: turn.usage.promptTokens,

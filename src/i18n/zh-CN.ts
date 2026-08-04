@@ -267,6 +267,14 @@ export const zhCN: TranslationSchema = {
     },
     model: { description: "切换 DeepSeek 模型 ID", argsHint: "<id>" },
     models: { description: "列出从 DeepSeek /models 获取的可用模型" },
+    thinking: {
+      description: "显示或设置 DeepSeek 思考模式",
+      argsHint: "[auto|on|off]",
+    },
+    "max-output": {
+      description: "显示、限制或清除最大输出 token 数",
+      argsHint: "[正整数-token-数量|off]",
+    },
     theme: {
       description: "显示或持久化终端主题偏好。无参数时打开选择器。",
       argsHint: "[auto|default|dark|light|tokyo-night|github-dark|github-light|high-contrast]",
@@ -503,7 +511,7 @@ export const zhCN: TranslationSchema = {
       },
       pro: {
         headline: "始终使用 v4-pro",
-        cost: "约 3 倍 flash（5/31 折扣）/ 原价约 12 倍 · 适合困难的多轮工作",
+        cost: "按当前价格约为 flash 的 3 倍，适合困难的多轮工作",
       },
     },
     mcpCatalog: {
@@ -743,6 +751,16 @@ export const zhCN: TranslationSchema = {
     preflightNoFold:
       "预检：请求约 {estimate}/{ctxMax} tokens（{pct}%）且没有可裁剪的内容 — DeepSeek 大概率会返回 400。请运行 /clear 或 /new 重新开始。",
     flashEscalation: "⇧ flash 请求升级 — 本轮改用 {model}{reasonSuffix}",
+    malformedSseFrames:
+      "\u5df2\u5ffd\u7565 {count} \u4e2a\u635f\u574f\u7684\u6d41\u5f0f\u6570\u636e\u5e27\uff0c\u6a21\u578b\u8fd4\u56de\u53ef\u80fd\u4e0d\u5b8c\u6574\u3002",
+    unknownModelCapabilities:
+      "\u6a21\u578b {model} \u4e0d\u5728\u80fd\u529b\u6ce8\u518c\u8868\u4e2d\u3002\u5f53\u524d\u4f7f\u7528 {context} token \u7684\u9ed8\u8ba4\u4e0a\u4e0b\u6587\u4e0a\u9650\uff0c\u4e14\u4ef7\u683c\u672a\u77e5\uff1b\u8bf7\u914d\u7f6e contextWindowOverride \u548c pricingOverride\u3002",
+    finishReasonLength:
+      "\u6a21\u578b\u56e0\u8fbe\u5230\u8f93\u51fa token \u4e0a\u9650\u800c\u505c\u6b62\u3002\u8bf7\u63d0\u9ad8 maxOutputTokens \u6216\u7f29\u5c0f\u4efb\u52a1\u8303\u56f4\u3002",
+    finishReasonContentFilter:
+      "\u670d\u52a1\u5546\u7684\u5185\u5bb9\u8fc7\u6ee4\u5668\u4e2d\u6b62\u4e86\u672c\u6b21\u56de\u590d\u3002",
+    finishReasonResource:
+      "\u670d\u52a1\u5546\u56e0\u5bb9\u91cf\u4e0d\u8db3\u4e2d\u6b62\u4e86\u672c\u6b21\u56de\u590d\uff0c\u8bf7\u91cd\u8bd5\u3002",
     harvestStatus: "正在从推理过程提取计划状态…",
     repeatToolCallWarning: "拦截到重复工具调用 — 让模型察觉问题并换种方式重试。",
     stormStuck:
@@ -950,6 +968,15 @@ export const zhCN: TranslationSchema = {
       presetFlash: "预设 → flash  （始终使用 deepseek-v4-flash · 最便宜 · /pro 仍可临时提升一轮）",
       presetPro: "预设 → pro  （始终使用 deepseek-v4-pro · 约 3 倍 flash · 用于困难的多轮工作）",
       presetUsage: "用法：/preset <auto|flash|pro>",
+      thinkingStatus:
+        "\u601d\u8003\u6a21\u5f0f\uff1a{mode}\uff08\u5b9e\u9645\uff1a{effective}\uff09",
+      thinkingSet:
+        "\u601d\u8003\u6a21\u5f0f \u2192 {mode}\uff08\u5b9e\u9645\uff1a{effective}\uff09",
+      thinkingUsage: "\u7528\u6cd5\uff1a/thinking <auto|on|off>",
+      maxOutputStatus: "\u6700\u5927\u8f93\u51fa\uff1a{tokens} tokens",
+      maxOutputSet: "\u6700\u5927\u8f93\u51fa \u2192 {tokens} tokens",
+      maxOutputOff: "\u6700\u5927\u8f93\u51fa \u2192 \u670d\u52a1\u5546\u9ed8\u8ba4\u503c",
+      maxOutputUsage: "\u7528\u6cd5\uff1a/max-output <\u6b63\u6574\u6570-token-\u6570\u91cf|off>",
       proNothingArmed: "未启用 — /pro 不带参数将为下一轮启用 pro",
       proDisarmed: "▸ /pro 已解除 — 下一轮回退到当前预设",
       proUsage:
@@ -1760,6 +1787,12 @@ export const zhCN: TranslationSchema = {
     footer: "↑↓ 选择 · [r] 重连 · [d] 禁用 · Esc 退出",
   },
   mcpLifecycle: {
+    profileSkipped:
+      '工具配置 auto · 已跳过代码模式中的冗余 MCP：{servers} · 设置 mcpToolProfile 为 "full" 可恢复',
+    toolBudget: "请求工具：{nativeTools} 个原生 + {mcpTools} 个 MCP = {activeTools}/{maxTools}",
+    toolBudgetExceededTitle: "MCP 工具数量超限",
+    toolBudgetExceeded:
+      "工具数量超限：{activeTools}/{maxTools}。请先禁用未使用的 MCP，再发送任务。",
     handshake: "握手中…",
     connected: "已连接",
     failed: "失败",

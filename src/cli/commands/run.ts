@@ -6,6 +6,9 @@ import {
   isPlausibleKey,
   loadApiKey,
   loadBaseUrl,
+  loadMaxOutputTokens,
+  loadProviderUserId,
+  loadThinkingMode,
   normalizeMcpConfig,
   readConfig,
   saveApiKey,
@@ -17,6 +20,7 @@ import { McpClient } from "../../mcp/client.js";
 import { preflightStdioSpec } from "../../mcp/preflight.js";
 import { bridgeMcpTools } from "../../mcp/registry.js";
 import { buildTransportFromSpec } from "../../mcp/transport-from-spec.js";
+import { type ThinkingPreference, migrateRetiredModel } from "../../models.js";
 import { appendUsage } from "../../telemetry/usage.js";
 import { ToolRegistry } from "../../tools.js";
 import { openTranscriptFile, recordFromLoopEvent, writeRecord } from "../../transcript/log.js";
@@ -26,6 +30,7 @@ import { formatMcpSlowToast } from "../ui/mcp-toast.js";
 export interface RunOptions {
   task: string;
   model: string;
+  thinkingMode?: ThinkingPreference;
   system: string;
   budgetUsd?: number;
   /** JSONL transcript path — lets `carboncode replay` / `diff` audit this run. */
@@ -136,6 +141,8 @@ export async function runCommand(opts: RunOptions): Promise<void> {
     if (successCount === 0) tools = undefined;
   }
 
+  const modelSelection = migrateRetiredModel(opts.model);
+  const effectiveModel = modelSelection.model;
   const client = new DeepSeekClient({ baseUrl: loadBaseUrl() });
   const prefix = new ImmutablePrefix({
     system: opts.system,
@@ -145,8 +152,11 @@ export async function runCommand(opts: RunOptions): Promise<void> {
     client,
     prefix,
     tools,
-    model: opts.model,
+    model: effectiveModel,
     budgetUsd: opts.budgetUsd,
+    thinkingMode: modelSelection.thinking ?? opts.thinkingMode ?? loadThinkingMode(),
+    maxOutputTokens: loadMaxOutputTokens(),
+    userId: loadProviderUserId(),
   });
   const prefixHash = prefix.fingerprint;
 
@@ -155,7 +165,7 @@ export async function runCommand(opts: RunOptions): Promise<void> {
     transcriptStream = openTranscriptFile(opts.transcript, {
       version: 1,
       source: "carboncode run",
-      model: opts.model,
+      model: effectiveModel,
       startedAt: new Date().toISOString(),
     });
     // Also persist the user turn itself (the loop's event stream starts with
@@ -183,7 +193,10 @@ export async function runCommand(opts: RunOptions): Promise<void> {
       // Persist every non-streaming event — deltas would flood the file and
       // aren't useful for replay (replay renders final content, not keystrokes).
       if (transcriptStream && ev.role !== "assistant_delta") {
-        writeRecord(transcriptStream, recordFromLoopEvent(ev, { model: opts.model, prefixHash }));
+        writeRecord(
+          transcriptStream,
+          recordFromLoopEvent(ev, { model: effectiveModel, prefixHash }),
+        );
       }
     }
   } finally {

@@ -22,11 +22,23 @@ import { readFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { buildCodeToolset } from "../../code/setup.js";
 import { initCollab, renderCollabConnectPrompt, resolveInboxRoot } from "../../collab/inbox.js";
-import { loadApiKey, loadModel, loadOutputStyle, loadPreset, readConfig } from "../../config.js";
+import {
+  loadApiKey,
+  loadMcpToolProfile,
+  loadModel,
+  loadOutputStyle,
+  loadPreset,
+  loadThinkingMode,
+  normalizeMcpConfig,
+  readConfig,
+} from "../../config.js";
 import { loadDotenv } from "../../env.js";
 import { t } from "../../i18n/index.js";
+import { specToRaw } from "../../mcp/spec.js";
+import { selectCodeMcpToolProfile } from "../../mcp/tool-profile.js";
 import { detectForeignAgentPlatform } from "../../memory/project.js";
 import { sanitizeName } from "../../memory/session.js";
+import { migrateRetiredModel } from "../../models.js";
 import { appendBuiltinMwhMcpSpec } from "../../mwh/mcp-spec.js";
 import { markPhase } from "../startup-profile.js";
 import { resolvePreset } from "../ui/presets.js";
@@ -37,6 +49,8 @@ export interface CodeOptions {
   dir?: string;
   /** Override the default `smart` model. */
   model?: string;
+  /** Initial thinking preference; retired aliases override it during migration. */
+  thinkingMode?: import("../../models.js").ThinkingPreference;
   /** Disable session persistence. */
   noSession?: boolean;
   /** Transcript file for replay/diff. */
@@ -75,7 +89,11 @@ export interface CodeOptions {
 
 export async function codeCommand(opts: CodeOptions = {}): Promise<void> {
   markPhase("code_command_enter");
-  const resolvedModel = opts.model ?? loadModel() ?? resolvePreset(loadPreset()).model;
+  const modelSelection = migrateRetiredModel(
+    opts.model ?? loadModel() ?? resolvePreset(loadPreset()).model,
+  );
+  const resolvedModel = modelSelection.model;
+  const thinkingMode = modelSelection.thinking ?? opts.thinkingMode ?? loadThinkingMode();
   // Bridge .env + ~/.carboncode/config.json into process.env so buildCodeToolset's
   // eager DeepSeekClient constructions (subagent client; semantic embedder) can
   // pick up a key the user already configured via `carboncode setup`. chatCommand
@@ -159,10 +177,13 @@ export async function codeCommand(opts: CodeOptions = {}): Promise<void> {
       outputStyle: loadOutputStyle(),
     });
   const cfg = readConfig();
-  const mcpSpecs = appendBuiltinMwhMcpSpec(cfg.mcp, cfg, rootDir);
+  const configuredMcpSpecs = normalizeMcpConfig(cfg).map(specToRaw);
+  const allMcpSpecs = appendBuiltinMwhMcpSpec(configuredMcpSpecs, cfg, rootDir);
+  const mcpSelection = selectCodeMcpToolProfile(allMcpSpecs, loadMcpToolProfile());
 
   await chatCommand({
     model: resolvedModel,
+    thinkingMode,
     budgetUsd: opts.budgetUsd,
     system: codeRebuildSystem(),
     rebuildSystem: codeRebuildSystem,
@@ -184,7 +205,8 @@ export async function codeCommand(opts: CodeOptions = {}): Promise<void> {
         currentRoot = newRoot;
       },
     },
-    mcp: mcpSpecs,
+    mcp: mcpSelection.active,
+    mcpProfileSkipped: mcpSelection.skipped,
     forceResume: opts.forceResume,
     forceNew: opts.forceNew,
     noDashboard: opts.noDashboard,

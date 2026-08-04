@@ -2,7 +2,8 @@ import { Box, Text, useStdout } from "ink";
 import React from "react";
 import type { EditMode } from "../../../config.js";
 import { t } from "../../../i18n/index.js";
-import { DEEPSEEK_CONTEXT_TOKENS, DEFAULT_CONTEXT_TOKENS } from "../../../telemetry/stats.js";
+import { FLASH_MODEL_ID, PRO_MODEL_ID } from "../../../models.js";
+import { contextTokensFor } from "../../../telemetry/stats.js";
 import { VERSION } from "../../../version.js";
 import { formatTokens } from "../primitives.js";
 import { Countdown } from "../primitives/Countdown.js";
@@ -163,7 +164,7 @@ export function StatusRow({
       node: (
         <CtxUsagePill
           tokens={status.promptTokens}
-          cap={status.promptCap ?? DEEPSEEK_CONTEXT_TOKENS[session.model] ?? DEFAULT_CONTEXT_TOKENS}
+          cap={status.promptCap ?? contextTokensFor(session.model)}
           cols={cols}
         />
       ),
@@ -235,8 +236,8 @@ function PresetPill({
 }
 
 function shortModelLabel(model: string): string {
-  if (model === "deepseek-v4-flash") return "flash";
-  if (model === "deepseek-v4-pro") return "pro";
+  if (model === FLASH_MODEL_ID) return "flash";
+  if (model === PRO_MODEL_ID) return "pro";
   return model.replace(/^deepseek-/, "");
 }
 

@@ -11,6 +11,8 @@ import {
   resolveIndexConfig,
 } from "./index/config.js";
 import { type McpServerSpec, parseMcpSpec } from "./mcp/spec.js";
+import type { McpToolProfile } from "./mcp/tool-profile.js";
+import { type ThinkingPreference, migrateRetiredModel } from "./models.js";
 import { normalizeQQAllowlist, normalizeQQOpenId } from "./qq/access.js";
 
 /** Legacy `fast|smart|max` kept for back-compat with existing config.json files. */
@@ -129,6 +131,12 @@ export interface ReasonixConfig {
   /** Reply verbosity style injected into the system prompt (applies next session). Default "default". */
   outputStyle?: OutputStyle;
   reasoningEffort?: ReasoningEffort;
+  /** V4 thinking mode. "auto" follows the selected model's default. */
+  thinkingMode?: ThinkingPreference;
+  /** Optional response token cap. Must be a positive integer. */
+  maxOutputTokens?: number;
+  /** Optional stable, non-PII provider scheduling/cache-isolation identifier. */
+  userId?: string;
   /** Default workspace root for the desktop client. CLI uses cwd. */
   workspaceDir?: string;
   /** Last N workspace paths the desktop client has opened, most recent first. */
@@ -146,6 +154,8 @@ export interface ReasonixConfig {
   mcpEnv?: Record<string, Record<string, string>>;
   /** Canonical MCP server configuration — merges with and overrides legacy `mcp`/`mcpEnv`/`mcpDisabled`. */
   mcpServers?: Record<string, McpServerConfig>;
+  /** Tool exposure policy for code mode. "auto" removes native duplicates and test servers. */
+  mcpToolProfile?: McpToolProfile;
   session?: string | null;
   setupCompleted?: boolean;
   search?: boolean;
@@ -201,6 +211,8 @@ export interface ReasonixConfig {
     customTypes?: CustomMemoryTypeConfig[];
   };
   pricingOverride?: Record<string, PricingOverride>;
+  /** Prompt context-window overrides for custom or renamed provider models. */
+  contextWindowOverride?: Record<string, number>;
   rateLimit?: RateLimitConfig;
   /** QQ Bot configuration */
   qq?: QQBotConfig;
@@ -302,6 +314,10 @@ export function readConfig(path: string = defaultConfigPath()): ReasonixConfig {
     /* missing or malformed → empty config */
   }
   return {};
+}
+
+export function loadMcpToolProfile(path: string = defaultConfigPath()): McpToolProfile {
+  return readConfig(path).mcpToolProfile === "full" ? "full" : "auto";
 }
 
 export function writeConfig(cfg: ReasonixConfig, path: string = defaultConfigPath()): void {
@@ -834,6 +850,54 @@ export function loadReasoningEffort(path: string = defaultConfigPath()): Reasoni
   return v === "high" ? "high" : "max";
 }
 
+export function loadThinkingMode(path: string = defaultConfigPath()): ThinkingPreference {
+  const cfg = readConfig(path);
+  const value = cfg.thinkingMode;
+  if (value === "enabled" || value === "disabled" || value === "auto") return value;
+  const rawModel = typeof cfg.model === "string" ? cfg.model.trim() : "";
+  return migrateRetiredModel(rawModel).thinking ?? "auto";
+}
+
+export function saveThinkingMode(
+  mode: ThinkingPreference,
+  path: string = defaultConfigPath(),
+): void {
+  const cfg = readConfig(path);
+  cfg.thinkingMode = mode;
+  writeConfig(cfg, path);
+}
+
+export function loadMaxOutputTokens(path: string = defaultConfigPath()): number | undefined {
+  const value = readConfig(path).maxOutputTokens;
+  return Number.isInteger(value) && (value ?? 0) > 0 ? value : undefined;
+}
+
+export function saveMaxOutputTokens(
+  tokens: number | undefined,
+  path: string = defaultConfigPath(),
+): void {
+  const cfg = readConfig(path);
+  cfg.maxOutputTokens = Number.isInteger(tokens) && (tokens ?? 0) > 0 ? tokens : undefined;
+  writeConfig(cfg, path);
+}
+
+export function loadProviderUserId(path: string = defaultConfigPath()): string | undefined {
+  const value = readConfig(path).userId;
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+export function loadContextWindowOverride(
+  path: string = defaultConfigPath(),
+): Record<string, number> {
+  const raw = readConfig(path).contextWindowOverride;
+  if (!raw || typeof raw !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(raw).filter(
+      ([model, value]) => model.trim().length > 0 && Number.isInteger(value) && value > 0,
+    ),
+  );
+}
+
 export type OutputStyle = "default" | "explanatory" | "learning";
 export const OUTPUT_STYLES: readonly OutputStyle[] = ["default", "explanatory", "learning"];
 
@@ -1002,14 +1066,17 @@ export function loadPreset(path: string = defaultConfigPath()): PresetName | und
 
 export function loadModel(path: string = defaultConfigPath()): string | undefined {
   const model = readConfig(path).model;
-  return typeof model === "string" && model.trim() ? model.trim() : undefined;
+  if (typeof model !== "string" || !model.trim()) return undefined;
+  return migrateRetiredModel(model.trim()).model;
 }
 
 /** Persist an explicit model pin while keeping the preset as the effort fallback. */
 export function saveModel(model: string, path: string = defaultConfigPath()): void {
   const cfg = readConfig(path);
   const trimmed = model.trim();
-  cfg.model = trimmed || undefined;
+  const migrated = migrateRetiredModel(trimmed);
+  cfg.model = migrated.model || undefined;
+  if (migrated.thinking) cfg.thinkingMode = migrated.thinking;
   writeConfig(cfg, path);
 }
 

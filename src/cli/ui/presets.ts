@@ -1,4 +1,5 @@
 import type { PresetName } from "../../config.js";
+import { FLASH_MODEL_ID, PRO_MODEL_ID } from "../../models.js";
 
 export interface PresetSettings {
   model: string;
@@ -9,17 +10,17 @@ export interface PresetSettings {
 /** Old names `fast`/`smart`/`max` aliased via `resolvePreset` so legacy configs still load. */
 export const PRESETS: Record<"auto" | "flash" | "pro", PresetSettings> = {
   auto: {
-    model: "deepseek-v4-flash",
+    model: FLASH_MODEL_ID,
     reasoningEffort: "max",
     autoEscalate: true,
   },
   flash: {
-    model: "deepseek-v4-flash",
+    model: FLASH_MODEL_ID,
     reasoningEffort: "max",
     autoEscalate: false,
   },
   pro: {
-    model: "deepseek-v4-pro",
+    model: PRO_MODEL_ID,
     reasoningEffort: "max",
     autoEscalate: false,
   },
@@ -39,7 +40,7 @@ export const PRESET_DESCRIPTIONS: Record<
   },
   pro: {
     headline: "v4-pro always",
-    cost: "~3× flash (5/31 discount) / ~12× full price · for hard multi-turn work",
+    cost: "~3x flash at current pricing; best for hard multi-turn work",
   },
 };
 

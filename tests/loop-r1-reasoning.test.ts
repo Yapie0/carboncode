@@ -57,13 +57,13 @@ function capturingFetch(responses: FakeResponseShape[]): {
   fetch: typeof fetch;
   bodies: Array<{
     messages: ChatMessage[];
-    extra_body?: { thinking?: { type?: string } };
+    thinking?: { type?: string };
     reasoning_effort?: string;
   }>;
 } {
   const bodies: Array<{
     messages: ChatMessage[];
-    extra_body?: { thinking?: { type?: string } };
+    thinking?: { type?: string };
     reasoning_effort?: string;
   }> = [];
   let i = 0;
@@ -71,7 +71,7 @@ function capturingFetch(responses: FakeResponseShape[]): {
     const body = init?.body ? JSON.parse(init.body) : {};
     bodies.push({
       messages: body.messages,
-      extra_body: body.extra_body,
+      thinking: body.thinking,
       reasoning_effort: body.reasoning_effort,
     });
     const resp = responses[i++] ?? responses[responses.length - 1]!;
@@ -135,6 +135,31 @@ describe("stampMissingReasoningForThinkingMode (session-load heal)", () => {
     const msgs: ChatMessage[] = [{ role: "assistant", content: "hi", reasoning_content: "" }];
     const { stampedCount } = stampMissingReasoningForThinkingMode(msgs, "deepseek-v4-pro");
     expect(stampedCount).toBe(0);
+  });
+});
+
+describe("live thinking-mode switches", () => {
+  it("repairs prior assistant messages when switching into thinking mode", () => {
+    const client = new DeepSeekClient({
+      apiKey: "sk-test",
+      fetch: capturingFetch([{ content: "unused" }]).fetch,
+    });
+    const loop = new CacheFirstLoop({
+      client,
+      prefix: new ImmutablePrefix({ system: "s" }),
+      model: "custom-non-thinking",
+      thinkingMode: "disabled",
+      stream: false,
+    });
+    loop.appendAndPersist({ role: "assistant", content: "prior answer" });
+
+    loop.configure({ model: "deepseek-v4-pro", thinkingMode: "enabled" });
+
+    expect(loop.log.entries[0]).toMatchObject({
+      role: "assistant",
+      content: "prior answer",
+      reasoning_content: "",
+    });
   });
 });
 
@@ -324,7 +349,7 @@ describe("R1 reasoning_content round-trip", () => {
     for await (const _ev of loop.step("hello")) {
       /* drain */
     }
-    expect(bodies[0]!.extra_body?.thinking?.type).toBe("enabled");
+    expect(bodies[0]!.thinking?.type).toBe("enabled");
     expect(bodies[0]!.reasoning_effort).toBe("max");
   });
 
@@ -340,7 +365,7 @@ describe("R1 reasoning_content round-trip", () => {
     for await (const _ev of loop.step("hello")) {
       /* drain */
     }
-    expect(bodies[0]!.extra_body?.thinking?.type).toBe("disabled");
+    expect(bodies[0]!.thinking?.type).toBe("disabled");
     expect(bodies[0]!.reasoning_effort).toBe("max");
   });
 
@@ -356,7 +381,7 @@ describe("R1 reasoning_content round-trip", () => {
     for await (const _ev of loop.step("hello")) {
       /* drain */
     }
-    expect(bodies[0]!.extra_body).toBeUndefined();
+    expect(bodies[0]!.thinking).toBeUndefined();
     // reasoning_effort is always set — it's a benign field for models
     // that don't know it (OpenAI just ignores unknown top-level fields).
     expect(bodies[0]!.reasoning_effort).toBe("max");

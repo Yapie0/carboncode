@@ -229,6 +229,29 @@ export {
   truncateForModelByTokens,
 } from "./mcp/registry.js";
 export type { BridgeOptions, BridgeResult, FlattenOptions } from "./mcp/registry.js";
+export {
+  DEEPSEEK_MAX_TOOLS,
+  DEFAULT_CONTEXT_TOKENS,
+  ESCALATION_MODEL_ID,
+  FLASH_MODEL_ID,
+  MODEL_CAPABILITIES,
+  PRO_MODEL_ID,
+  SELECTABLE_MODEL_IDS,
+  SUMMARY_MODEL_ID,
+  contextTokensForModel,
+  defaultThinkingForModel,
+  maxOutputTokensForModel,
+  migrateRetiredModel,
+  modelCapabilities,
+  resolveThinkingPreference,
+  toolResultBudgetForModel,
+} from "./models.js";
+export type {
+  EffectiveThinkingMode,
+  ModelCapabilities,
+  ModelPricing,
+  ThinkingPreference,
+} from "./models.js";
 export { parseMcpSpec } from "./mcp/spec.js";
 export type {
   McpSpec,

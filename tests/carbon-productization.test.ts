@@ -151,12 +151,11 @@ describe("Carbon broad Reasonix import", () => {
 
   test("new-user model defaults expose official DeepSeek V4 API model IDs", () => {
     const presets = readFileSync(resolve("src/cli/ui/presets.ts"), "utf8");
-    expect(presets).toContain('model: "deepseek-v4-flash"');
-    expect(presets).toContain('model: "deepseek-v4-pro"');
+    expect(presets).toContain("model: FLASH_MODEL_ID");
+    expect(presets).toContain("model: PRO_MODEL_ID");
 
     const qq = readFileSync(resolve("src/qq/use-qq-channel.ts"), "utf8");
-    expect(qq).toContain('"deepseek-v4-flash"');
-    expect(qq).toContain('"deepseek-v4-pro"');
+    expect(qq).toContain("SELECTABLE_MODEL_IDS");
     expect(qq).not.toContain('"deepseek-chat"');
     expect(qq).not.toContain('"deepseek-reasoner"');
   });

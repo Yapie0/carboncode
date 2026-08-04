@@ -9,6 +9,7 @@ import { createInterface } from "node:readline/promises";
 import { DeepSeekClient } from "../../client.js";
 import { loadApiKey, loadBaseUrl } from "../../config.js";
 import { loadDotenv } from "../../env.js";
+import { FLASH_MODEL_ID } from "../../models.js";
 
 export interface CommitOptions {
   /** Override the default model (deepseek-v4-flash). */
@@ -17,7 +18,7 @@ export interface CommitOptions {
   yes?: boolean;
 }
 
-const DEFAULT_MODEL = "deepseek-v4-flash";
+const DEFAULT_MODEL = FLASH_MODEL_ID;
 const DIFF_BYTE_CAP = 80 * 1024;
 const LOG_COUNT = 10;
 

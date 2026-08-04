@@ -26,9 +26,12 @@ import { buildCodeToolset } from "../../code/setup.js";
 import {
   loadApiKey,
   loadBaseUrl,
+  loadMaxOutputTokens,
   loadModel,
   loadPreset,
+  loadProviderUserId,
   loadReasoningEffort,
+  loadThinkingMode,
   normalizeMcpConfig,
   readConfig,
 } from "../../config.js";
@@ -44,6 +47,7 @@ import { preflightStdioSpec } from "../../mcp/preflight.js";
 import { bridgeMcpTools } from "../../mcp/registry.js";
 import { buildTransportFromSpec } from "../../mcp/transport-from-spec.js";
 import { timestampSuffix } from "../../memory/session.js";
+import { type ThinkingPreference, migrateRetiredModel } from "../../models.js";
 import { openTranscriptFile, recordFromLoopEvent, writeRecord } from "../../transcript/log.js";
 import { VERSION } from "../../version.js";
 import { formatMcpLifecycleEvent } from "../ui/mcp-lifecycle.js";
@@ -52,6 +56,7 @@ import { canonicalPresetName, resolvePreset } from "../ui/presets.js";
 
 export interface AcpOptions {
   model?: string;
+  thinkingMode?: ThinkingPreference;
   dir?: string;
   budgetUsd?: number;
   transcript?: string;
@@ -150,13 +155,15 @@ function resolveDir(raw: string | undefined, fallback: string): string {
 async function buildSession(opts: {
   rootDir: string;
   modelOverride?: string;
+  thinkingMode?: ThinkingPreference;
   budgetUsd?: number;
   mcpSpecs?: string[];
   mcpPrefix?: string;
 }): Promise<Session> {
   const preset = canonicalPresetName(loadPreset());
   const resolved = resolvePreset(preset);
-  const model = opts.modelOverride || loadModel() || resolved.model;
+  const modelSelection = migrateRetiredModel(opts.modelOverride || loadModel() || resolved.model);
+  const model = modelSelection.model;
   const toolset = await buildCodeToolset({ rootDir: opts.rootDir });
   // Bridge MCP tools BEFORE building the prefix so their specs make it into the cache key.
   const mcpClients = await loadMcpServers(toolset.tools, opts.mcpSpecs ?? [], opts.mcpPrefix);
@@ -173,6 +180,9 @@ async function buildSession(opts: {
     model,
     budgetUsd: opts.budgetUsd,
     session: `acp-${timestampSuffix()}`,
+    thinkingMode: modelSelection.thinking ?? opts.thinkingMode ?? loadThinkingMode(),
+    maxOutputTokens: loadMaxOutputTokens(),
+    userId: loadProviderUserId(),
   });
   return {
     id: `sess_${timestampSuffix()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -253,6 +263,7 @@ export async function acpCommand(opts: AcpOptions): Promise<void> {
     const session = await buildSession({
       rootDir,
       modelOverride: opts.model,
+      thinkingMode: opts.thinkingMode,
       budgetUsd: opts.budgetUsd,
       mcpSpecs: opts.mcpSpecs,
       mcpPrefix: opts.mcpPrefix,

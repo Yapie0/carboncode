@@ -1,4 +1,5 @@
 import { type Dispatch, type SetStateAction, useState } from "react";
+import { PRO_MODEL_ID } from "../../../models.js";
 
 export interface PresetMode {
   /** Canonical preset bucket — `pro` if loop is on v4-pro, otherwise `auto`/`flash` (set by the dashboard's `applyPresetLive`). */
@@ -14,7 +15,7 @@ export interface PresetMode {
 
 export function usePresetMode(model: string): PresetMode {
   const [preset, setPreset] = useState<"auto" | "flash" | "pro">(() =>
-    model === "deepseek-v4-pro" ? "pro" : "auto",
+    model === PRO_MODEL_ID ? "pro" : "auto",
   );
   const [proArmed, setProArmed] = useState(false);
   const [turnOnPro, setTurnOnPro] = useState(false);

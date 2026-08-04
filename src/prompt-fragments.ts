@@ -22,7 +22,7 @@ export function outputStyleFragment(style: "default" | "explanatory" | "learning
 
 /** Pro is the top tier — escalation is a no-op for it; flash + others get the full ladder. */
 export function escalationContract(modelId: string): string {
-  if (modelId === "deepseek-v4-pro") {
+  if (modelId === PRO_MODEL_ID) {
     return `Cost-aware escalation note: you are running on \`${modelId}\` — the escalation tier. There is no higher tier to escalate to, so the \`<<<NEEDS_PRO>>>\` marker is a no-op for you; deliver the strongest answer you can directly. If asked which model you are, answer \`${modelId}\`.`;
   }
   return `Cost-aware escalation (you are running on \`${modelId}\`):
@@ -37,7 +37,7 @@ Do NOT emit any other content in the same response when you request escalation. 
 }
 
 /** Backward-compat — pre-#582 callers (and the `CODE_SYSTEM_PROMPT` public-API const) keep the historical flash phrasing. */
-export const ESCALATION_CONTRACT = escalationContract("deepseek-v4-flash");
+export const ESCALATION_CONTRACT = escalationContract(FLASH_MODEL_ID);
 
 export const NEGATIVE_CLAIM_RULE = `Negative claims ("X is missing", "Y isn't implemented", "there's no Z") are the #1 hallucination shape. They feel safe to write because no citation seems possible — but that's exactly why you must NOT write them on instinct.
 
@@ -46,3 +46,4 @@ If you have a search tool (\`search_content\`, \`grep\`, web search), call it FI
 - Returns nothing → state the absence WITH the search query as evidence: \`No callers of \\\`foo()\\\` found (search_content "foo").\`
 
 If you have no search tool, qualify hard: "I haven't verified — this is a guess." Never assert absence with fake authority.`;
+import { FLASH_MODEL_ID, PRO_MODEL_ID } from "./models.js";

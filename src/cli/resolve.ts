@@ -27,6 +27,9 @@ export function resolveDefaults(flags: RawCliFlags): ResolvedDefaults {
   const preset = pickPreset(flags.preset, cfg.preset);
   const presetSettings = resolvePreset(preset);
 
+  // Keep the requested id intact until the command constructs its runtime.
+  // The model migration layer also carries the retired alias's thinking
+  // semantics, which would be lost if only the replacement id escaped here.
   const model = flags.model ?? cfg.model ?? presetSettings.model;
   const reasoningEffort = presetSettings.reasoningEffort;
 

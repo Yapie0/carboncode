@@ -95,6 +95,20 @@ export const SLASH_COMMANDS: readonly SlashCommandSpec[] = [
     argCompleter: "models",
   },
   {
+    cmd: "thinking",
+    group: "setup",
+    argsHint: "<auto|on|off>",
+    summary: "control V4 thinking independently from the selected model",
+    argCompleter: ["auto", "on", "off"],
+  },
+  {
+    cmd: "max-output",
+    group: "setup",
+    argsHint: "<tokens|off>",
+    summary: "set a persistent response token cap; provider maximum still applies",
+    argCompleter: ["8192", "16384", "32768", "65536", "off"],
+  },
+  {
     cmd: "language",
     group: "setup",
     argsHint: "<zh-CN|EN>",

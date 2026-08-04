@@ -1,5 +1,6 @@
 import { type DeepSeekClient, Usage } from "../client.js";
 import { t } from "../i18n/index.js";
+import { SUMMARY_MODEL_ID } from "../models.js";
 import type { TurnStats } from "../telemetry/stats.js";
 import type { ChatMessage } from "../types.js";
 import { errorLabelFor, reasonPrefixFor } from "./errors.js";
@@ -37,8 +38,8 @@ export async function* forceSummaryAfterIterLimit(
         "The turn is being force-summarized (context guard or stuck-state). Summarize in plain prose what you learned from the tool results above. Do NOT emit any tool calls, function-call markup, DSML invocations, or SEARCH/REPLACE edit blocks — they will be silently discarded. Just plain text.",
     });
     // Pin to flash + effort=high regardless of the main turn's model —
-    // pro is 12× overkill for "paraphrase tool results into prose."
-    const summaryModel = "deepseek-v4-flash";
+    // Flash is the cost-effective tier for paraphrasing tool results.
+    const summaryModel = SUMMARY_MODEL_ID;
     const summaryEffort: "high" | "max" = "high";
     const resp = await ctx.client.chat({
       model: summaryModel,

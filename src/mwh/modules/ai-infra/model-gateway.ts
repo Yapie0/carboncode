@@ -45,7 +45,7 @@ This module is separate from embedding retrieval. Embedding modules cache and se
 const gateway = new MemoryModelGateway();
 gateway.upsertProvider({
   id: "deepseek",
-  models: ["deepseek-chat"],
+  models: ["deepseek-v4-flash", "deepseek-v4-pro"],
   priority: 10,
   status: "healthy",
   inputCostPer1kTokens: 0.001,
@@ -54,7 +54,7 @@ gateway.upsertProvider({
 
 const route = gateway.route({
   id: "req-1",
-  model: "deepseek-chat",
+  model: "deepseek-v4-flash",
   promptTokens: 1000,
   maxOutputTokens: 500,
 });

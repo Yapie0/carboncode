@@ -1,11 +1,18 @@
-import { saveModel, savePreset } from "@/config.js";
+import { saveMaxOutputTokens, saveModel, savePreset, saveThinkingMode } from "@/config.js";
 import { t } from "@/i18n/index.js";
+import { thinkingModeForModel } from "@/loop.js";
+import {
+  ESCALATION_MODEL_ID,
+  FLASH_MODEL_ID,
+  PRO_MODEL_ID,
+  migrateRetiredModel,
+} from "@/models.js";
 import { PRESETS } from "../../presets.js";
 import type { SlashHandler } from "../dispatch.js";
 
 function inferPresetFromModel(id: string): "auto" | "flash" | "pro" | null {
-  if (id === "deepseek-v4-pro") return "pro";
-  if (id === "deepseek-v4-flash") return "flash";
+  if (id === PRO_MODEL_ID) return "pro";
+  if (id === FLASH_MODEL_ID) return "flash";
   return null;
 }
 
@@ -17,9 +24,11 @@ const model: SlashHandler = (args, loop, ctx) => {
   }
   // Manual model pick = explicit pin: disable auto-escalate so flash doesn't
   // get bumped, and persist the inferred preset so a relaunch keeps the choice.
+  const migration = migrateRetiredModel(id);
   loop.configure({ model: id, autoEscalate: false });
-  ctx.dispatch?.({ type: "session.model.change", model: id });
-  const inferred = inferPresetFromModel(id);
+  const activeId = loop.model;
+  ctx.dispatch?.({ type: "session.model.change", model: activeId });
+  const inferred = migration.migrated ? null : inferPresetFromModel(activeId);
   ctx.dispatch?.({ type: "session.preset.change", preset: inferred });
   if (inferred) {
     try {
@@ -29,17 +38,17 @@ const model: SlashHandler = (args, loop, ctx) => {
     }
   } else {
     try {
-      saveModel(id);
+      saveModel(migration.migrated ? id : activeId);
     } catch {
       /* disk full / perms — runtime change still took effect */
     }
   }
-  if (known && known.length > 0 && !known.includes(id)) {
+  if (known && known.length > 0 && !known.includes(activeId)) {
     return {
-      info: t("handlers.model.modelNotInCatalog", { id, list: known.join(", ") }),
+      info: t("handlers.model.modelNotInCatalog", { id: activeId, list: known.join(", ") }),
     };
   }
-  return { info: t("handlers.model.modelSet", { id }) };
+  return { info: t("handlers.model.modelSet", { id: activeId }) };
 };
 
 const preset: SlashHandler = (args, loop, ctx) => {
@@ -79,7 +88,73 @@ const preset: SlashHandler = (args, loop, ctx) => {
   return { info: t("handlers.model.presetUsage") };
 };
 
-const ESCALATION_MODEL_ID = "deepseek-v4-pro";
+const thinking: SlashHandler = (args, loop) => {
+  const value = (args[0] ?? "").toLowerCase();
+  if (!value) {
+    return {
+      info: t("handlers.model.thinkingStatus", {
+        mode: loop.thinkingMode,
+        effective: thinkingModeForModel(loop.model, loop.thinkingMode) ?? "provider-default",
+      }),
+    };
+  }
+  const mode =
+    value === "on" || value === "enabled"
+      ? "enabled"
+      : value === "off" || value === "disabled"
+        ? "disabled"
+        : value === "auto"
+          ? "auto"
+          : null;
+  if (!mode) return { info: t("handlers.model.thinkingUsage") };
+  loop.configure({ thinkingMode: mode });
+  try {
+    saveThinkingMode(mode);
+  } catch {
+    // The live mode remains active even when config persistence fails.
+  }
+  return {
+    info: t("handlers.model.thinkingSet", {
+      mode,
+      effective: thinkingModeForModel(loop.model, mode) ?? "provider-default",
+    }),
+  };
+};
+
+const maxOutput: SlashHandler = (args, loop) => {
+  const value = (args[0] ?? "").toLowerCase();
+  if (!value) {
+    return {
+      info: t("handlers.model.maxOutputStatus", {
+        tokens: loop.maxOutputTokens?.toLocaleString() ?? "provider-default",
+      }),
+    };
+  }
+  if (value === "off" || value === "default") {
+    loop.configure({ maxOutputTokens: null });
+    try {
+      saveMaxOutputTokens(undefined);
+    } catch {
+      // The live setting remains active even when config persistence fails.
+    }
+    return { info: t("handlers.model.maxOutputOff") };
+  }
+  const tokens = Number(value.replaceAll(",", ""));
+  if (!Number.isInteger(tokens) || tokens <= 0) {
+    return { info: t("handlers.model.maxOutputUsage") };
+  }
+  loop.configure({ maxOutputTokens: tokens });
+  try {
+    saveMaxOutputTokens(tokens);
+  } catch {
+    // The live setting remains active even when config persistence fails.
+  }
+  return {
+    info: t("handlers.model.maxOutputSet", {
+      tokens: tokens.toLocaleString(),
+    }),
+  };
+};
 
 const pro: SlashHandler = (args, loop, ctx) => {
   const arg = (args[0] ?? "").toLowerCase();
@@ -147,6 +222,8 @@ const budget: SlashHandler = (args, loop) => {
 export const handlers: Record<string, SlashHandler> = {
   model,
   preset,
+  thinking,
+  "max-output": maxOutput,
   pro,
   budget,
 };

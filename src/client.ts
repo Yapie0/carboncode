@@ -1,5 +1,6 @@
 import { type EventSourceMessage, createParser } from "eventsource-parser";
 import { loadRateLimit } from "./config.js";
+import { DEEPSEEK_MAX_TOOLS } from "./models.js";
 import { type RetryOptions, fetchWithRetry } from "./retry.js";
 import type { ChatMessage, ChatRequestOptions, RawUsage, ToolCall, ToolSpec } from "./types.js";
 
@@ -46,15 +47,27 @@ export interface ChatResponse {
   reasoningContent: string | null;
   toolCalls: ToolCall[];
   usage: Usage;
+  finishReason?: string;
   raw: unknown;
+}
+
+export interface ToolCallDelta {
+  index: number;
+  id?: string;
+  name?: string;
+  argumentsDelta?: string;
 }
 
 export interface StreamChunk {
   contentDelta?: string;
   reasoningDelta?: string;
-  toolCallDelta?: { index: number; id?: string; name?: string; argumentsDelta?: string };
+  /** All tool-call deltas present in this SSE frame. */
+  toolCallDeltas?: ToolCallDelta[];
+  /** @deprecated Use toolCallDeltas. Kept for single-call API compatibility. */
+  toolCallDelta?: ToolCallDelta;
   usage?: Usage;
   finishReason?: string;
+  malformedFrameCount?: number;
   raw: any;
 }
 
@@ -159,6 +172,11 @@ export class DeepSeekClient {
   }
 
   private buildPayload(opts: ChatRequestOptions, stream: boolean) {
+    if (opts.tools && opts.tools.length > DEEPSEEK_MAX_TOOLS) {
+      throw new RangeError(
+        `DeepSeek accepts at most ${DEEPSEEK_MAX_TOOLS} tools per request; received ${opts.tools.length}. Disable unused MCP servers or expose a smaller tool profile.`,
+      );
+    }
     const payload: Record<string, unknown> = {
       model: opts.model,
       messages: opts.messages,
@@ -168,18 +186,18 @@ export class DeepSeekClient {
     if (opts.temperature !== undefined) payload.temperature = opts.temperature;
     if (opts.maxTokens !== undefined) payload.max_tokens = opts.maxTokens;
     if (opts.responseFormat) payload.response_format = opts.responseFormat;
-    // V4 thinking-mode toggle: lives under `extra_body.thinking.type` per
-    // DeepSeek's docs. Docs also note that in thinking mode `temperature`,
-    // `top_p`, `presence_penalty`, `frequency_penalty` are silently
-    // ignored — we don't strip them here because the server's explicit
-    // "setting won't report an error" contract means leaving them in is
-    // safe and keeps the request payload diffable against OpenAI tooling.
+    // Raw HTTP uses a top-level `thinking` object. `extra_body` is an
+    // OpenAI SDK convenience and must not be serialized into the request.
     if (opts.thinking) {
-      payload.extra_body = { thinking: { type: opts.thinking } };
+      payload.thinking = { type: opts.thinking };
     }
     if (opts.reasoningEffort) {
       payload.reasoning_effort = opts.reasoningEffort;
     }
+    if (stream && opts.includeUsage !== false) {
+      payload.stream_options = { include_usage: true };
+    }
+    if (opts.userId) payload.user_id = opts.userId;
     return payload;
   }
 
@@ -248,6 +266,7 @@ export class DeepSeekClient {
         reasoningContent: choice.reasoning_content ?? null,
         toolCalls: choice.tool_calls ?? [],
         usage: Usage.fromApi(data.usage),
+        finishReason: data.choices?.[0]?.finish_reason ?? undefined,
         raw: data,
       };
     } finally {
@@ -291,7 +310,9 @@ export class DeepSeekClient {
     }
 
     const queue: StreamChunk[] = [];
+    let queueIndex = 0;
     let done = false;
+    let malformedFrameCount = 0;
     const parser = createParser({
       onEvent: (ev: EventSourceMessage) => {
         if (!ev.data || ev.data === "[DONE]") {
@@ -310,20 +331,21 @@ export class DeepSeekClient {
             chunk.reasoningDelta = delta.reasoning_content;
           }
           if (Array.isArray(delta.tool_calls) && delta.tool_calls.length > 0) {
-            const tc = delta.tool_calls[0];
-            chunk.toolCallDelta = {
+            const toolCallDeltas: ToolCallDelta[] = delta.tool_calls.map((tc: any) => ({
               index: tc.index ?? 0,
               id: tc.id,
               name: tc.function?.name,
               argumentsDelta: tc.function?.arguments,
-            };
+            }));
+            chunk.toolCallDeltas = toolCallDeltas;
+            chunk.toolCallDelta = toolCallDeltas[0];
           }
           if (json.usage) {
             chunk.usage = Usage.fromApi(json.usage);
           }
           queue.push(chunk);
         } catch {
-          /* skip malformed sse frame */
+          malformedFrameCount += 1;
         }
       },
     });
@@ -344,8 +366,12 @@ export class DeepSeekClient {
     try {
       while (true) {
         throwIfAborted();
-        if (queue.length > 0) {
-          yield queue.shift()!;
+        if (queueIndex < queue.length) {
+          yield queue[queueIndex++]!;
+          if (queueIndex >= 1024 && queueIndex * 2 >= queue.length) {
+            queue.splice(0, queueIndex);
+            queueIndex = 0;
+          }
           continue;
         }
         throwIfAborted();
@@ -355,9 +381,12 @@ export class DeepSeekClient {
         if (streamDone) break;
         parser.feed(decoder.decode(value, { stream: true }));
       }
-      while (queue.length > 0) {
+      while (queueIndex < queue.length) {
         throwIfAborted();
-        yield queue.shift()!;
+        yield queue[queueIndex++]!;
+      }
+      if (malformedFrameCount > 0) {
+        yield { raw: null, malformedFrameCount };
       }
     } finally {
       signal.removeEventListener("abort", cancelReader);

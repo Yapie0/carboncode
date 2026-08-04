@@ -1,16 +1,19 @@
+import { type ThinkingPreference, resolveThinkingPreference } from "../models.js";
+
 /** True when the model emits reasoning_content and requires it round-tripped on follow-ups. */
-export function isThinkingModeModel(model: string): boolean {
-  if (model.includes("reasoner")) return true;
-  if (model === "deepseek-v4-flash" || model === "deepseek-v4-pro") return true;
-  return false;
+export function isThinkingModeModel(
+  model: string,
+  preference: ThinkingPreference = "auto",
+): boolean {
+  return resolveThinkingPreference(model, preference) === "enabled";
 }
 
-/** Pins extra_body.thinking.type; `undefined` lets third-party endpoints skip the field. */
-export function thinkingModeForModel(model: string): "enabled" | "disabled" | undefined {
-  if (model === "deepseek-chat") return "disabled";
-  if (model.includes("reasoner")) return "enabled";
-  if (model === "deepseek-v4-flash" || model === "deepseek-v4-pro") return "enabled";
-  return undefined;
+/** Resolves raw HTTP `thinking.type`; unknown providers stay untouched in auto mode. */
+export function thinkingModeForModel(
+  model: string,
+  preference: ThinkingPreference = "auto",
+): "enabled" | "disabled" | undefined {
+  return resolveThinkingPreference(model, preference);
 }
 
 // Natural-language "think harder" trigger (Claude-style): when the user asks to think

@@ -93,6 +93,8 @@ Type `/` mid-chat to open the picker. Aliases shown in parentheses. Code-mode-on
 |---|---|
 | `/preset <auto\|flash\|pro>` | Switch model bundle. Bare opens picker |
 | `/model <id>` | Switch DeepSeek model id. Bare opens picker |
+| `/thinking [auto\|on\|off]` | Show or set DeepSeek thinking mode |
+| `/max-output [tokens\|off]` | Show, cap, or clear the maximum output token count |
 | `/language <EN\|zh-CN>` (`/lang`) | Switch the runtime language |
 | `/theme <name>` | Show or persist terminal theme. Bare opens picker |
 | `/config` | Open configuration guidance and current config paths |

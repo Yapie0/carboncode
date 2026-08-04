@@ -252,7 +252,7 @@ describe("Codex-style terminal surface", () => {
     expect(out).not.toContain("更早");
   });
 
-  it("caps very long live streaming replies so native scrollback keeps the settled transcript", () => {
+  it("keeps every line of a long live streaming reply visible", () => {
     setLanguageRuntime("en");
     const text = Array.from(
       { length: 20 },
@@ -273,10 +273,11 @@ describe("Codex-style terminal surface", () => {
     const out = lastFrame() ?? "";
     unmount();
 
-    expect(out).toContain("8");
-    expect(out).not.toContain("line 01");
-    expect(out).toContain("line 09");
+    expect(out).toContain("line 01");
+    expect(out).toContain("line 08");
+    expect(out).toContain("line 12");
     expect(out).toContain("line 20");
+    expect(out).not.toContain("earlier");
   });
 
   it("shows the user prompt context on assistant reply cards", () => {
@@ -326,7 +327,7 @@ describe("Codex-style terminal surface", () => {
     expect(out).not.toContain('"version"');
   });
 
-  it("keeps active turns focused on the most recent live cards", () => {
+  it("keeps every card in an active turn visible", () => {
     setLanguageRuntime("en");
     const liveCards: Card[] = [
       {
@@ -358,8 +359,8 @@ describe("Codex-style terminal surface", () => {
     const out = lastFrame() ?? "";
     unmount();
 
-    expect(out).toContain("+3");
-    expect(out).not.toContain("src/file-0.ts");
+    expect(out).not.toContain("+3");
+    expect(out).toContain("src/file-0.ts");
     expect(out).toContain("src/file-5.ts");
     expect(out).not.toContain("verbose body from tool 5");
   });
@@ -384,10 +385,17 @@ describe("Codex-style terminal surface", () => {
         ts: 2,
         text: "teams这些的操作有没有help或者文档之类的说明？",
       },
+      {
+        kind: "streaming",
+        id: "reply-table",
+        ts: 3,
+        text: ["| Name | Value |", "| --- | --- |", "| alpha | beta |"].join("\n"),
+        done: true,
+      },
       ...Array.from({ length: 6 }, (_, i) => ({
         kind: "tool" as const,
         id: `tool-after-user-${i}`,
-        ts: i + 3,
+        ts: i + 4,
         name: "run_command",
         args: { command: `echo ${i}` },
         output: `verbose output ${i}`,
@@ -413,7 +421,11 @@ describe("Codex-style terminal surface", () => {
     unmount();
 
     expect(out).toContain("> teams这些的操作有没有help或者文档之类的说明？");
-    expect(out).toContain("+");
+    expect(out).not.toMatch(/\+\d+\s+more/);
+    expect(out).toContain("alpha");
+    expect(out).toContain("beta");
+    expect(out).toContain("echo 0");
+    expect(out).toContain("echo 5");
     expect(out).toContain("全部通过。现在 Teams 有三层帮助。");
   });
 

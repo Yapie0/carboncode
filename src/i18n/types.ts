@@ -255,6 +255,11 @@ export interface TranslationSchema {
     preflightTruncatedStillFull: string;
     preflightNoFold: string;
     flashEscalation: string;
+    malformedSseFrames: string;
+    unknownModelCapabilities: string;
+    finishReasonLength: string;
+    finishReasonContentFilter: string;
+    finishReasonResource: string;
     harvestStatus: string;
     repeatToolCallWarning: string;
     stormStuck: string;
@@ -923,6 +928,10 @@ export interface TranslationSchema {
     disabledDetail: string;
     failedSetupHint: string;
     failedSetupConfigHint: string;
+    profileSkipped: string;
+    toolBudget: string;
+    toolBudgetExceededTitle: string;
+    toolBudgetExceeded: string;
     startupSummary: string;
     startupSummaryIssues: string;
   };
