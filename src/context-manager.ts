@@ -1,4 +1,4 @@
-import type { DeepSeekClient } from "./client.js";
+import type { ChatProviderClient } from "./client.js";
 import { Usage } from "./client.js";
 import { healLoadedMessages } from "./loop.js";
 import { thinkingModeForModel } from "./loop.js";
@@ -43,7 +43,7 @@ export const SKILL_PIN_MEMO_HEADER = "[Active skill memos — preserved verbatim
 const SKILL_PIN_REGEX = /<skill-pin name="([^"]+)">\n[\s\S]*?\n<\/skill-pin>/g;
 
 export interface ContextManagerDeps {
-  client: DeepSeekClient;
+  client: ChatProviderClient;
   log: AppendOnlyLog;
   stats: SessionStats;
   sessionName: string | null;
@@ -101,7 +101,7 @@ function extractPinnedSkills(head: ChatMessage[]): {
 export class ContextManager {
   constructor(private deps: ContextManagerDeps) {}
 
-  replaceClient(client: DeepSeekClient): void {
+  replaceClient(client: ChatProviderClient): void {
     this.deps.client = client;
   }
 

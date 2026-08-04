@@ -1,7 +1,14 @@
 /** Carbon Code — DeepSeek-native coding agent framework. Library entry point. */
 
 export { DeepSeekClient, Usage } from "./client.js";
-export type { ChatResponse, StreamChunk, DeepSeekClientOptions } from "./client.js";
+export type {
+  ChatProviderClient,
+  ChatResponse,
+  StreamChunk,
+  DeepSeekClientOptions,
+} from "./client.js";
+export { OpenAIResponsesClient, toOpenAIResponsesInput } from "./providers/openai-responses.js";
+export type { OpenAIResponsesClientOptions } from "./providers/openai-responses.js";
 
 export {
   CacheFirstLoop,
@@ -323,7 +330,10 @@ export {
   saveBaseUrl,
   writeConfig,
 } from "./config.js";
-export type { CarbonCodeConfig, ReasonixConfig } from "./config.js";
+export type {
+  CarbonCodeConfig,
+  ReasonixConfig,
+} from "./config.js";
 
 export type {
   ChatMessage,

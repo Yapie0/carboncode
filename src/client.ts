@@ -48,6 +48,7 @@ export interface ChatResponse {
   toolCalls: ToolCall[];
   usage: Usage;
   finishReason?: string;
+  providerData?: Record<string, unknown>;
   raw: unknown;
 }
 
@@ -68,6 +69,7 @@ export interface StreamChunk {
   usage?: Usage;
   finishReason?: string;
   malformedFrameCount?: number;
+  providerData?: Record<string, unknown>;
   raw: any;
 }
 
@@ -104,6 +106,17 @@ export interface ModelList {
   data: ModelInfo[];
 }
 
+/** Provider-neutral chat surface consumed by the agent loop and subagents. */
+export interface ChatProviderClient {
+  readonly providerId: string;
+  readonly apiKey: string;
+  readonly baseUrl: string;
+  chat(opts: ChatRequestOptions): Promise<ChatResponse>;
+  stream(opts: ChatRequestOptions): AsyncGenerator<StreamChunk>;
+  listModels(opts?: { signal?: AbortSignal }): Promise<ModelList | null>;
+  getBalance(opts?: { signal?: AbortSignal }): Promise<UserBalance | null>;
+}
+
 export interface DeepSeekClientOptions {
   apiKey?: string;
   baseUrl?: string;
@@ -115,6 +128,7 @@ export interface DeepSeekClientOptions {
 }
 
 export class DeepSeekClient {
+  readonly providerId = "deepseek";
   readonly apiKey: string;
   readonly baseUrl: string;
   readonly timeoutMs: number;
@@ -179,7 +193,7 @@ export class DeepSeekClient {
     }
     const payload: Record<string, unknown> = {
       model: opts.model,
-      messages: opts.messages,
+      messages: opts.messages.map(({ provider_data: _providerData, ...message }) => message),
       stream,
     };
     if (opts.tools?.length) payload.tools = opts.tools;

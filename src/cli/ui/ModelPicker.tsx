@@ -1,5 +1,6 @@
 import { Box, Text, useStdout } from "ink";
 import React, { useState } from "react";
+import type { ModelProfileConfig } from "../../config.js";
 import { t } from "../../i18n/index.js";
 import { SELECTABLE_MODEL_IDS, modelCapabilities } from "../../models.js";
 import { useKeystroke } from "./keystroke-context.js";
@@ -9,12 +10,16 @@ import { FG, TONE } from "./theme/tokens.js";
 
 export type ModelPickerOutcome =
   | { kind: "select"; id: string }
+  | { kind: "profile"; id: string }
   | { kind: "preset"; name: "auto" | "flash" | "pro" }
   | { kind: "quit" };
 
 export interface ModelPickerProps {
   /** API-fetched ids; null means "still loading / offline". */
   models: ReadonlyArray<string> | null;
+  /** Reusable provider/model connections configured through `/model add`. */
+  profiles?: ReadonlyArray<ModelProfileConfig>;
+  activeProfileId?: string;
   /** Model id currently active in the loop — marked with the cursor on open. */
   current: string;
   /** Used to detect which preset (if any) the loop currently matches. */
@@ -29,10 +34,15 @@ const PAGE_MARGIN = 8;
 const PRESET_NAMES = ["auto", "flash", "pro"] as const;
 type PresetName = (typeof PRESET_NAMES)[number];
 
-type Row = { kind: "preset"; name: PresetName } | { kind: "model"; id: string };
+type Row =
+  | { kind: "preset"; name: PresetName }
+  | { kind: "profile"; profile: ModelProfileConfig }
+  | { kind: "model"; id: string };
 
 export function ModelPicker({
   models,
+  profiles = [],
+  activeProfileId,
   current,
   currentEffort,
   currentAutoEscalate,
@@ -44,13 +54,17 @@ export function ModelPicker({
   );
   if (!modelList.includes(current)) modelList.unshift(current);
   const presetRows: Row[] = PRESET_NAMES.map((name) => ({ kind: "preset", name }));
+  const profileRows: Row[] = profiles.map((profile) => ({ kind: "profile", profile }));
   const modelRows: Row[] = modelList.map((id) => ({ kind: "model", id }));
-  const rows: Row[] = [...presetRows, ...modelRows];
+  const rows: Row[] = [...presetRows, ...profileRows, ...modelRows];
 
   const activePreset = detectActivePreset(current, currentEffort, currentAutoEscalate);
+  const activeProfileIndex = profiles.findIndex((profile) => profile.id === activeProfileId);
   const initialIndex = activePreset
     ? PRESET_NAMES.indexOf(activePreset)
-    : presetRows.length + Math.max(0, modelList.indexOf(current));
+    : activeProfileIndex >= 0
+      ? presetRows.length + activeProfileIndex
+      : presetRows.length + profileRows.length + Math.max(0, modelList.indexOf(current));
   const [focus, setFocus] = useState(initialIndex);
   const { stdout } = useStdout();
   const termRows = stdout?.rows ?? 40;
@@ -64,6 +78,9 @@ export function ModelPicker({
       const target = rows[focus];
       if (!target) return;
       if (target.kind === "preset") return onChoose({ kind: "preset", name: target.name });
+      if (target.kind === "profile") {
+        return onChoose({ kind: "profile", id: target.profile.id });
+      }
       return onChoose({ kind: "select", id: target.id });
     }
     if (!ev.input) return;
@@ -82,7 +99,7 @@ export function ModelPicker({
   const loading = models === null;
   const empty = models !== null && models.length === 0;
 
-  let lastSection: "preset" | "model" | null = null;
+  let lastSection: "preset" | "profile" | "model" | null = null;
 
   return (
     <Box flexDirection="column" marginY={1}>
@@ -114,7 +131,9 @@ export function ModelPicker({
             <Text color={FG.meta}>
               {row.kind === "preset"
                 ? t("modelPicker.presetsHeader")
-                : t("modelPicker.modelsHeader")}
+                : row.kind === "profile"
+                  ? "CONFIGURED PROFILES"
+                  : t("modelPicker.modelsHeader")}
             </Text>
           </Box>
         ) : null;
@@ -125,6 +144,13 @@ export function ModelPicker({
               name={row.name}
               focused={focused}
               active={activePreset === row.name}
+            />
+          ) : row.kind === "profile" ? (
+            <ProfileRow
+              key={`profile-${row.profile.id}`}
+              profile={row.profile}
+              focused={focused}
+              active={row.profile.id === activeProfileId}
             />
           ) : (
             <ModelRow
@@ -149,6 +175,27 @@ export function ModelPicker({
       <Box marginTop={1}>
         <Text color={FG.faint}>{t("modelPicker.pickerFooter")}</Text>
       </Box>
+    </Box>
+  );
+}
+
+function ProfileRow({
+  profile,
+  focused,
+  active,
+}: {
+  profile: ModelProfileConfig;
+  focused: boolean;
+  active: boolean;
+}): React.ReactElement {
+  return (
+    <Box>
+      <Text color={focused ? TONE.brand : FG.faint}>{focused ? "  › " : "    "}</Text>
+      <Text bold={focused} color={focused ? FG.strong : FG.sub}>
+        {profile.id.padEnd(24)}
+      </Text>
+      <Text color={FG.meta}>{`${profile.provider}/${profile.model}`}</Text>
+      {active ? <Text color={TONE.brand}>{t("modelPicker.currentLabel")}</Text> : null}
     </Box>
   );
 }

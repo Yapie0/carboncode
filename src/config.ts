@@ -25,6 +25,35 @@ export type ReasoningEffort = "high" | "max";
 
 export type EmbeddingProvider = "ollama" | "openai-compat";
 
+export type ModelProviderId = "deepseek" | "openai";
+/** @deprecated Multi-agent candidates now reuse the shared model profile type. */
+export type MultiAgentProviderId = ModelProviderId;
+export type MultiAgentRole = "design" | "implementation" | "testing" | "acceptance";
+
+export interface ModelProfileConfig {
+  /** Stable local id used by `/model`, benchmark records, and role overrides. */
+  id: string;
+  provider: ModelProviderId;
+  model: string;
+  /** Environment variable containing the provider key. Raw keys are never stored here. */
+  apiKeyEnv?: string;
+  baseUrl?: string;
+}
+
+/** @deprecated Kept as an alias for existing experimental multi-agent config files. */
+export type MultiAgentCandidateConfig = ModelProfileConfig;
+
+export interface MultiAgentExperimentalConfig {
+  enabled?: boolean;
+  /** Shared model profile ids selected for multi-agent routing. */
+  candidateIds?: string[];
+  /** Legacy inline profiles. Read for compatibility; new writes use `modelProfiles`. */
+  candidates?: MultiAgentCandidateConfig[];
+  roles?: Partial<Record<MultiAgentRole, string>>;
+  /** Score subtracted for each role already assigned to the same candidate. */
+  reusePenalty?: number;
+}
+
 export interface OllamaEmbeddingUserConfig {
   baseUrl?: string;
   model?: string;
@@ -115,6 +144,10 @@ export interface ReasonixConfig {
   baseUrl?: string;
   /** Explicit chat model pin. When absent, the selected preset supplies the model. */
   model?: string;
+  /** Reusable provider/model connections shared by `/model` and multi-agent mode. */
+  modelProfiles?: ModelProfileConfig[];
+  /** Provider connection used by the active single-agent session. */
+  activeModelProfile?: string;
   lang?: LanguageCode;
   preset?: PresetName;
   editMode?: EditMode;
@@ -137,6 +170,9 @@ export interface ReasonixConfig {
   maxOutputTokens?: number;
   /** Optional stable, non-PII provider scheduling/cache-isolation identifier. */
   userId?: string;
+  experimental?: {
+    multiAgent?: MultiAgentExperimentalConfig;
+  };
   /** Default workspace root for the desktop client. CLI uses cwd. */
   workspaceDir?: string;
   /** Last N workspace paths the desktop client has opened, most recent first. */
@@ -173,7 +209,7 @@ export interface ReasonixConfig {
     /** Stable URL token (#968). If unset, a fresh token is minted each boot. Min 16 chars enforced at load time. */
     token?: string;
   };
-  /** Per-field visibility toggles for the bottom status row. Codex-style defaults keep only turn cost and context visible. */
+  /** Per-field visibility toggles for the bottom status row. Defaults keep model, costs, and context visible. */
   statusBar?: {
     showMode?: boolean;
     showPreset?: boolean;
@@ -1065,7 +1101,9 @@ export function loadPreset(path: string = defaultConfigPath()): PresetName | und
 }
 
 export function loadModel(path: string = defaultConfigPath()): string | undefined {
-  const model = readConfig(path).model;
+  const cfg = readConfig(path);
+  const activeProfile = cfg.modelProfiles?.find((profile) => profile.id === cfg.activeModelProfile);
+  const model = cfg.model ?? activeProfile?.model;
   if (typeof model !== "string" || !model.trim()) return undefined;
   return migrateRetiredModel(model.trim()).model;
 }
@@ -1085,6 +1123,7 @@ export function savePreset(preset: PresetName, path: string = defaultConfigPath(
   const cfg = readConfig(path);
   cfg.preset = preset;
   cfg.model = undefined;
+  cfg.activeModelProfile = undefined;
   writeConfig(cfg, path);
 }
 

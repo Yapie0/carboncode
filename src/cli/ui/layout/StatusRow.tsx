@@ -28,7 +28,6 @@ export interface StatusBarConfig {
 const WALLET_MIN_COLS = 90;
 const VERSION_MIN_COLS = 70;
 const FEEDBACK_HINT_MIN_COLS = 100;
-const PRESET_MIN_COLS = 60;
 const CTX_TOKENS_MIN_COLS = 90;
 const CTX_BAR_MIN_COLS = 110;
 const CTX_BAR_CELLS = 8;
@@ -49,7 +48,7 @@ const DEFAULT_STATUS_BAR_CONFIG: StatusBarConfig = {
 export function resolveRuntimeStatusBarConfig(cfg: Partial<StatusBarConfig> = {}): StatusBarConfig {
   return {
     showMode: cfg.showMode === true,
-    showPreset: cfg.showPreset === true,
+    showPreset: cfg.showPreset !== false,
     showSessionInfo: cfg.showSessionInfo === true,
     showBalance: cfg.showBalance === true,
     showSessionCost: cfg.showSessionCost !== false,
@@ -66,11 +65,13 @@ export function StatusRow({
   editMode,
   planMode = false,
   collabAgent,
+  modelProfileId,
 }: {
   statusBar?: StatusBarConfig;
   editMode?: EditMode;
   planMode?: boolean;
   collabAgent?: string;
+  modelProfileId?: string;
 }): React.ReactElement {
   const status = useAgentState((s) => s.status);
   const session = useAgentState((s) => s.session);
@@ -94,10 +95,10 @@ export function StatusRow({
       ),
     });
   }
-  if (statusBar.showPreset && cols >= PRESET_MIN_COLS && status.preset !== undefined) {
+  if (statusBar.showPreset) {
     segments.push({
-      key: "preset",
-      node: <PresetPill preset={status.preset} model={session.model} />,
+      key: "model",
+      node: <ModelPill model={session.model} profileId={modelProfileId} />,
     });
   }
   if (editMode) {
@@ -214,21 +215,20 @@ export function StatusRow({
   );
 }
 
-function PresetPill({
-  preset,
+function ModelPill({
   model,
+  profileId,
 }: {
-  preset: "auto" | "flash" | "pro" | null;
   model: string;
+  profileId?: string;
 }): React.ReactElement {
-  const label = preset ?? shortModelLabel(model);
-  const color = preset === "pro" ? TONE.accent : preset === "flash" ? TONE.brand : FG.sub;
+  const label = profileId ?? shortModelLabel(model);
   return (
     <>
       <Text color={FG.meta} wrap="truncate">
-        {"▴ "}
+        {"model "}
       </Text>
-      <Text color={color} wrap="truncate">
+      <Text color={TONE.accent} bold wrap="truncate">
         {label}
       </Text>
     </>

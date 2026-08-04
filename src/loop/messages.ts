@@ -9,6 +9,7 @@ export function buildAssistantMessage(
   producingModel: string,
   reasoningContent?: string | null,
   thinkingPreference: ThinkingPreference = "auto",
+  providerData?: Record<string, unknown>,
 ): ChatMessage {
   const msg: ChatMessage = { role: "assistant", content };
   if (toolCalls.length > 0) msg.tool_calls = toolCalls;
@@ -21,6 +22,7 @@ export function buildAssistantMessage(
   ) {
     msg.reasoning_content = reasoningContent ?? "";
   }
+  if (providerData) msg.provider_data = providerData;
   return msg;
 }
 

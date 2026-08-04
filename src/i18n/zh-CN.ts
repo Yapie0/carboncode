@@ -265,7 +265,10 @@ export const zhCN: TranslationSchema = {
       description: "模型组合 — 自动在 flash → pro 之间切换，或锁定 flash/pro",
       argsHint: "<auto|flash|pro>",
     },
-    model: { description: "切换 DeepSeek 模型 ID", argsHint: "<id>" },
+    model: {
+      description: "添加、更新并切换提供商/模型档案",
+      argsHint: "[add|list|update|remove|<档案或模型>]",
+    },
     models: { description: "列出从 DeepSeek /models 获取的可用模型" },
     thinking: {
       description: "显示或设置 DeepSeek 思考模式",
@@ -354,6 +357,10 @@ export const zhCN: TranslationSchema = {
     mwh: {
       description: "浏览可复用 Middlewave Hub 模块，并安装本地参考实现",
       argsHint: "[list|search|show|install]",
+    },
+    "multi-agent": {
+      description: "配置并运行按实测分配角色的实验性多提供商 Agent",
+      argsHint: "[setup|models|enable|disable|benchmark|assignments|role|run]",
     },
     teams: {
       description: "管理 Carbon Code Teams 多 agent 团队编排",

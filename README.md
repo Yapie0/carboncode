@@ -70,6 +70,62 @@ export DEEPSEEK_API_KEY=sk-...
 `pro` 对应 `deepseek-v4-pro`，`auto` 默认从 Flash 开始，并在困难回合一次性升级
 到 Pro。
 
+## 多模型与提供商
+
+`/model` 不再只切换 DeepSeek 模型 ID。它同时管理当前单智能体会话可用的模型档案，
+支持 OpenAI 官方服务和任意兼容 OpenAI Responses API 的自建或公司内部中转站：
+
+```text
+/model                         # 打开模型选择器
+/model add                     # 引导添加提供商、模型、Base URL 和 Key
+/model list                    # 查看档案、Key 状态和当前模型
+/model update company-gpt      # 更新并重新验证档案
+/model remove company-gpt      # 删除未在使用的自定义档案
+/model company-gpt             # 当前会话立即切换 provider + model
+```
+
+添加中转站时依次填写 Base URL、模型 ID、模型档案名称和遮罩 API Key。Carbon Code
+直接连接所填地址，无需额外开启代理；优先使用 `/models` 验证，未实现模型列表的
+Responses 网关会退回一次最小 `/responses` 调用。档案元数据写入
+`~/.carboncode/config.json`；验证通过的原始 Key 单独写入用户级
+`~/.carboncode/credentials.json`，不进入普通配置、会话历史或项目文件。支持的平台会将
+凭据文件权限收紧为仅当前用户可读写，显式环境变量仍具有最高优先级。
+
+同一提供商或中转站可登记多个模型。DeepSeek 模型共享现有 DeepSeek Key；OpenAI
+官方档案共享 `OPENAI_API_KEY`；同一中转站 Base URL 的多个档案会复用同一个 Key
+引用。因此一个 Key 可以切换多个模型，Carbon Code 重启后会自动从用户凭据库恢复。
+
+## 实验性 Multi-Agent
+
+Multi-Agent 是共享模型档案的一种使用方式，不是另一套模型配置。Carbon Code 可以
+根据真实小型
+benchmark，把设计、实施、测试、验收四个阶段分配给不同模型顺序执行。
+
+源码开发时仍按原方式启动：
+
+```powershell
+npm run dev
+```
+
+进入 TUI 后配置和运行：
+
+```text
+/model add
+/multi-agent models
+/multi-agent enable deepseek-pro company-gpt
+/multi-agent benchmark deepseek-pro company-gpt
+/multi-agent assignments
+/multi-agent run 实现一个带测试的功能
+```
+
+`/multi-agent setup` 是 `/model add` 的兼容入口，打开同一个模型设置向导。新增和
+更新的模型档案既可直接通过 `/model <档案名>` 使用，也会出现在 Multi-Agent 候选中。
+benchmark 会产生真实 API 调用和费用；每个
+候选模型完整评测四个角色，即四次调用。
+
+完整架构、安全边界、自定义候选和非交互 CLI 用法见
+[多提供商 Multi-Agent 文档](docs/multi-agent.md)。
+
 初始化已有项目的规则文件：
 
 ```bash

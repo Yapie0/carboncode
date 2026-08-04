@@ -63,7 +63,7 @@ export function MaskedInput({
 
   return (
     <>
-      <Text>{mask.repeat(value.length)}</Text>
+      <Text>{mask.length > 0 ? mask.repeat(value.length) : value}</Text>
       <Text inverse> </Text>
     </>
   );

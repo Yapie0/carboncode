@@ -18,6 +18,8 @@ export interface SlashResult {
   openCheckpointPicker?: boolean;
   /** Open the ModelPicker modal — bare `/model` (no id) opens it. */
   openModelPicker?: boolean;
+  /** Open the shared provider/model setup wizard. An id means update that profile. */
+  openModelSetup?: { profileId?: string };
   /** Open the ThemePicker modal — bare `/theme` opens it. */
   openThemePicker?: boolean;
   /** Open the unified MCP hub — `/mcp` defaults to "live", `/mcp browse` to "marketplace". */
@@ -129,6 +131,8 @@ export interface SlashContext {
   setPlanMode?: (on: boolean) => void;
   /** Spawn a Teams agent as a subagent — used by `/teams run`. Accepts agent id, system prompt, and task string. */
   spawnTeamsAgent?: (agentId: string, system: string, task: string) => void;
+  /** Start the staged multi-provider workflow in the active code-mode runtime. */
+  runMultiAgentTask?: (task: string) => string;
   /** Manual escape valve when the model forgot to call `mark_step_complete` — used by `/plans done <id>`. */
   markPlanStepDone?: (stepId: string) => "ok" | "not-in-plan" | "already-done" | "no-plan";
   /** Mark every still-queued step done — used by `/plans done all`. Returns the count newly marked. */
@@ -152,6 +156,14 @@ export interface SlashContext {
   /** `null` → in flight / failed; `[]` → API answered empty. `/model <id>` warn-only since list can lag. */
   models?: string[] | null;
   refreshModels?: () => void;
+  /** Switch provider connection and model when the selection names a shared model profile. */
+  switchModelProfile?: (selection: string) => {
+    matched: boolean;
+    ok: boolean;
+    info: string;
+  };
+  /** Clear the active provider profile after selecting a DeepSeek preset. */
+  clearActiveModelProfile?: () => void;
   /** Ask the current model to summarize the active session into a short title and rename it. */
   generateSessionTitle?: () => Promise<string>;
   armPro?: () => void;

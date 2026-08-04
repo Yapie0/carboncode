@@ -1,4 +1,4 @@
-import { type DeepSeekClient, Usage } from "./client.js";
+import { type ChatProviderClient, Usage } from "./client.js";
 import type { PauseGate } from "./core/pause-gate.js";
 import { pauseGate as defaultPauseGate } from "./core/pause-gate.js";
 import { type HookPayload, type ResolvedHook, runHooks } from "./hooks.js";
@@ -99,7 +99,7 @@ export {
 export type { EventRole, LoopEvent } from "./loop/types.js";
 
 export interface CacheFirstLoopOptions {
-  client: DeepSeekClient;
+  client: ChatProviderClient;
   prefix: ImmutablePrefix;
   tools?: ToolRegistry;
   model?: string;
@@ -135,7 +135,7 @@ export interface ReconfigurableOptions {
 }
 
 export class CacheFirstLoop {
-  private _client: DeepSeekClient;
+  private _client: ChatProviderClient;
   readonly prefix: ImmutablePrefix;
   readonly tools: ToolRegistry;
   readonly log = new AppendOnlyLog();
@@ -209,7 +209,7 @@ export class CacheFirstLoop {
     return this._turn;
   }
 
-  get client(): DeepSeekClient {
+  get client(): ChatProviderClient {
     return this._client;
   }
 
@@ -452,7 +452,7 @@ export class CacheFirstLoop {
   }
 
   /** Swap provider credentials/endpoint without rebuilding session state. */
-  replaceClient(client: DeepSeekClient): void {
+  replaceClient(client: ChatProviderClient): void {
     this._client = client;
     this.context.replaceClient(client);
   }
@@ -921,6 +921,7 @@ export class CacheFirstLoop {
       let usage: TurnStats["usage"] | null = null;
       let finishReason: string | undefined;
       let malformedFrameCount = 0;
+      let providerData: Record<string, unknown> | undefined;
 
       try {
         if (this.stream) {
@@ -1038,6 +1039,7 @@ export class CacheFirstLoop {
             if (chunk.usage) usage = chunk.usage;
             if (chunk.finishReason) finishReason = chunk.finishReason;
             if (chunk.malformedFrameCount) malformedFrameCount += chunk.malformedFrameCount;
+            if (chunk.providerData) providerData = chunk.providerData;
           }
           toolCalls = [...callBuf.entries()]
             .sort(([left], [right]) => left - right)
@@ -1072,6 +1074,7 @@ export class CacheFirstLoop {
           toolCalls = resp.toolCalls;
           usage = resp.usage;
           finishReason = resp.finishReason;
+          providerData = resp.providerData;
         }
       } catch (err) {
         // An aborted signal here is almost always our own doing —
@@ -1160,6 +1163,7 @@ export class CacheFirstLoop {
         reasoningContent = "";
         toolCalls = [];
         usage = null;
+        providerData = undefined;
         // Redo this iter on pro — `iter--` cancels the `iter++` the
         // for loop runs on `continue`.
         iter--;
@@ -1189,6 +1193,7 @@ export class CacheFirstLoop {
           this.modelForCurrentCall(),
           reasoningContent,
           this.thinkingMode,
+          providerData,
         ),
       );
 
@@ -1216,6 +1221,7 @@ export class CacheFirstLoop {
             this.modelForCurrentCall(),
             reasoningContent,
             this.thinkingMode,
+            providerData,
           ),
         );
         for (const call of toolCalls) {

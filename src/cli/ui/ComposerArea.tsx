@@ -34,6 +34,7 @@ export interface ComposerAreaProps {
   modeFlash: boolean;
   planMode: boolean;
   collabAgent?: string;
+  modelProfileId?: string;
   jobs?: JobRegistry;
   activeLoop?: Parameters<typeof LoopStatusRow>[0]["loop"] | null;
   statusBar: StatusBarConfig;
@@ -97,6 +98,7 @@ export const ComposerArea: React.FC<ComposerAreaProps> = React.memo(
     modeFlash,
     planMode,
     collabAgent,
+    modelProfileId,
     jobs,
     activeLoop,
     statusBar,
@@ -163,6 +165,11 @@ export const ComposerArea: React.FC<ComposerAreaProps> = React.memo(
             onSubmit={onSubmit}
             onHistoryPrev={onHistoryPrev}
             onHistoryNext={onHistoryNext}
+            arrowKeysHandledExternally={Boolean(
+              (atState && atState.entries.length > 0) ||
+                (slashArgMatches && slashArgMatches.length > 0) ||
+                (slashMatches && slashMatches.length > 0),
+            )}
             onOpenExternalEditor={onOpenExternalEditor}
             onCursorChange={onCursorChange}
             vimEnabled={vimEnabled}
@@ -192,6 +199,7 @@ export const ComposerArea: React.FC<ComposerAreaProps> = React.memo(
           editMode={editMode}
           planMode={planMode}
           collabAgent={collabAgent}
+          modelProfileId={modelProfileId}
         />
       </Box>
     );

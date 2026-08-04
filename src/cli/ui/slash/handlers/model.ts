@@ -1,4 +1,10 @@
-import { saveMaxOutputTokens, saveModel, savePreset, saveThinkingMode } from "@/config.js";
+import {
+  readConfig,
+  saveMaxOutputTokens,
+  saveModel,
+  savePreset,
+  saveThinkingMode,
+} from "@/config.js";
 import { t } from "@/i18n/index.js";
 import { thinkingModeForModel } from "@/loop.js";
 import {
@@ -7,6 +13,12 @@ import {
   PRO_MODEL_ID,
   migrateRetiredModel,
 } from "@/models.js";
+import {
+  removeModelProfile,
+  resolveModelProfiles,
+  userModelProfiles,
+} from "@/providers/model-profiles.js";
+import { candidateAvailability } from "@/providers/registry.js";
 import { PRESETS } from "../../presets.js";
 import type { SlashHandler } from "../dispatch.js";
 
@@ -17,15 +29,71 @@ function inferPresetFromModel(id: string): "auto" | "flash" | "pro" | null {
 }
 
 const model: SlashHandler = (args, loop, ctx) => {
-  const id = args[0];
+  const action = args[0]?.toLowerCase();
+  if (action === "help") {
+    return {
+      info: [
+        "## 模型配置",
+        "",
+        "- `/model`：打开模型选择器",
+        "- `/model add`：添加 OpenAI 官方或 Responses 兼容模型",
+        "- `/model list`：列出提供商、模型、地址和 Key 状态",
+        "- `/model update <name>`：重新验证并更新模型档案",
+        "- `/model remove <name>`：删除未启用的自定义模型档案",
+        "- `/model <name|model-id>`：切换档案或当前提供商的模型",
+      ].join("\n"),
+    };
+  }
+  if (action === "add" || action === "setup") return { openModelSetup: {} };
+  if (action === "list" || action === "models") {
+    const config = readConfig(ctx.configPath);
+    const custom = new Set(userModelProfiles(config).map((profile) => profile.id));
+    const lines = ["模型档案："];
+    for (const profile of resolveModelProfiles(config)) {
+      const availability = candidateAvailability(profile, config);
+      const active = config.activeModelProfile === profile.id ? " · 当前" : "";
+      const source = custom.has(profile.id) ? "自定义" : "内置";
+      lines.push(
+        `- ${profile.id}: ${profile.provider}/${profile.model} · ${source} · ${availability.available ? "Key 就绪" : `缺少 ${availability.keySource}`}${profile.baseUrl ? ` · ${profile.baseUrl}` : ""}${active}`,
+      );
+    }
+    return { info: lines.join("\n") };
+  }
+  if (action === "update") {
+    const profileId = args[1]?.trim();
+    if (!profileId) return { info: "用法：/model update <name>" };
+    const config = readConfig(ctx.configPath);
+    if (!userModelProfiles(config).some((profile) => profile.id === profileId)) {
+      return { info: `找不到可更新的自定义模型档案：${profileId}` };
+    }
+    return { openModelSetup: { profileId } };
+  }
+  if (action === "remove" || action === "delete") {
+    const profileId = args[1]?.trim();
+    if (!profileId) return { info: "用法：/model remove <name>" };
+    const config = readConfig(ctx.configPath);
+    if (config.activeModelProfile === profileId) {
+      return { info: `模型档案 ${profileId} 正在使用中；请先切换到其他模型。` };
+    }
+    return {
+      info: removeModelProfile(profileId, ctx.configPath)
+        ? `已删除模型档案：${profileId}`
+        : `找不到自定义模型档案：${profileId}`,
+    };
+  }
+
+  const id = action === "use" ? args[1] : args[0];
   const known = ctx.models ?? null;
   if (!id) {
     return { openModelPicker: true };
   }
+  const switched = ctx.switchModelProfile?.(id);
+  if (switched?.matched) return { info: switched.info };
   // Manual model pick = explicit pin: disable auto-escalate so flash doesn't
   // get bumped, and persist the inferred preset so a relaunch keeps the choice.
   const migration = migrateRetiredModel(id);
   loop.configure({ model: id, autoEscalate: false });
+  ctx.clearActiveModelProfile?.();
   const activeId = loop.model;
   ctx.dispatch?.({ type: "session.model.change", model: activeId });
   const inferred = migration.migrated ? null : inferPresetFromModel(activeId);
@@ -56,7 +124,9 @@ const preset: SlashHandler = (args, loop, ctx) => {
   const apply = (
     presetName: "auto" | "flash" | "pro",
     p: (typeof PRESETS)[keyof typeof PRESETS],
-  ) => {
+  ): string | undefined => {
+    const switched = ctx.switchModelProfile?.(p.model);
+    if (switched?.matched && !switched.ok) return switched.info;
     loop.configure({
       model: p.model,
       autoEscalate: p.autoEscalate,
@@ -69,17 +139,22 @@ const preset: SlashHandler = (args, loop, ctx) => {
     } catch {
       /* disk full / perms — runtime change still took effect */
     }
+    ctx.clearActiveModelProfile?.();
+    return undefined;
   };
   if (name === "auto") {
-    apply("auto", PRESETS.auto);
+    const error = apply("auto", PRESETS.auto);
+    if (error) return { info: error };
     return { info: t("handlers.model.presetAuto") };
   }
   if (name === "flash") {
-    apply("flash", PRESETS.flash);
+    const error = apply("flash", PRESETS.flash);
+    if (error) return { info: error };
     return { info: t("handlers.model.presetFlash") };
   }
   if (name === "pro") {
-    apply("pro", PRESETS.pro);
+    const error = apply("pro", PRESETS.pro);
+    if (error) return { info: error };
     return { info: t("handlers.model.presetPro") };
   }
   if (name === "") {

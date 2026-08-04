@@ -8,6 +8,7 @@ import {
   openEventSink,
 } from "../../adapters/event-sink-jsonl.js";
 import { type AtUrlExpansion, expandAtMentions, expandAtUrls } from "../../at-mentions.js";
+import type { ChatProviderClient } from "../../client.js";
 import {
   type CheckpointMeta,
   createCheckpoint,
@@ -79,6 +80,20 @@ import {
   SUMMARY_MODEL_ID,
   type ThinkingPreference,
 } from "../../models.js";
+import { assignRolesByBenchmark, readBenchmarkStore } from "../../multi-agent/benchmarks.js";
+import { runMultiAgentWorkflow } from "../../multi-agent/orchestrator.js";
+import {
+  activateModelProfile,
+  clearActiveModelProfile,
+  findModelProfile,
+  userModelProfiles,
+} from "../../providers/model-profiles.js";
+import {
+  candidateAvailability,
+  createProviderClient,
+  resolveMultiAgentCandidates,
+  resolveMultiAgentConfig,
+} from "../../providers/registry.js";
 import type { QQChannel } from "../../qq/channel.js";
 import { useQQChannel } from "../../qq/use-qq-channel.js";
 import {
@@ -123,6 +138,7 @@ import { EditConfirm, type EditReviewChoice } from "./EditConfirm.js";
 import { LiveActivityArea } from "./LiveActivityArea.js";
 import { McpHub } from "./McpHub.js";
 import { ModelPicker } from "./ModelPicker.js";
+import { ModelProviderSetup } from "./MultiAgentSetup.js";
 import { PathConfirm } from "./PathConfirm.js";
 import { PlanCheckpointConfirm } from "./PlanCheckpointConfirm.js";
 import { PlanConfirm, type PlanConfirmChoice } from "./PlanConfirm.js";
@@ -410,9 +426,34 @@ interface StreamingState {
 
 export function App(props: AppProps): React.ReactElement {
   markPhase("app_render_start");
+  const initialModelRuntime = React.useMemo(() => {
+    const cfg = readConfig();
+    if (!cfg.activeModelProfile || cfg.model !== props.model) {
+      return { model: props.model };
+    }
+    const profile = findModelProfile(cfg, cfg.activeModelProfile);
+    if (!profile) {
+      return {
+        model: resolvePreset(cfg.preset).model,
+        warning: `模型档案 ${cfg.activeModelProfile} 不存在，已回退到 DeepSeek。`,
+      };
+    }
+    try {
+      return {
+        model: props.model,
+        client: createProviderClient(profile, cfg),
+        profileId: profile.id,
+      };
+    } catch (error) {
+      return {
+        model: resolvePreset(cfg.preset).model,
+        warning: `模型档案 ${profile.id} 暂不可用：${error instanceof Error ? error.message : String(error)}。运行 /model update ${profile.id} 重新输入 Key。`,
+      };
+    }
+  }, [props.model]);
   const session = useAgentSession({
     sessionId: props.session,
-    model: props.model,
+    model: initialModelRuntime.model,
     workspace: props.codeMode?.rootDir ?? process.cwd(),
   });
   const initialCards = React.useMemo(
@@ -431,6 +472,13 @@ export function App(props: AppProps): React.ReactElement {
         <ChatScrollProvider>
           <AppInner
             {...props}
+            model={initialModelRuntime.model}
+            initialClient={initialModelRuntime.client}
+            initialModelProfileId={initialModelRuntime.profileId}
+            startupInfoHints={[
+              ...(props.startupInfoHints ?? []),
+              ...(initialModelRuntime.warning ? [initialModelRuntime.warning] : []),
+            ]}
             themeName={themeName}
             setThemeName={setThemeName}
             statusBar={statusBar}
@@ -442,6 +490,8 @@ export function App(props: AppProps): React.ReactElement {
 }
 
 type AppInnerProps = AppProps & {
+  initialClient?: ChatProviderClient;
+  initialModelProfileId?: string;
   themeName: ThemeName;
   setThemeName: React.Dispatch<React.SetStateAction<ThemeName>>;
   statusBar: StatusBarConfig;
@@ -475,6 +525,8 @@ function AppInner({
   themeName,
   setThemeName,
   statusBar,
+  initialClient,
+  initialModelProfileId,
 }: AppInnerProps) {
   markPhase("app_inner_start");
   const log = useScrollback();
@@ -665,6 +717,16 @@ function AppInner({
   const [pendingMcpHub, setPendingMcpHub] = useState<{ tab: "live" | "marketplace" } | null>(null);
   /** True while the ModelPicker is open mid-chat (triggered by bare `/model`). */
   const [pendingModelPicker, setPendingModelPicker] = useState(false);
+  /** Shared provider/model wizard opened by `/model add|update` or `/multi-agent setup`. */
+  const [pendingModelSetup, setPendingModelSetup] = useState<{
+    profileId?: string;
+    source: "model" | "multi-agent";
+  } | null>(null);
+  const [activeModelProfileId, setActiveModelProfileId] = useState<string | undefined>(
+    initialModelProfileId,
+  );
+  const activeModelProfileIdRef = useRef(activeModelProfileId);
+  activeModelProfileIdRef.current = activeModelProfileId;
   /** True while the ThemePicker is open mid-chat (triggered by bare `/theme`). */
   const [pendingThemePicker, setPendingThemePicker] = useState(false);
   const [pendingCopyMode, setPendingCopyMode] = useState(false);
@@ -737,6 +799,7 @@ function AppInner({
     !!pendingCheckpointPicker ||
     !!pendingMcpHub ||
     pendingModelPicker ||
+    !!pendingModelSetup ||
     pendingThemePicker ||
     pendingCopyMode ||
     !!stagedInput ||
@@ -761,6 +824,7 @@ function AppInner({
     !pendingWorkspacePicker &&
     !pendingCheckpointPicker &&
     !pendingMcpHub &&
+    !pendingModelSetup &&
     !stagedInput &&
     !pendingEditReview;
   // Plan-mode indicator —displayed in the StatsPanel, mirrored onto
@@ -824,6 +888,7 @@ function AppInner({
   // synced in a useEffect once handleSubmit is defined.
   const handleSubmitRef = useRef<((raw: string) => Promise<void>) | null>(null);
   const busyRef = useRef<boolean>(false);
+  const multiAgentAbortRef = useRef<AbortController | null>(null);
   const submittingRef = useRef<boolean>(false);
   // Embedded dashboard server handle. Set when /dashboard boots; null
   // otherwise. Mutations to this ref happen inside the start/stop
@@ -942,10 +1007,12 @@ function AppInner({
   const loop = useMemo(() => {
     if (loopRef.current) return loopRef.current;
     const initialRuntimeConfig = initialRuntimeConfigRef.current;
-    const client = new DeepSeekClient({
-      apiKey: initialRuntimeConfig?.apiKey,
-      baseUrl: initialRuntimeConfig?.baseUrl ?? loadBaseUrl(),
-    });
+    const client =
+      initialClient ??
+      new DeepSeekClient({
+        apiKey: initialRuntimeConfig?.apiKey,
+        baseUrl: initialRuntimeConfig?.baseUrl ?? loadBaseUrl(),
+      });
     // Register run_skill HERE (not in code.tsx / chat.tsx) because
     // subagent-runAs skills need the client + parent registry to
     // spawn child loops. Wiring lives in App.tsx so the same code
@@ -1004,7 +1071,17 @@ function AppInner({
     });
     loopRef.current = l;
     return l;
-  }, [model, thinkingMode, system, rebuildSystem, budgetUsd, session, tools, codeMode]);
+  }, [
+    model,
+    thinkingMode,
+    system,
+    rebuildSystem,
+    budgetUsd,
+    session,
+    tools,
+    codeMode,
+    initialClient,
+  ]);
 
   // Loop is rebuilt on session switch with seeded carryover totals from
   // the resumed session's meta; mirror them into summary state so the
@@ -1284,6 +1361,63 @@ function AppInner({
   // (balance) and the slash context (/models, /update).
   const { balance, models, latestVersion, refreshBalance, refreshModels, refreshLatestVersion } =
     useSessionInfo(loop);
+  const sharedModelProfiles = userModelProfiles(readConfig());
+  const modelCompletionChoices = [
+    "add",
+    "list",
+    "update",
+    "remove",
+    "help",
+    ...sharedModelProfiles.map((profile) => profile.id),
+    ...(models ?? []),
+  ];
+
+  const switchModelProfile = useCallback(
+    (selection: string): { matched: boolean; ok: boolean; info: string } => {
+      const configPath = defaultConfigPath();
+      const config = readConfig(configPath);
+      const profile = findModelProfile(config, selection);
+      if (!profile) return { matched: false, ok: false, info: "" };
+      if (busyRef.current || loop.inflight.size > 0) {
+        return {
+          matched: true,
+          ok: false,
+          info: "当前响应尚未结束，完成或中止后再切换模型。",
+        };
+      }
+      try {
+        const client = createProviderClient(profile, config);
+        loop.replaceClient(client);
+        loop.configure({ model: profile.model, autoEscalate: false });
+        activateModelProfile(profile.id, profile.model, configPath);
+        setActiveModelProfileId(profile.id);
+        setPreset(
+          profile.provider === "deepseek" && profile.model === PRO_MODEL_ID ? "pro" : "auto",
+        );
+        agentStore.dispatch({ type: "session.model.change", model: profile.model });
+        agentStore.dispatch({ type: "session.preset.change", preset: null });
+        refreshBalance();
+        refreshModels();
+        return {
+          matched: true,
+          ok: true,
+          info: `model: ${profile.id} · ${profile.provider}/${profile.model}`,
+        };
+      } catch (error) {
+        return {
+          matched: true,
+          ok: false,
+          info: `无法切换到 ${profile.id}：${error instanceof Error ? error.message : String(error)}`,
+        };
+      }
+    },
+    [agentStore, loop, refreshBalance, refreshModels, setPreset],
+  );
+
+  const clearActiveProfile = useCallback(() => {
+    clearActiveModelProfile(defaultConfigPath());
+    setActiveModelProfileId(undefined);
+  }, []);
 
   useEffect(() => {
     let applied = initialRuntimeConfigRef.current ?? {
@@ -1294,6 +1428,9 @@ function AppInner({
       const next = runtimeConfigSource.read();
       if (!next || sameRuntimeConnectionConfig(applied, next)) return;
       if (busyRef.current || loop.inflight.size > 0) return;
+      // A DeepSeek config reload must not silently replace an explicitly selected
+      // OpenAI/Responses profile. The next switch back to DeepSeek consumes it.
+      if (activeModelProfileIdRef.current && loop.client.providerId !== "deepseek") return;
       if (!next.apiKey) {
         log.pushWarning("config reload skipped", "DeepSeek API key is empty.");
         applied = next;
@@ -1532,7 +1669,7 @@ function AppInner({
     setInput,
     codeMode,
     rootDir: currentRootDir,
-    models,
+    models: modelCompletionChoices,
     mcpServers: liveMcpServers,
     slashUsage,
   });
@@ -1751,6 +1888,11 @@ function AppInner({
         clearComposer: () => setInput(""),
         resetComposerCursor: resetCursor,
       });
+      return;
+    }
+    if (key.escape && multiAgentAbortRef.current) {
+      multiAgentAbortRef.current.abort();
+      log.pushInfo("Multi-Agent 任务正在中止，当前阶段结束后不会继续。");
       return;
     }
     if (key.escape && (submittingRef.current || isLoopActive())) {
@@ -2181,6 +2323,11 @@ function AppInner({
           },
           applyPresetLive: (name: string) => {
             const settings = resolvePreset(name as PresetName);
+            const switched = switchModelProfile(settings.model);
+            if (switched.matched && !switched.ok) {
+              log.pushInfo(switched.info);
+              return;
+            }
             loop.configure({
               model: settings.model,
               autoEscalate: settings.autoEscalate,
@@ -2193,6 +2340,7 @@ function AppInner({
             agentStore.dispatch({ type: "session.preset.change", preset: canonical });
             try {
               savePreset(canonical);
+              clearActiveProfile();
             } catch {
               /* disk full / perms —runtime change still took effect */
             }
@@ -2201,8 +2349,14 @@ function AppInner({
             loop.configure({ reasoningEffort: effort });
           },
           applyModelLive: (model) => {
+            const switched = switchModelProfile(model);
+            if (switched.matched) {
+              log.pushInfo(switched.info);
+              return;
+            }
             loop.configure({ model, autoEscalate: false });
             agentStore.dispatch({ type: "session.model.change", model });
+            clearActiveProfile();
             try {
               saveModel(model);
             } catch {
@@ -2460,6 +2614,9 @@ function AppInner({
     dashboardPort,
     dashboardHost,
     dashboardToken,
+    switchModelProfile,
+    clearActiveProfile,
+    log,
   ]);
 
   const stopDashboard = useCallback(async (): Promise<void> => {
@@ -2586,6 +2743,8 @@ function AppInner({
     (target: string): string => {
       if (target === "auto" || target === "flash" || target === "pro") {
         const preset = PRESETS[target];
+        const switched = switchModelProfile(preset.model);
+        if (switched.matched && !switched.ok) return switched.info;
         loop.configure({
           model: preset.model,
           autoEscalate: preset.autoEscalate,
@@ -2596,12 +2755,16 @@ function AppInner({
         agentStore.dispatch({ type: "session.preset.change", preset: target });
         try {
           savePreset(target);
+          clearActiveProfile();
         } catch {}
         return `preset: ${target} / ${preset.model}`;
       }
 
+      const switched = switchModelProfile(target);
+      if (switched.matched) return switched.info;
       loop.configure({ model: target, autoEscalate: false });
       agentStore.dispatch({ type: "session.model.change", model: target });
+      clearActiveProfile();
       const inferred = target === PRO_MODEL_ID ? "pro" : target === FLASH_MODEL_ID ? "flash" : null;
       setPreset(inferred ?? "flash");
       agentStore.dispatch({ type: "session.preset.change", preset: inferred });
@@ -2616,7 +2779,7 @@ function AppInner({
       }
       return `model: ${target}`;
     },
-    [agentStore, loop, setPreset],
+    [agentStore, clearActiveProfile, loop, setPreset, switchModelProfile],
   );
 
   const handleQQThemePick = useCallback(
@@ -2865,6 +3028,7 @@ function AppInner({
         }
         setSlashUsage(recordSlashUse(slash.cmd));
         const result = handleSlash(slash.cmd, slash.args, loop, {
+          configPath: defaultConfigPath(),
           mcpSpecs,
           mcpServers: liveMcpServers,
           codeUndo: codeMode ? codeUndo : undefined,
@@ -2893,6 +3057,88 @@ function AppInner({
               );
             });
           },
+          runMultiAgentTask:
+            codeMode && tools && codeMode.jobs
+              ? (task: string) => {
+                  if (busyRef.current || multiAgentAbortRef.current) {
+                    return "已有任务正在运行，请等待完成或按 Esc 中止。";
+                  }
+                  const config = readConfig();
+                  const multi = resolveMultiAgentConfig(config);
+                  if (multi.enabled !== true) {
+                    return "Multi-Agent 尚未启用。先运行 /multi-agent enable。";
+                  }
+                  const candidates = resolveMultiAgentCandidates(config).filter(
+                    (candidate) => candidateAvailability(candidate, config).available,
+                  );
+                  if (candidates.length === 0) {
+                    return "没有 Key 就绪的候选模型。先运行 /multi-agent setup。";
+                  }
+                  const benchmarkStore = readBenchmarkStore();
+                  let assignments: ReturnType<typeof assignRolesByBenchmark>;
+                  try {
+                    assignments = assignRolesByBenchmark(
+                      candidates,
+                      benchmarkStore.results,
+                      multi.roles,
+                      multi.reusePenalty ?? 2,
+                    );
+                  } catch (error) {
+                    return error instanceof Error ? error.message : String(error);
+                  }
+
+                  const abortController = new AbortController();
+                  multiAgentAbortRef.current = abortController;
+                  busyRef.current = true;
+                  setBusy(true);
+                  void runMultiAgentWorkflow({
+                    rootDir: currentRootDir,
+                    task,
+                    config,
+                    candidates,
+                    benchmarks: benchmarkStore.results,
+                    assignments,
+                    signal: abortController.signal,
+                    toolset: { tools, jobs: codeMode.jobs! },
+                    subagentSink: subagentSinkRef.current,
+                    onStageStart: (assignment) => {
+                      log.pushInfo(
+                        `Multi-Agent ${assignment.role} 开始：${assignment.candidate.provider}/${assignment.candidate.model}`,
+                      );
+                    },
+                    onStageComplete: (stage) => {
+                      log.pushInfo(
+                        `${stage.role} ${stage.success ? "完成" : "失败"} · ${stage.elapsedMs}ms · ${stage.usage.totalTokens} tokens`,
+                      );
+                    },
+                  })
+                    .then((workflow) => {
+                      for (const stage of workflow.stages) {
+                        log.pushInfo(
+                          `## ${stage.role} · ${stage.provider}/${stage.model}\n\n${stage.output || stage.error || "无输出"}`,
+                        );
+                      }
+                      log.pushInfo(
+                        workflow.success
+                          ? "Multi-Agent 四阶段执行完成。"
+                          : `Multi-Agent 在 ${workflow.failedRole ?? "unknown"} 阶段停止。`,
+                      );
+                    })
+                    .catch((error) => {
+                      log.pushInfo(
+                        `Multi-Agent 执行失败：${error instanceof Error ? error.message : String(error)}`,
+                      );
+                    })
+                    .finally(() => {
+                      multiAgentAbortRef.current = null;
+                      busyRef.current = false;
+                      setBusy(false);
+                    });
+                  return `Multi-Agent 已启动：${assignments
+                    .map((assignment) => `${assignment.role}=${assignment.candidate.id}`)
+                    .join(" · ")}`;
+                }
+              : undefined,
           editMode: codeMode ? editMode : undefined,
           setEditMode: codeMode ? setEditMode : undefined,
           vimEnabled,
@@ -2978,6 +3224,8 @@ function AppInner({
           refreshLatestVersion,
           models,
           refreshModels,
+          switchModelProfile,
+          clearActiveModelProfile: clearActiveProfile,
           generateSessionTitle: generateCurrentSessionTitle,
         });
         if (
@@ -3054,6 +3302,15 @@ function AppInner({
         }
         if (result.openModelPicker) {
           setPendingModelPicker(true);
+          pushHistory(text);
+          return;
+        }
+        if (result.openModelSetup) {
+          setPendingModelSetup({
+            profileId: result.openModelSetup.profileId,
+            source:
+              slash.cmd === "multi-agent" || slash.cmd === "multiagent" ? "multi-agent" : "model",
+          });
           pushHistory(text);
           return;
         }
@@ -3553,6 +3810,8 @@ function AppInner({
       resetCursor,
       liveMcpServers,
       generateCurrentSessionTitle,
+      switchModelProfile,
+      clearActiveProfile,
       switchWorkspaceRoot,
       addWorkspaceDir,
       tools,
@@ -4340,6 +4599,7 @@ function AppInner({
                         pendingSessionsPicker ||
                         pendingCheckpointPicker ||
                         pendingMcpHub ||
+                        pendingModelSetup ||
                         stagedInput ||
                         pendingEditReview ||
                         pendingChoice ||
@@ -4531,20 +4791,55 @@ function AppInner({
                         }
                       }}
                     />
+                  ) : pendingModelSetup ? (
+                    <ModelProviderSetup
+                      configured={Boolean(
+                        process.env.OPENAI_API_KEY || process.env.CARBONCODE_OPENAI_RELAY_KEY,
+                      )}
+                      configPath={defaultConfigPath()}
+                      initialProfile={
+                        pendingModelSetup.profileId
+                          ? sharedModelProfiles.find(
+                              (profile) => profile.id === pendingModelSetup.profileId,
+                            )
+                          : undefined
+                      }
+                      onClose={() => setPendingModelSetup(null)}
+                      onSaved={(message, profileId) => {
+                        log.pushInfo(message);
+                        if (pendingModelSetup.source === "model") {
+                          const switched = switchModelProfile(profileId);
+                          log.pushInfo(switched.info);
+                        }
+                      }}
+                    />
                   ) : pendingModelPicker ? (
                     <ModelPicker
                       models={models}
+                      profiles={sharedModelProfiles}
+                      activeProfileId={activeModelProfileId}
                       current={loop.model}
                       currentEffort={loop.reasoningEffort}
                       currentAutoEscalate={loop.autoEscalate}
                       onRefresh={refreshModels}
                       onChoose={(outcome) => {
                         setPendingModelPicker(false);
+                        if (outcome.kind === "profile") {
+                          const switched = switchModelProfile(outcome.id);
+                          log.pushInfo(switched.info);
+                          return;
+                        }
                         if (outcome.kind === "select") {
+                          const switched = switchModelProfile(outcome.id);
+                          if (switched.matched) {
+                            log.pushInfo(switched.info);
+                            return;
+                          }
                           // Manual model pick = explicit pin: turn off auto-escalate
                           // so flash doesn't get bumped, persist inferred preset.
                           loop.configure({ model: outcome.id, autoEscalate: false });
                           agentStore.dispatch({ type: "session.model.change", model: outcome.id });
+                          clearActiveProfile();
                           const inferred =
                             outcome.id === PRO_MODEL_ID
                               ? "pro"
@@ -4559,6 +4854,7 @@ function AppInner({
                           if (inferred) {
                             try {
                               savePreset(inferred);
+                              clearActiveProfile();
                             } catch {
                               /* disk full / perms —runtime change still took effect */
                             }
@@ -4574,6 +4870,11 @@ function AppInner({
                         }
                         if (outcome.kind === "preset") {
                           const p = PRESETS[outcome.name];
+                          const switched = switchModelProfile(p.model);
+                          if (switched.matched && !switched.ok) {
+                            log.pushInfo(switched.info);
+                            return;
+                          }
                           loop.configure({
                             model: p.model,
                             autoEscalate: p.autoEscalate,
@@ -4587,6 +4888,7 @@ function AppInner({
                           });
                           try {
                             savePreset(outcome.name);
+                            clearActiveProfile();
                           } catch {
                             /* disk full / perms —runtime change still took effect */
                           }
@@ -4690,6 +4992,7 @@ function AppInner({
                       modeFlash={modeFlash}
                       planMode={planMode}
                       collabAgent={activeCollab?.agent}
+                      modelProfileId={activeModelProfileId}
                       jobs={codeMode ? codeMode.jobs : undefined}
                       activeLoop={activeLoop}
                       statusBar={statusBar}

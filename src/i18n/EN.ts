@@ -270,7 +270,10 @@ export const EN: TranslationSchema = {
       description: "model bundle — auto escalates flash → pro, flash/pro lock",
       argsHint: "<auto|flash|pro>",
     },
-    model: { description: "switch DeepSeek model id", argsHint: "<id>" },
+    model: {
+      description: "add, update, and switch provider/model profiles",
+      argsHint: "[add|list|update|remove|<profile-or-model>]",
+    },
     models: { description: "list available models fetched from DeepSeek /models" },
     thinking: {
       description: "show or set DeepSeek thinking mode",
@@ -364,6 +367,10 @@ export const EN: TranslationSchema = {
     mwh: {
       description: "browse reusable Middlewave Hub modules and install local references",
       argsHint: "[list|search|show|install]",
+    },
+    "multi-agent": {
+      description: "configure and run experimental benchmark-routed multi-provider agents",
+      argsHint: "[setup|models|enable|disable|benchmark|assignments|role|run]",
     },
     teams: {
       description: "manage Carbon Code Teams multi-agent orchestration",

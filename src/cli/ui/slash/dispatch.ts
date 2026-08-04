@@ -13,6 +13,7 @@ import { handlers as languageHandlers } from "./handlers/language.js";
 import { handlers as mcpHandlers } from "./handlers/mcp.js";
 import { handlers as memoryHandlers } from "./handlers/memory.js";
 import { handlers as modelHandlers } from "./handlers/model.js";
+import { handlers as multiAgentHandlers } from "./handlers/multi-agent.js";
 import { handlers as mwhHandlers } from "./handlers/mwh.js";
 import { handlers as observabilityHandlers } from "./handlers/observability.js";
 import { handlers as permissionsHandlers } from "./handlers/permissions.js";
@@ -42,6 +43,7 @@ const HANDLERS: Record<string, SlashHandler> = {
   ...mcpHandlers,
   ...memoryHandlers,
   ...modelHandlers,
+  ...multiAgentHandlers,
   ...mwhHandlers,
   ...observabilityHandlers,
   ...permissionsHandlers,

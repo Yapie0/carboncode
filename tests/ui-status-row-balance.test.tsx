@@ -59,11 +59,14 @@ function StateInjector({
   });
 }
 
-async function renderStatusRow(overrides: Partial<AgentState["status"]>): Promise<string> {
+async function renderStatusRow(
+  overrides: Partial<AgentState["status"]>,
+  modelProfileId?: string,
+): Promise<string> {
   const output = render(
     <AgentStoreProvider session={SESSION}>
       <StateInjector overrides={overrides}>
-        <StatusRow />
+        <StatusRow modelProfileId={modelProfileId} />
       </StateInjector>
     </AgentStoreProvider>,
   );
@@ -115,10 +118,21 @@ describe("StatusRow — turn cost currency", () => {
 describe("StatusRow — statusBar config toggles", () => {
   it("runtime default shows turn, session cost, and context usage", () => {
     expect(resolveRuntimeStatusBarConfig({})).toMatchObject({
+      showPreset: true,
       showSessionCost: true,
       showTurnCost: true,
       showCtxUsage: true,
     });
+  });
+
+  it("renders the configured model profile ID", async () => {
+    const text = await renderStatusRow({ cost: 0 } as any, "openai-terra");
+    expect(text).toContain("model openai-terra");
+  });
+
+  it("renders the short session model label without a profile ID", async () => {
+    const text = await renderStatusRow({ cost: 0 } as any);
+    expect(text).toContain("model chat");
   });
 
   it("runtime config can explicitly hide session cost", () => {
@@ -294,7 +308,7 @@ describe("StatusRow + SlashSuggestions composition", () => {
     expect(statusLine).toContain("auto");
     expect(statusLine).toContain("default · main");
     expect(statusLine).toContain(`v${VERSION}`);
-    expect(statusLine).toContain("/feedback");
+    expect(text).toContain("/feedback");
     expect(statusLine).not.toContain("SETUP");
     expect(statusLine).not.toContain("commands");
     expect(lines.some((line) => /^\s*SETUP\s*$/.test(line))).toBe(true);

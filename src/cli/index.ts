@@ -5,12 +5,14 @@ import "./heap-limit-launch.js";
 
 import { Command } from "commander";
 import { readConfig } from "../config.js";
+import { loadDotenv } from "../env.js";
 import { t } from "../i18n/index.js";
 import { VERSION } from "../index.js";
 import { listSessions } from "../memory/session.js";
 import { applyMemoryStack } from "../memory/user.js";
 import { installProxyIfConfigured } from "../net/proxy.js";
 import { escalationContract } from "../prompt-fragments.js";
+import { hydrateProviderApiKeys } from "../providers/credentials.js";
 import { startCpuProfile, stopAndSaveCpuProfile } from "./cpu-prof.js";
 import { resolveDashboardHost, resolveDashboardToken } from "./dashboard-options.js";
 import { parseNonNegativeIntegerOption, parsePositiveIntegerOption } from "./number-options.js";
@@ -26,7 +28,9 @@ async function maybeStartCpuProfile(flag: unknown): Promise<boolean> {
 // HTTPS_PROXY / HTTP_PROXY only reach Node's fetch via undici's global
 // dispatcher; install before any client (DeepSeek, web tools, dashboard)
 // constructs a fetch closure. Issue #646.
+loadDotenv();
 installProxyIfConfigured();
+hydrateProviderApiKeys();
 
 markPhase("cli_module_loaded");
 
@@ -610,6 +614,12 @@ task
 {
   const { registerTeamsCli } = await import("./commands/teams.js");
   registerTeamsCli(program);
+}
+
+// Experimental multi-provider, benchmark-routed agent workflow.
+{
+  const { registerMultiAgentCli } = await import("./commands/multi-agent.js");
+  registerMultiAgentCli(program);
 }
 
 program

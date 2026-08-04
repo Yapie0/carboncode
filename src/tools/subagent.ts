@@ -1,6 +1,6 @@
 /** Isolated child loop. Inherits parent registry minus spawn_subagent + submit_plan; no hooks; non-streaming. */
 
-import { type DeepSeekClient, Usage } from "../client.js";
+import { type ChatProviderClient, Usage } from "../client.js";
 import { CacheFirstLoop } from "../loop.js";
 import { applyProjectMemory } from "../memory/project.js";
 import { ImmutablePrefix } from "../memory/runtime.js";
@@ -46,7 +46,7 @@ export interface SubagentSink {
 }
 
 export interface SpawnSubagentOptions {
-  client: DeepSeekClient;
+  client: ChatProviderClient;
   parentRegistry: ToolRegistry;
   system: string;
   task: string;
@@ -79,7 +79,7 @@ export interface SubagentResult {
 }
 
 export interface SubagentToolOptions {
-  client: DeepSeekClient;
+  client: ChatProviderClient;
   defaultSystem?: string;
   projectRoot?: string;
   defaultModel?: string;

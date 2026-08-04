@@ -54,6 +54,8 @@ export interface PromptInputProps {
   /** ↑/↓ and Ctrl+P / Ctrl+N hand off here when no in-buffer cursor move applies — parent walks history and swaps `value` via `onChange`. */
   onHistoryPrev?: () => void;
   onHistoryNext?: () => void;
+  /** A visible completion menu owns ↑/↓ at App level. Prevent this input from handling the same physical key a second time. */
+  arrowKeysHandledExternally?: boolean;
   /** Ctrl+X — parent spawns $EDITOR with the current buffer and re-injects on exit. */
   onOpenExternalEditor?: () => void;
   onCursorChange?: (cursor: number) => void;
@@ -69,6 +71,7 @@ export function PromptInput({
   placeholder,
   onHistoryPrev,
   onHistoryNext,
+  arrowKeysHandledExternally = false,
   onOpenExternalEditor,
   onCursorChange,
   vimEnabled = false,
@@ -186,6 +189,8 @@ export function PromptInput({
       home: ev.home,
       end: ev.end,
     };
+
+    if (arrowKeysHandledExternally && (ev.upArrow || ev.downArrow)) return;
 
     // ── vim layer ────────────────────────────────────────────────────
     if (vimEnabled) {

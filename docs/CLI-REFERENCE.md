@@ -92,7 +92,7 @@ Type `/` mid-chat to open the picker. Aliases shown in parentheses. Code-mode-on
 | Command | What it does |
 |---|---|
 | `/preset <auto\|flash\|pro>` | Switch model bundle. Bare opens picker |
-| `/model <id>` | Switch DeepSeek model id. Bare opens picker |
+| `/model [add\|list\|update\|remove\|<profile-or-model>]` | Add, update, remove, or switch provider/model profiles. Bare opens picker |
 | `/thinking [auto\|on\|off]` | Show or set DeepSeek thinking mode |
 | `/max-output [tokens\|off]` | Show, cap, or clear the maximum output token count |
 | `/language <EN\|zh-CN>` (`/lang`) | Switch the runtime language |
@@ -126,6 +126,7 @@ Type `/` mid-chat to open the picker. Aliases shown in parentheses. Code-mode-on
 | `/memory [for <path>\|list\|show\|forget\|clear]` | Manage pinned memory (AGENTS.md / CARBON.md + `~/.carboncode/memory`) |
 | `/skill [list\|paths\|show\|new\|<name>]` | List / run / scaffold user skills |
 | `/mwh [list\|installed\|search <query>\|show <id>\|install <id>\|check\|update\|root]` | Browse and install reusable Middlewave Hub modules |
+| `/multi-agent [setup\|models\|enable\|disable\|benchmark\|assignments\|role\|run]` (`/multiagent`) | Configure and run benchmark-routed multi-provider agents inside the TUI |
 | `/agents [list\|show\|new]` (`/agent`) | Manage project agents |
 | `/teams [create\|status\|inbox\|run\|dispatch]` | Manage multi-agent Carbon Code Teams |
 | `/qq <connect\|status\|disconnect>` | Connect, inspect, or disconnect the QQ channel |

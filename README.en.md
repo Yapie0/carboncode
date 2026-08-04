@@ -86,6 +86,67 @@ Model presets use the current DeepSeek V4 API IDs: `flash` maps to
 `deepseek-v4-flash`, `pro` maps to `deepseek-v4-pro`, and `auto` starts on Flash
 with one-turn Pro escalation for harder turns.
 
+## Multiple Models And Providers
+
+`/model` now manages reusable model profiles for the active single-agent session,
+not only DeepSeek model IDs. Profiles can use OpenAI's official service or any
+self-hosted/company relay compatible with the OpenAI Responses API:
+
+```text
+/model                         # open the model picker
+/model add                     # guided provider, model, base URL, and key setup
+/model list                    # inspect profiles, key readiness, and the active model
+/model update company-gpt      # update and revalidate a profile
+/model remove company-gpt      # remove an inactive custom profile
+/model company-gpt             # switch provider + model in the current session
+```
+
+Relay setup asks for a base URL, model ID, profile name, and masked API key.
+Carbon Code connects directly without a separate proxy. It validates through
+`/models`, with a minimal `/responses` fallback for gateways without a model-list
+endpoint. Profile metadata is stored in `~/.carboncode/config.json`; raw keys live
+in the separate user-level `~/.carboncode/credentials.json` and never enter regular
+config, session history, or the project. The file is owner-only where supported,
+and explicit environment variables always take precedence.
+
+One provider or relay can expose multiple model profiles. DeepSeek profiles share
+the existing DeepSeek key, official OpenAI profiles share `OPENAI_API_KEY`, and
+profiles with the same relay base URL reuse one key environment variable. After a
+restart, Carbon Code restores these keys automatically from the user credential store.
+
+## Experimental Multi-Agent
+
+Multi-Agent is one consumer of the shared model profiles, not a separate model
+configuration system. Carbon Code can run a small real
+benchmark, and assign the design, implementation, testing, and acceptance stages
+to different models in sequence.
+
+Local development still starts the usual way:
+
+```powershell
+npm run dev
+```
+
+Configure and run the workflow inside the TUI:
+
+```text
+/model add
+/multi-agent models
+/multi-agent enable deepseek-pro company-gpt
+/multi-agent benchmark deepseek-pro company-gpt
+/multi-agent assignments
+/multi-agent run implement a feature with focused tests
+```
+
+`/multi-agent setup` remains as a compatibility alias for `/model add` and opens
+the same model setup wizard. Added or updated profiles can be selected directly
+with `/model <profile>` and are also available to Multi-Agent. Benchmarks make
+real paid API calls: a full run uses four calls
+per candidate, one for each role.
+
+See the [multi-provider Multi-Agent guide](docs/multi-agent.md) for architecture,
+safety boundaries, custom candidates, and non-interactive CLI usage.
+
 ## License And Attribution
 
 Carbon Code is MIT licensed.

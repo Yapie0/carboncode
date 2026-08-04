@@ -38,6 +38,8 @@ export interface ChatMessage {
   tool_calls?: ToolCall[];
   /** Must round-trip in tool-loop continuations — thinking mode 400s without it. */
   reasoning_content?: string | null;
+  /** Opaque provider state required for stateless multi-step tool continuations. */
+  provider_data?: Record<string, unknown>;
 }
 
 export interface RawUsage {

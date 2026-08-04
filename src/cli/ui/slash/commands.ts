@@ -90,8 +90,8 @@ export const SLASH_COMMANDS: readonly SlashCommandSpec[] = [
   {
     cmd: "model",
     group: "setup",
-    argsHint: "<id>",
-    summary: "switch DeepSeek model id. Bare opens picker.",
+    argsHint: "[add|list|update|remove|<profile-or-model>]",
+    summary: "add, update, and switch provider/model profiles. Bare opens picker.",
     argCompleter: "models",
   },
   {
@@ -257,6 +257,23 @@ export const SLASH_COMMANDS: readonly SlashCommandSpec[] = [
     summary:
       "browse reusable Middlewave Hub modules; install stores references under .carboncode/mwh",
     aliases: ["middlewave"],
+  },
+  {
+    cmd: "multi-agent",
+    group: "extend",
+    argsHint: "[setup|models|enable|disable|benchmark|assignments|role|run]",
+    summary: "configure and run experimental benchmark-routed multi-provider agents",
+    argCompleter: [
+      "setup",
+      "models",
+      "enable",
+      "disable",
+      "benchmark",
+      "assignments",
+      "role",
+      "run",
+    ],
+    aliases: ["multiagent"],
   },
   {
     cmd: "qq",
