@@ -74,6 +74,19 @@ import { ToolRegistry } from "./tools.js";
 import type { ChatMessage, ToolCall } from "./types.js";
 
 const ESCALATION_MODEL = ESCALATION_MODEL_ID;
+const MAX_LENGTH_CONTINUATIONS = 8;
+const LENGTH_CONTINUATION_PROMPT =
+  "[internal continuation] The previous response reached the provider's per-response output limit. Continue exactly where it stopped without repeating completed text. Finish the requested task.";
+
+function mergeUsage(left: Usage, right: Usage): Usage {
+  return new Usage(
+    left.promptTokens + right.promptTokens,
+    left.completionTokens + right.completionTokens,
+    left.totalTokens + right.totalTokens,
+    left.promptCacheHitTokens + right.promptCacheHitTokens,
+    left.promptCacheMissTokens + right.promptCacheMissTokens,
+  );
+}
 
 function finishReasonError(reason: string | undefined): string | null {
   if (reason === "length") return t("loop.finishReasonLength");
@@ -490,8 +503,8 @@ export class CacheFirstLoop {
   }
 
   private maxTokensForCurrentCall(model: string): number | undefined {
-    if (this.maxOutputTokens === undefined) return undefined;
     const providerMax = maxOutputTokensForModel(model);
+    if (this.maxOutputTokens === undefined) return providerMax;
     return providerMax === undefined
       ? this.maxOutputTokens
       : Math.min(this.maxOutputTokens, providerMax);
@@ -777,6 +790,12 @@ export class CacheFirstLoop {
     this.appendAndPersist({ role: "user", content: userInput });
     let pendingUser: string | null = null;
     const toolSpecs = this.prefix.tools();
+    const continuationMessages: ChatMessage[] = [];
+    let continuedAssistantContent = "";
+    let continuedReasoningContent = "";
+    let continuedUsage = new Usage();
+    let lengthContinuationCount = 0;
+    let previousIterationWasLengthContinuation = false;
 
     for (let iter = 0; ; iter++) {
       if (signal.aborted) {
@@ -839,14 +858,17 @@ export class CacheFirstLoop {
       // the model IS thinking. Users were reading "thinking about the
       // tool result" as the model-only phase, but the wait also covers
       // the upload round-trip.
-      if (iter > 0) {
+      if (iter > 0 && !previousIterationWasLengthContinuation) {
         yield {
           turn: this._turn,
           role: "status",
           content: t("loop.toolUploadStatus"),
         };
       }
-      let messages = this.buildMessages(pendingUser);
+      previousIterationWasLengthContinuation = false;
+      const appendContinuations = (base: ChatMessage[]): ChatMessage[] =>
+        continuationMessages.length > 0 ? [...base, ...continuationMessages] : base;
+      let messages = appendContinuations(this.buildMessages(pendingUser));
 
       // Consume a typeahead steer if the UI wrote one between iters.
       // Injecting as a user message via appendAndPersist means the
@@ -856,7 +878,7 @@ export class CacheFirstLoop {
         this._steer = null;
         this._steerConsumed = true;
         this.appendAndPersist({ role: "user", content: steer });
-        messages = this.buildMessages(pendingUser);
+        messages = appendContinuations(this.buildMessages(pendingUser));
         // Treat the steer as a fresh user utterance — reset pendingUser
         // since it's already in the log now.
         pendingUser = null;
@@ -884,7 +906,7 @@ export class CacheFirstLoop {
             allowEmpty: pendingUser !== null,
           });
           if (result.folded) {
-            messages = this.buildMessages(pendingUser);
+            messages = appendContinuations(this.buildMessages(pendingUser));
             const after = this.context.decidePreflight(messages, this.prefix.toolSpecs, this.model);
             const stillFull = after.needsAction;
             yield {
@@ -1113,6 +1135,43 @@ export class CacheFirstLoop {
         };
       }
 
+      const combinedUsage = mergeUsage(continuedUsage, usage ?? new Usage());
+      if (
+        finishReason === "length" &&
+        toolCalls.length === 0 &&
+        (assistantContent.length > 0 || reasoningContent.length > 0) &&
+        lengthContinuationCount < MAX_LENGTH_CONTINUATIONS
+      ) {
+        continuedAssistantContent += assistantContent;
+        continuedReasoningContent += reasoningContent;
+        continuedUsage = combinedUsage;
+        continuationMessages.push(
+          buildAssistantMessage(
+            assistantContent,
+            [],
+            this.modelForCurrentCall(),
+            reasoningContent,
+            this.thinkingMode,
+          ),
+          { role: "user", content: LENGTH_CONTINUATION_PROMPT },
+        );
+        lengthContinuationCount++;
+        previousIterationWasLengthContinuation = true;
+        yield {
+          turn: this._turn,
+          role: "status",
+          content: t("loop.continuingAfterOutputLimit", {
+            attempt: lengthContinuationCount,
+            max: MAX_LENGTH_CONTINUATIONS,
+          }),
+        };
+        continue;
+      }
+
+      assistantContent = continuedAssistantContent + assistantContent;
+      reasoningContent = continuedReasoningContent + reasoningContent;
+      usage = combinedUsage;
+
       const terminalError = finishReasonError(finishReason);
       if (terminalError) {
         const failedStats = this.stats.record(
@@ -1191,6 +1250,12 @@ export class CacheFirstLoop {
           this.thinkingMode,
         ),
       );
+
+      continuationMessages.length = 0;
+      continuedAssistantContent = "";
+      continuedReasoningContent = "";
+      continuedUsage = new Usage();
+      lengthContinuationCount = 0;
 
       yield {
         turn: this._turn,

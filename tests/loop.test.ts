@@ -76,7 +76,105 @@ describe("CacheFirstLoop (non-streaming)", () => {
     expect(loop.log.length).toBe(2); // user + assistant
   });
 
-  it.each(["length", "content_filter", "insufficient_system_resource"])(
+  it("continues a plain response after finish_reason=length", async () => {
+    const fetchFn = fakeFetch([
+      {
+        content: "partial ",
+        finish_reason: "length",
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 2,
+          total_tokens: 12,
+          prompt_cache_hit_tokens: 0,
+          prompt_cache_miss_tokens: 10,
+        },
+      },
+      {
+        content: "completed.",
+        usage: {
+          prompt_tokens: 15,
+          completion_tokens: 3,
+          total_tokens: 18,
+          prompt_cache_hit_tokens: 5,
+          prompt_cache_miss_tokens: 10,
+        },
+      },
+    ]);
+    const client = new DeepSeekClient({ apiKey: "sk-test", fetch: fetchFn });
+    const loop = new CacheFirstLoop({
+      client,
+      prefix: new ImmutablePrefix({ system: "be brief" }),
+      model: "deepseek-v4-pro",
+      stream: false,
+    });
+
+    const events: LoopEvent[] = [];
+    for await (const event of loop.step("hello")) events.push(event);
+
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    const firstRequest = JSON.parse(String((fetchFn as any).mock.calls[0][1].body));
+    const secondRequest = JSON.parse(String((fetchFn as any).mock.calls[1][1].body));
+    expect(firstRequest.max_tokens).toBe(384_000);
+    expect(secondRequest.messages.at(-1)?.content).toContain("[internal continuation]");
+    expect(events.some((event) => event.role === "error")).toBe(false);
+    expect(events.find((event) => event.role === "status")?.content).toMatch(/1\/8/);
+    expect(events.find((event) => event.role === "assistant_final")?.content).toBe(
+      "partial completed.",
+    );
+    expect(events.at(-1)).toMatchObject({ role: "done", content: "partial completed." });
+    expect(loop.stats.turns).toHaveLength(1);
+    expect(loop.stats.turns[0]?.usage).toMatchObject({
+      promptTokens: 25,
+      completionTokens: 5,
+      totalTokens: 30,
+      promptCacheHitTokens: 5,
+      promptCacheMissTokens: 20,
+    });
+    expect(loop.log).toHaveLength(2);
+    expect(loop.log.entries[1]?.content).toBe("partial completed.");
+  });
+
+  it("does not execute a truncated tool call after finish_reason=length", async () => {
+    const toolFn = vi.fn(() => "should not run");
+    const tools = new ToolRegistry();
+    tools.register({
+      name: "probe",
+      description: "no-op",
+      parameters: { type: "object", properties: {} },
+      fn: toolFn,
+    });
+    const fetchFn = fakeFetch([
+      {
+        content: "",
+        finish_reason: "length",
+        tool_calls: [
+          {
+            id: "call_truncated",
+            type: "function",
+            function: { name: "probe", arguments: "{}" },
+          },
+        ],
+      },
+    ]);
+    const client = new DeepSeekClient({ apiKey: "sk-test", fetch: fetchFn });
+    const loop = new CacheFirstLoop({
+      client,
+      prefix: new ImmutablePrefix({ system: "be brief", toolSpecs: tools.specs() }),
+      tools,
+      stream: false,
+    });
+
+    const events: LoopEvent[] = [];
+    for await (const event of loop.step("hello")) events.push(event);
+
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(toolFn).not.toHaveBeenCalled();
+    expect(events.some((event) => event.role === "assistant_final")).toBe(false);
+    expect(events.at(-1)).toMatchObject({ role: "error" });
+    expect(loop.log).toHaveLength(1);
+  });
+
+  it.each(["content_filter", "insufficient_system_resource"])(
     "surfaces finish_reason=%s as an incomplete response",
     async (finishReason) => {
       const client = makeClient([{ content: "partial", finish_reason: finishReason }]);
@@ -1336,15 +1434,24 @@ describe("CacheFirstLoop - self-reported escalation via <<<NEEDS_PRO>>>", () => 
 });
 
 describe("CacheFirstLoop (streaming) — tool_call_delta emission", () => {
-  it("stops with an error when a streaming response hits its output limit", async () => {
+  it("continues when a streaming response hits its output limit", async () => {
+    let call = 0;
     const client = new DeepSeekClient({
       apiKey: "sk-test",
       fetch: (async () => {
-        const frames = [
-          `data: ${JSON.stringify({ choices: [{ delta: { content: "partial" } }] })}\n\n`,
-          `data: ${JSON.stringify({ choices: [{ finish_reason: "length", delta: {} }], usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 } })}\n\n`,
-          "data: [DONE]\n\n",
-        ];
+        call++;
+        const frames =
+          call === 1
+            ? [
+                `data: ${JSON.stringify({ choices: [{ delta: { content: "partial " } }] })}\n\n`,
+                `data: ${JSON.stringify({ choices: [{ finish_reason: "length", delta: {} }], usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 } })}\n\n`,
+                "data: [DONE]\n\n",
+              ]
+            : [
+                `data: ${JSON.stringify({ choices: [{ delta: { content: "completed." } }] })}\n\n`,
+                `data: ${JSON.stringify({ choices: [{ finish_reason: "stop", delta: {} }], usage: { prompt_tokens: 2, completion_tokens: 1, total_tokens: 3 } })}\n\n`,
+                "data: [DONE]\n\n",
+              ];
         return new Response(frames.join(""), {
           status: 200,
           headers: { "Content-Type": "text/event-stream" },
@@ -1362,8 +1469,12 @@ describe("CacheFirstLoop (streaming) — tool_call_delta emission", () => {
     for await (const event of loop.step("hello")) events.push(event);
 
     expect(events.some((event) => event.role === "assistant_delta")).toBe(true);
-    expect(events.at(-1)).toMatchObject({ role: "error" });
-    expect(events.some((event) => event.role === "assistant_final")).toBe(false);
+    expect(events.some((event) => event.role === "error")).toBe(false);
+    expect(events.find((event) => event.role === "assistant_final")?.content).toBe(
+      "partial completed.",
+    );
+    expect(events.at(-1)).toMatchObject({ role: "done", content: "partial completed." });
+    expect(call).toBe(2);
   });
 
   it("yields tool_call_delta events carrying growing arg-char count", async () => {

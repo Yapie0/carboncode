@@ -258,6 +258,7 @@ export interface TranslationSchema {
     malformedSseFrames: string;
     unknownModelCapabilities: string;
     finishReasonLength: string;
+    continuingAfterOutputLimit: string;
     finishReasonContentFilter: string;
     finishReasonResource: string;
     harvestStatus: string;

@@ -775,6 +775,8 @@ export const EN: TranslationSchema = {
       "Model {model} is not in the capability registry. Using a {context}-token fallback context window and unknown pricing; configure contextWindowOverride and pricingOverride for accurate limits and cost.",
     finishReasonLength:
       "The model stopped because it reached the output-token limit. Increase maxOutputTokens or ask for a narrower response.",
+    continuingAfterOutputLimit:
+      "The provider's per-response output limit was reached. Continuing automatically ({attempt}/{max})\u2026",
     finishReasonContentFilter: "The provider stopped this response because of its content filter.",
     finishReasonResource:
       "The provider stopped this response because capacity was unavailable. Retry the turn.",
