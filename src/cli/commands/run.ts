@@ -19,8 +19,9 @@ import { CacheFirstLoop, DeepSeekClient, ImmutablePrefix } from "../../index.js"
 import { McpClient } from "../../mcp/client.js";
 import { preflightStdioSpec } from "../../mcp/preflight.js";
 import { bridgeMcpTools } from "../../mcp/registry.js";
+import { McpToolDirectory } from "../../mcp/tool-directory.js";
 import { buildTransportFromSpec } from "../../mcp/transport-from-spec.js";
-import { type ThinkingPreference, migrateRetiredModel } from "../../models.js";
+import { DEEPSEEK_MAX_TOOLS, type ThinkingPreference, migrateRetiredModel } from "../../models.js";
 import { appendUsage } from "../../telemetry/usage.js";
 import { ToolRegistry } from "../../tools.js";
 import { openTranscriptFile, recordFromLoopEvent, writeRecord } from "../../transcript/log.js";
@@ -85,9 +86,11 @@ export async function runCommand(opts: RunOptions): Promise<void> {
   );
   const clients: McpClient[] = [];
   let tools: ToolRegistry | undefined;
+  let mcpDirectory: McpToolDirectory | undefined;
   let successCount = 0;
   if (normalizedSpecs.length > 0) {
     tools = new ToolRegistry();
+    mcpDirectory = new McpToolDirectory(tools);
     for (const spec of normalizedSpecs) {
       let label = "anon";
       let mcp: McpClient | undefined;
@@ -112,6 +115,8 @@ export async function runCommand(opts: RunOptions): Promise<void> {
           registry: tools,
           namePrefix: prefix,
           serverName: label,
+          maxTools: DEEPSEEK_MAX_TOOLS,
+          directory: mcpDirectory,
           onSlow: (info) =>
             process.stderr.write(
               `${formatMcpSlowToast({ name: info.serverName, p95Ms: info.p95Ms, sampleSize: info.sampleSize })}\n`,

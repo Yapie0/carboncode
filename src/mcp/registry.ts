@@ -3,6 +3,7 @@ import { ToolRegistry } from "../tools.js";
 import type { JSONSchema } from "../types.js";
 import type { McpClient } from "./client.js";
 import { LatencyTracker, type SlowEvent } from "./latency.js";
+import { MCP_DIRECTORY_TOOL_NAME, type McpToolDirectory } from "./tool-directory.js";
 import type { CallToolResult, McpContentBlock } from "./types.js";
 
 export interface BridgeOptions {
@@ -33,6 +34,10 @@ export interface BridgeOptions {
   ready?: Promise<void>;
   /** How long to wait on `ready` before failing the dispatch. Default 30_000ms. */
   readyTimeoutMs?: number;
+  /** Maximum total tools allowed in the target registry. Existing native tools consume this budget first. */
+  maxTools?: number;
+  /** Catalog MCP tools behind one model-facing discovery/call tool instead of exposing every schema. */
+  directory?: McpToolDirectory;
 }
 
 /** Mutable holder so `/mcp reconnect` can swap the underlying client without re-bridging tools. */
@@ -50,8 +55,10 @@ export const DEFAULT_READY_TIMEOUT_MS = 30_000;
 
 export interface BridgeResult {
   registry: ToolRegistry;
-  /** Names actually registered (may differ from MCP names when a prefix is applied). */
+  /** All callable names registered, including tools hidden behind the directory. */
   registeredNames: string[];
+  /** Names newly exposed to the model by this bridge. */
+  exposedNames: string[];
   /** Names the server listed but the bridge skipped (e.g. invalid schemas). */
   skipped: Array<{ name: string; reason: string }>;
 }
@@ -70,6 +77,8 @@ export interface BridgeEnv {
   readyTimeoutMs?: number;
   /** Server name surfaced in timeout errors. Defaults to the prefix or "anon". */
   serverName?: string;
+  /** When present, bridged tools are hidden and indexed behind the stable directory tool. */
+  directory?: McpToolDirectory;
 }
 
 /** Register one MCP tool's bridged closure into the registry. Returns the registered name (or "" if skipped). */
@@ -79,10 +88,14 @@ export function registerSingleMcpTool(
 ): string {
   if (!mcpTool.name) return "";
   const registeredName = `${env.prefix}${mcpTool.name}`;
+  if (env.directory && !env.directory.record(mcpTool, registeredName, env.serverName ?? "anon")) {
+    return "";
+  }
   env.registry.register({
     name: registeredName,
     description: mcpTool.description ?? "",
     parameters: mcpTool.inputSchema as JSONSchema,
+    modelVisible: !env.directory,
     fn: async (args: Record<string, unknown>, ctx) => {
       if (env.ready) {
         await waitForReady(
@@ -171,7 +184,16 @@ export async function bridgeMcpTools(
   const registry = opts.registry ?? new ToolRegistry({ autoFlatten: opts.autoFlatten });
   const prefix = opts.namePrefix ?? "";
   const maxResultChars = opts.maxResultChars ?? DEFAULT_MAX_RESULT_CHARS;
-  const result: BridgeResult = { registry, registeredNames: [], skipped: [] };
+  const result: BridgeResult = {
+    registry,
+    registeredNames: [],
+    exposedNames: [],
+    skipped: [],
+  };
+
+  if (opts.directory && opts.directory.registry !== registry) {
+    throw new Error("MCP tool directory must use the same ToolRegistry as the bridge");
+  }
 
   const serverName = opts.serverName ?? prefix.replace(/_$/, "") ?? "anon";
   const tracker = opts.onSlow
@@ -192,15 +214,48 @@ export async function bridgeMcpTools(
     ready: opts.ready,
     readyTimeoutMs: opts.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS,
     serverName,
+    directory: opts.directory,
   };
   const listed = await client.listTools();
+  if (
+    opts.directory &&
+    listed.tools.some((tool) => tool.name && `${prefix}${tool.name}` !== MCP_DIRECTORY_TOOL_NAME) &&
+    opts.directory.ensureAttached()
+  ) {
+    result.exposedNames.push(MCP_DIRECTORY_TOOL_NAME);
+  }
   for (const mcpTool of listed.tools) {
     if (!mcpTool.name) {
       result.skipped.push({ name: "?", reason: "empty tool name" });
       continue;
     }
-    const registeredName = registerSingleMcpTool(mcpTool, env);
-    if (registeredName) result.registeredNames.push(registeredName);
+    const registeredName = `${prefix}${mcpTool.name}`;
+    if (opts.directory && registry.has(registeredName) && registry.isModelVisible(registeredName)) {
+      result.skipped.push({
+        name: mcpTool.name,
+        reason: `tool name collides with model-visible tool ${registeredName}`,
+      });
+      continue;
+    }
+    if (
+      !opts.directory &&
+      opts.maxTools !== undefined &&
+      registry.visibleSize >= opts.maxTools &&
+      !registry.has(registeredName)
+    ) {
+      result.skipped.push({
+        name: mcpTool.name,
+        reason: `tool budget exhausted (${opts.maxTools})`,
+      });
+      continue;
+    }
+    const bridgedName = registerSingleMcpTool(mcpTool, env);
+    if (bridgedName) {
+      result.registeredNames.push(bridgedName);
+      if (registry.isModelVisible(bridgedName)) result.exposedNames.push(bridgedName);
+    } else if (`${prefix}${mcpTool.name}` === MCP_DIRECTORY_TOOL_NAME) {
+      result.skipped.push({ name: mcpTool.name, reason: "reserved MCP directory tool name" });
+    }
   }
   return { ...result, env };
 }

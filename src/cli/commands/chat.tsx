@@ -2,6 +2,7 @@ import { render } from "ink";
 import React, { useMemo, useState } from "react";
 import {
   loadApiKey,
+  loadMcpToolProfile,
   readConfig,
   searchEnabled,
   webSearchEndpoint,
@@ -9,6 +10,8 @@ import {
 } from "../../config.js";
 import { loadDotenv } from "../../env.js";
 import { t } from "../../i18n/index.js";
+import { McpToolDirectory } from "../../mcp/tool-directory.js";
+import { selectCodeMcpToolProfile } from "../../mcp/tool-profile.js";
 import {
   deleteSession,
   freshSessionName,
@@ -16,7 +19,7 @@ import {
   renameSession,
   resolveSession,
 } from "../../memory/session.js";
-import { type ThinkingPreference, migrateRetiredModel } from "../../models.js";
+import { DEEPSEEK_MAX_TOOLS, type ThinkingPreference, migrateRetiredModel } from "../../models.js";
 import { QQChannel } from "../../qq/channel.js";
 import { ToolRegistry } from "../../tools.js";
 import { registerChoiceTool } from "../../tools/choice.js";
@@ -280,11 +283,21 @@ export async function chatCommand(opts: ChatOptions): Promise<void> {
   // the loop runs as a bare chat.
   let tools: ToolRegistry | undefined = runtimeOpts.seedTools;
   if (requestedSpecs.length > 0 && !tools) tools = new ToolRegistry();
+  let mcpDirectory: McpToolDirectory | undefined;
 
   const runtime = createMcpRuntime({
     getTools: () => tools,
     getMcpPrefix: () => runtimeOpts.mcpPrefix,
     getRequestedCount: () => requestedSpecs.length,
+    selectConfiguredSpecs: runtimeOpts.codeMode
+      ? (specs) => selectCodeMcpToolProfile(specs, loadMcpToolProfile()).active
+      : undefined,
+    maxTools: DEEPSEEK_MAX_TOOLS,
+    getDirectory: () => {
+      if (!tools) return undefined;
+      mcpDirectory ??= new McpToolDirectory(tools);
+      return mcpDirectory;
+    },
     progressSink,
   });
 

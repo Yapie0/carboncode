@@ -57,6 +57,7 @@ import { autoResolveVerdict } from "../../core/pause-policy.js";
 import { loadDotenv } from "../../env.js";
 import { CacheFirstLoop, DeepSeekClient, ImmutablePrefix } from "../../index.js";
 import { parseMcpSpec } from "../../mcp/spec.js";
+import { McpToolDirectory } from "../../mcp/tool-directory.js";
 import {
   deleteSession,
   listSessionsForWorkspace,
@@ -67,7 +68,7 @@ import {
   timestampSuffix,
 } from "../../memory/session.js";
 import { MemoryStore } from "../../memory/user.js";
-import { type ThinkingPreference, migrateRetiredModel } from "../../models.js";
+import { DEEPSEEK_MAX_TOOLS, type ThinkingPreference, migrateRetiredModel } from "../../models.js";
 import { SkillStore } from "../../skills.js";
 import { countTokensBounded } from "../../tokenizer.js";
 import type { ChoiceOption } from "../../tools/choice.js";
@@ -645,6 +646,7 @@ interface Tab {
   /** Total steps in the in-flight plan (0 = no active plan / steps not provided). */
   planTotalSteps: number;
   mcpRuntime: McpRuntime | null;
+  mcpDirectory: McpToolDirectory | null;
   mcpStatuses: Map<string, { kind: McpSpecStatus; reason?: string; toolCount?: number }>;
 }
 
@@ -831,6 +833,7 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
       completedStepIds: new Set<string>(),
       planTotalSteps: 0,
       mcpRuntime: null,
+      mcpDirectory: null,
       mcpStatuses: new Map(),
     };
     tab.currentSession = mintSessionFor(dir);
@@ -877,6 +880,12 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
       },
       getMcpPrefix: () => undefined,
       getRequestedCount: () => requested,
+      maxTools: DEEPSEEK_MAX_TOOLS,
+      getDirectory: () => {
+        if (!tab.toolset) return undefined;
+        tab.mcpDirectory ??= new McpToolDirectory(tab.toolset.tools);
+        return tab.mcpDirectory;
+      },
       progressSink: { current: null },
     });
     tab.mcpRuntime = runtime;

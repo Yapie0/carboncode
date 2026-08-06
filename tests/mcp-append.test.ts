@@ -5,6 +5,7 @@ import { CacheFirstLoop, DeepSeekClient, ImmutablePrefix } from "../src/index.js
 import { McpClient } from "../src/mcp/client.js";
 import type { BridgeEnv, McpClientHost } from "../src/mcp/registry.js";
 import { StdioTransport } from "../src/mcp/stdio.js";
+import { MCP_DIRECTORY_TOOL_NAME, McpToolDirectory } from "../src/mcp/tool-directory.js";
 import type { McpTool } from "../src/mcp/types.js";
 import { ToolRegistry } from "../src/tools.js";
 
@@ -96,6 +97,34 @@ describe("applyMcpAppend", () => {
     const before = prefix.fingerprint;
     applyMcpAppend(loop, target, [newTool]);
     expect(prefix.fingerprint).not.toBe(before);
+  });
+
+  it("adds appended tools to the progressive directory without changing the model prefix", async () => {
+    const { loop, prefix } = makeLoop();
+    const { env, host } = makeFakeMcp();
+    env.registry = loop.tools;
+    const directory = new McpToolDirectory(loop.tools);
+    directory.ensureAttached();
+    env.directory = directory;
+    const directorySpec = loop.tools
+      .specs()
+      .find((spec) => spec.function.name === MCP_DIRECTORY_TOOL_NAME);
+    if (!directorySpec) throw new Error("directory spec missing");
+    prefix.addTool(directorySpec);
+    const target = summary(env, host);
+    const before = prefix.fingerprint;
+
+    applyMcpAppend(loop, target, [newTool]);
+
+    expect(loop.tools.has("fs_delete_file")).toBe(true);
+    expect(loop.tools.isModelVisible("fs_delete_file")).toBe(false);
+    expect(prefix.fingerprint).toBe(before);
+    expect(prefix.toolSpecs.map((spec) => spec.function.name)).toEqual([MCP_DIRECTORY_TOOL_NAME]);
+    const search = await loop.tools.dispatch(MCP_DIRECTORY_TOOL_NAME, {
+      action: "search",
+      query: "delete file",
+    });
+    expect(search).toContain("fs_delete_file");
   });
 
   it("returns a new summary with updated tool count + items, leaving the original unchanged", () => {

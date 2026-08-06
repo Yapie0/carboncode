@@ -15,6 +15,7 @@ import {
   type McpTool,
   type ReadResourceResult,
 } from "../src/mcp/types.js";
+import { ToolRegistry } from "../src/tools.js";
 
 interface FakeServerOptions {
   tools: McpTool[];
@@ -318,6 +319,56 @@ describe("bridgeMcpTools (MCP → ToolRegistry)", () => {
     expect(registry.has("fs_search")).toBe(true);
     expect(registry.has("search")).toBe(false);
 
+    await client.close();
+  });
+
+  it("keeps native tools and skips MCP tools beyond the total provider budget", async () => {
+    const transport = new FakeMcpTransport({
+      tools: ["one", "two", "three"].map((name) => ({
+        name,
+        description: name,
+        inputSchema: { type: "object", properties: {} },
+      })),
+    });
+    const client = new McpClient({ transport });
+    await client.initialize();
+    const registry = new ToolRegistry();
+    registry.register({ name: "native_read", fn: () => "ok" });
+    registry.register({ name: "native_write", fn: () => "ok" });
+
+    const result = await bridgeMcpTools(client, { registry, maxTools: 4 });
+
+    expect(result.registeredNames).toEqual(["one", "two"]);
+    expect(result.skipped).toEqual([{ name: "three", reason: "tool budget exhausted (4)" }]);
+    expect(registry.specs().map((spec) => spec.function.name)).toEqual([
+      "native_read",
+      "native_write",
+      "one",
+      "two",
+    ]);
+    await client.close();
+  });
+
+  it("allows an existing tool name to refresh when the registry is already at budget", async () => {
+    const transport = new FakeMcpTransport({
+      tools: [
+        {
+          name: "shared",
+          description: "replacement",
+          inputSchema: { type: "object", properties: {} },
+        },
+      ],
+    });
+    const client = new McpClient({ transport });
+    await client.initialize();
+    const registry = new ToolRegistry();
+    registry.register({ name: "shared", description: "old", fn: () => "old" });
+
+    const result = await bridgeMcpTools(client, { registry, maxTools: 1 });
+
+    expect(result.registeredNames).toEqual(["shared"]);
+    expect(result.skipped).toEqual([]);
+    expect(registry.specs()[0]?.function.description).toBe("replacement");
     await client.close();
   });
 });

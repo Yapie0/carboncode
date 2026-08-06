@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => {
   const closeMock = vi.fn(async () => undefined);
   const bridgeMcpToolsMock = vi.fn(async (_client: unknown, opts: any) => ({
     registeredNames: [],
+    skipped: [],
     env: {
       registry: opts.registry,
       host: opts.host,
@@ -161,6 +162,7 @@ async function captureStartupState(opts?: {
     if (opts?.bridgeError) throw opts.bridgeError;
     return {
       registeredNames: [],
+      skipped: [],
       env: {
         registry: bridgeOpts.registry,
         host: bridgeOpts.host,

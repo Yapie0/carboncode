@@ -16,15 +16,17 @@ export function applyMcpAppend(
     if (!mcpTool.name) continue;
     const registeredName = registerSingleMcpTool(mcpTool, target.bridgeEnv);
     if (!registeredName) continue;
-    const spec: ToolSpec = {
-      type: "function",
-      function: {
-        name: registeredName,
-        description: mcpTool.description ?? "",
-        parameters: mcpTool.inputSchema as unknown as JSONSchema,
-      },
-    };
-    loop.prefix.addTool(spec);
+    if (loop.tools.isModelVisible(registeredName)) {
+      const spec: ToolSpec = {
+        type: "function",
+        function: {
+          name: registeredName,
+          description: mcpTool.description ?? "",
+          parameters: mcpTool.inputSchema as unknown as JSONSchema,
+        },
+      };
+      loop.prefix.addTool(spec);
+    }
     accepted.push(mcpTool);
   }
   if (accepted.length === 0 || !target.report.tools.supported) return target;

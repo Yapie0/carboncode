@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => {
   const closeMock = vi.fn(async () => undefined);
   const bridgeMcpToolsMock = vi.fn(async (_client: unknown, opts: any) => ({
     registeredNames: [],
+    skipped: [],
     env: {
       registry: opts.registry,
       host: opts.host,
@@ -71,7 +72,9 @@ describe("createMcpRuntime — failure tracking", () => {
     mocks.readConfigMock.mockReset();
   });
 
-  async function buildRuntime() {
+  async function buildRuntime(
+    overrides: Partial<import("../src/cli/commands/mcp-runtime.js").RuntimeContext> = {},
+  ) {
     const [{ createMcpRuntime }, { ToolRegistry }] = await Promise.all([
       import("../src/cli/commands/mcp-runtime.js"),
       import("../src/tools.js"),
@@ -82,8 +85,34 @@ describe("createMcpRuntime — failure tracking", () => {
       getMcpPrefix: () => undefined,
       getRequestedCount: () => 1,
       progressSink: { current: null },
+      ...overrides,
     });
   }
+
+  it("forwards the provider tool budget to every MCP bridge", async () => {
+    mocks.readConfigMock.mockReturnValue({ mcpDisabled: [] });
+    const runtime = await buildRuntime({ maxTools: 128 });
+
+    await runtime.addSpec("ctx7=streamable+https://example.test/mcp");
+
+    expect(mocks.bridgeMcpToolsMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ maxTools: 128 }),
+    );
+  });
+
+  it("applies the configured server selector during reload", async () => {
+    mocks.readConfigMock.mockReturnValue({
+      mcp: ["keep=streamable+https://keep.test/mcp", "drop=streamable+https://drop.test/mcp"],
+    });
+    const runtime = await buildRuntime({
+      selectConfiguredSpecs: (specs) => specs.filter((spec) => spec.startsWith("keep=")),
+    });
+
+    await runtime.reloadFromConfig();
+
+    expect(runtime.specs()).toEqual(["keep=streamable+https://keep.test/mcp"]);
+  });
 
   it("records a failure entry when initialize() throws", async () => {
     mocks.readConfigMock.mockReturnValue({ mcpDisabled: [] });

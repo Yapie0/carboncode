@@ -15,6 +15,8 @@ export interface ToolDefinition<A = any, R = any> {
   name: string;
   description?: string;
   parameters?: JSONSchema;
+  /** Callable through the registry but omitted from the model-facing tool list. */
+  modelVisible?: boolean;
   /** Safe in plan mode — registry refuses non-readonly calls when `planMode` is on. */
   readOnly?: boolean;
   /** Per-args check; takes precedence over `readOnly`. e.g. `run_command` + allowlisted argv. */
@@ -130,6 +132,20 @@ export class ToolRegistry {
     return this._tools.size;
   }
 
+  /** Number of schemas that will be sent to the model. Hidden tools remain dispatchable. */
+  get visibleSize(): number {
+    let count = 0;
+    for (const tool of this._tools.values()) {
+      if (tool.modelVisible !== false) count++;
+    }
+    return count;
+  }
+
+  isModelVisible(name: string): boolean {
+    const tool = this._tools.get(name);
+    return Boolean(tool && tool.modelVisible !== false);
+  }
+
   /** True if a registered tool's schema was flattened for the model. */
   wasFlattened(name: string): boolean {
     return Boolean(this._tools.get(name)?.flatSchema);
@@ -141,14 +157,16 @@ export class ToolRegistry {
   }
 
   specs(): ToolSpec[] {
-    return [...this._tools.values()].map((t) => ({
-      type: "function",
-      function: {
-        name: t.name,
-        description: t.description ?? "",
-        parameters: t.flatSchema ?? t.parameters ?? { type: "object", properties: {} },
-      },
-    }));
+    return [...this._tools.values()]
+      .filter((t) => t.modelVisible !== false)
+      .map((t) => ({
+        type: "function",
+        function: {
+          name: t.name,
+          description: t.description ?? "",
+          parameters: t.flatSchema ?? t.parameters ?? { type: "object", properties: {} },
+        },
+      }));
   }
 
   async dispatch(

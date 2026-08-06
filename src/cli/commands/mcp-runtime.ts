@@ -7,6 +7,7 @@ import { preflightStdioSpec } from "../../mcp/preflight.js";
 import { type McpClientHost, bridgeMcpTools } from "../../mcp/registry.js";
 import { overlayMatchedSpec, parseMcpSpec, specToRaw } from "../../mcp/spec.js";
 import { buildMcpServerSummary } from "../../mcp/summary.js";
+import { MCP_DIRECTORY_TOOL_NAME, type McpToolDirectory } from "../../mcp/tool-directory.js";
 import { buildTransportFromSpec } from "../../mcp/transport-from-spec.js";
 import type { ToolRegistry } from "../../tools.js";
 import type { ToolSpec } from "../../types.js";
@@ -35,6 +36,14 @@ export interface RuntimeContext {
   getTools: () => ToolRegistry | undefined;
   getMcpPrefix: () => string | undefined;
   getRequestedCount: () => number;
+  /** Optional code-mode filter applied whenever configured MCP servers are reloaded. */
+  selectConfiguredSpecs?: (specs: readonly string[]) => readonly string[];
+  /** Provider-wide tool limit. Native tools already in the registry consume this budget first. */
+  maxTools?: number;
+  /** Progressive MCP catalog. When present, individual MCP schemas stay hidden behind one tool. */
+  directory?: McpToolDirectory;
+  /** Lazy variant for runtimes whose ToolRegistry is created after runtime configuration. */
+  getDirectory?: () => McpToolDirectory | undefined;
   progressSink: { current: ((info: ProgressInfo) => void) | null };
 }
 
@@ -134,6 +143,7 @@ export function createMcpRuntime(ctx: RuntimeContext): McpRuntime {
   const insertionOrder: string[] = [];
   const failureMap = new Map<string, McpFailure>();
   let sink: McpLifecycleSink = stderrLifecycleSink;
+  const getDirectory = () => ctx.directory ?? ctx.getDirectory?.();
 
   async function addSpec(
     raw: string,
@@ -189,6 +199,8 @@ export function createMcpRuntime(ctx: RuntimeContext): McpRuntime {
         registry: tools,
         namePrefix,
         serverName: label,
+        maxTools: ctx.maxTools,
+        directory: getDirectory(),
         host,
         ready,
         onProgress: (info) => ctx.progressSink.current?.(info),
@@ -200,13 +212,22 @@ export function createMcpRuntime(ctx: RuntimeContext): McpRuntime {
             sampleSize: info.sampleSize,
           }),
       });
+      const budgetSkipped = bridge.skipped.filter((item) =>
+        item.reason.startsWith("tool budget exhausted"),
+      );
+      if (budgetSkipped.length > 0) {
+        sink({
+          kind: "warn",
+          name: label,
+          reason: `${budgetSkipped.length} tool(s) skipped because the provider tool budget is full`,
+        });
+      }
       // Tools are registered — record the bridge NOW so the UI shows
       // "bridged" even if later non-critical steps (inspect, hot-add) fail.
       const ms = Date.now() - t0;
       const allSpecs = tools.specs();
-      const registeredSpecs = allSpecs.filter((s) =>
-        bridge.registeredNames.includes(s.function.name),
-      );
+      const exposedNames = bridge.exposedNames ?? bridge.registeredNames;
+      const registeredSpecs = allSpecs.filter((s) => exposedNames.includes(s.function.name));
       // Create a provisional record immediately (tools already usable).
       records.set(raw, {
         spec: raw,
@@ -318,8 +339,15 @@ export function createMcpRuntime(ctx: RuntimeContext): McpRuntime {
     await record.client.close().catch(() => undefined);
     const tools = ctx.getTools();
     for (const name of record.registeredNames) {
-      tools?.unregister(name);
+      if (record.summary.bridgeEnv.directory) {
+        record.summary.bridgeEnv.directory.unregister(name);
+      } else {
+        tools?.unregister(name);
+      }
       loop?.prefix.removeTool(name);
+    }
+    if (record.summary.bridgeEnv.directory?.detachIfEmpty()) {
+      loop?.prefix.removeTool(MCP_DIRECTORY_TOOL_NAME);
     }
     records.delete(raw);
     const idx = insertionOrder.indexOf(raw);
@@ -334,7 +362,10 @@ export function createMcpRuntime(ctx: RuntimeContext): McpRuntime {
     summaries: McpServerSummary[];
   }> {
     const normalized = normalizeMcpConfig(readConfig());
-    const desired = normalized.map(specToRaw);
+    const configured = normalized.map(specToRaw);
+    const desired = [
+      ...(ctx.selectConfiguredSpecs ? ctx.selectConfiguredSpecs(configured) : configured),
+    ];
     const desiredSet = new Set(desired);
     const currentSet = new Set(records.keys());
     const added: string[] = [];
@@ -365,7 +396,14 @@ export function createMcpRuntime(ctx: RuntimeContext): McpRuntime {
       .filter((s): s is McpServerSummary => Boolean(s));
   }
   async function closeAll(): Promise<void> {
-    for (const r of records.values()) await r.client.close().catch(() => undefined);
+    for (const r of records.values()) {
+      await r.client.close().catch(() => undefined);
+      for (const name of r.registeredNames) {
+        if (r.summary.bridgeEnv.directory) r.summary.bridgeEnv.directory.unregister(name);
+        else ctx.getTools()?.unregister(name);
+      }
+    }
+    getDirectory()?.detachIfEmpty();
     records.clear();
     insertionOrder.length = 0;
     failureMap.clear();
