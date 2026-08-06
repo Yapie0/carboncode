@@ -13,11 +13,8 @@ const REDUNDANT_CODE_PACKAGES = new Set([
   "@modelcontextprotocol/server-everything",
 ]);
 
-/**
- * Code mode already owns a richer native filesystem surface. Its auto profile
- * also excludes the MCP SDK's everything test server. Full keeps every
- * configured server for compatibility and diagnostics.
- */
+// Code mode already has richer native filesystem tools; auto also excludes the
+// MCP SDK's everything test server. Full keeps all configured servers.
 export function selectCodeMcpToolProfile(
   specs: readonly string[],
   profile: McpToolProfile = "auto",
