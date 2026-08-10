@@ -76,6 +76,24 @@ describe("CacheFirstLoop (non-streaming)", () => {
     expect(loop.log.length).toBe(2); // user + assistant
   });
 
+  it("runs an unknown OpenAI-compatible model without a setup warning", async () => {
+    const client = makeClient([{ content: "custom model response" }]);
+    const loop = new CacheFirstLoop({
+      client,
+      prefix: new ImmutablePrefix({ system: "be brief" }),
+      model: "gpt-5.6-luna",
+      stream: false,
+    });
+
+    const events: LoopEvent[] = [];
+    for await (const event of loop.step("hello")) events.push(event);
+
+    expect(events.some((event) => event.role === "warning" || event.role === "error")).toBe(false);
+    expect(events.find((event) => event.role === "assistant_final")?.content).toBe(
+      "custom model response",
+    );
+  });
+
   it("continues a plain response after finish_reason=length", async () => {
     const fetchFn = fakeFetch([
       {

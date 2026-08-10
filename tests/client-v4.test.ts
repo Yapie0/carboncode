@@ -28,6 +28,22 @@ function tool(index: number): ToolSpec {
 }
 
 describe("DeepSeek V4 request and stream compatibility", () => {
+  it("normalizes endpoint URLs and rejects pasted commands before making a request", () => {
+    const normalized = new DeepSeekClient({
+      apiKey: "test",
+      baseUrl: "https://relay.example/v1/chat/completions/",
+    });
+    expect(normalized.baseUrl).toBe("https://relay.example/v1");
+
+    expect(
+      () =>
+        new DeepSeekClient({
+          apiKey: "test",
+          baseUrl: "zhipu=npx -y @mcp-zhipu/glm-server --model glm-4.7-flash",
+        }),
+    ).toThrow(/API base URL is invalid/);
+  });
+
   it("sends top-level thinking and requests terminal streaming usage", async () => {
     let requestBody: Record<string, unknown> | undefined;
     const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
@@ -160,6 +176,74 @@ describe("DeepSeek V4 request and stream compatibility", () => {
       }),
     ).rejects.toThrow(/at most 128 tools/);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("applies OpenAI-compatible provider capabilities without DeepSeek-only fields", async () => {
+    let requestBody: Record<string, unknown> | undefined;
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      requestBody = JSON.parse(String(init?.body));
+      return jsonResponse({ choices: [{ message: { content: "ok" }, finish_reason: "stop" }] });
+    });
+    const client = new DeepSeekClient({
+      apiKey: "test",
+      baseUrl: "https://relay.example/v1",
+      providerName: "GPT relay",
+      reasoningEffortMax: "high",
+      maxTools: null,
+      sendThinking: false,
+      fetch: fetchMock as typeof fetch,
+      retry: { maxAttempts: 1 },
+    });
+
+    await client.chat({
+      model: "gpt-5.4",
+      messages: [],
+      tools: Array.from({ length: 132 }, (_, index) => tool(index)),
+      thinking: "enabled",
+      reasoningEffort: "max",
+    });
+
+    expect(requestBody).toMatchObject({ model: "gpt-5.4", reasoning_effort: "high" });
+    expect(requestBody).not.toHaveProperty("thinking");
+    expect(requestBody?.tools).toHaveLength(132);
+  });
+
+  it("preserves max reasoning effort for providers that declare support", async () => {
+    let requestBody: Record<string, unknown> | undefined;
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      requestBody = JSON.parse(String(init?.body));
+      return jsonResponse({ choices: [{ message: { content: "ok" }, finish_reason: "stop" }] });
+    });
+    const client = new DeepSeekClient({
+      apiKey: "test",
+      providerName: "Max relay",
+      reasoningEffortMax: "max",
+      fetch: fetchMock as typeof fetch,
+      retry: { maxAttempts: 1 },
+    });
+
+    await client.chat({ model: "reasoning-max", messages: [], reasoningEffort: "max" });
+
+    expect(requestBody?.reasoning_effort).toBe("max");
+  });
+
+  it("omits reasoning effort for providers that do not support it", async () => {
+    let requestBody: Record<string, unknown> | undefined;
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      requestBody = JSON.parse(String(init?.body));
+      return jsonResponse({ choices: [{ message: { content: "ok" }, finish_reason: "stop" }] });
+    });
+    const client = new DeepSeekClient({
+      apiKey: "test",
+      providerName: "Plain chat provider",
+      reasoningEffortMax: "none",
+      fetch: fetchMock as typeof fetch,
+      retry: { maxAttempts: 1 },
+    });
+
+    await client.chat({ model: "plain-chat", messages: [], reasoningEffort: "max" });
+
+    expect(requestBody).not.toHaveProperty("reasoning_effort");
   });
 
   it("preserves non-streaming finish reasons", async () => {

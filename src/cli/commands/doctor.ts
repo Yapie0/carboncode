@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import { DeepSeekClient, pickPrimaryBalance } from "../../client.js";
 import {
   defaultConfigPath,
-  loadBaseUrl,
+  loadActiveModelProvider,
   readConfig,
   resolveSemanticEmbeddingConfig,
   resolveSemanticOllamaModelEnv,
@@ -22,6 +22,7 @@ import {
 import { checkOllamaStatus } from "../../index/semantic/ollama-launcher.js";
 import { listSessions } from "../../memory/session.js";
 import { detectProxyUrl } from "../../net/proxy.js";
+import { providerClientOptions } from "../../provider-client-options.js";
 import { resolveDataPath } from "../../tokenizer.js";
 import { VERSION } from "../../version.js";
 
@@ -219,7 +220,8 @@ async function checkConfig(): Promise<Check> {
 }
 
 async function checkApiReach(): Promise<Check> {
-  const key = process.env.DEEPSEEK_API_KEY ?? readConfig().apiKey;
+  const provider = loadActiveModelProvider();
+  const key = provider.apiKey;
   if (!key) {
     return {
       id: "api-reach",
@@ -229,9 +231,30 @@ async function checkApiReach(): Promise<Check> {
     };
   }
   try {
-    const client = new DeepSeekClient({ apiKey: key, baseUrl: loadBaseUrl() });
+    const client = new DeepSeekClient(providerClientOptions(provider, { apiKey: key }));
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), 8_000);
+    if (provider.kind === "custom") {
+      try {
+        const catalog = await client.listModels({ signal: ctl.signal });
+        if (!catalog || catalog.data.length === 0) {
+          return {
+            id: "api-reach",
+            label: doctorLabel("apiReach"),
+            level: "fail",
+            detail: `${provider.name}: model catalog is unavailable or empty.`,
+          };
+        }
+        return {
+          id: "api-reach",
+          label: doctorLabel("apiReach"),
+          level: "ok",
+          detail: `${provider.name}: ${catalog.data.length} models available.`,
+        };
+      } finally {
+        clearTimeout(timer);
+      }
+    }
     let balance: Awaited<ReturnType<DeepSeekClient["getBalance"]>>;
     try {
       balance = await client.getBalance({ signal: ctl.signal });

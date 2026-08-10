@@ -7,9 +7,10 @@ import { join } from "node:path";
 import { stdin, stdout } from "node:process";
 import { createInterface } from "node:readline/promises";
 import { DeepSeekClient } from "../../client.js";
-import { loadApiKey, loadBaseUrl } from "../../config.js";
+import { loadApiKey, loadModel } from "../../config.js";
 import { loadDotenv } from "../../env.js";
 import { FLASH_MODEL_ID } from "../../models.js";
+import { activeProviderClientOptions } from "../../provider-client-options.js";
 
 export interface CommitOptions {
   /** Override the default model (deepseek-v4-flash). */
@@ -268,8 +269,8 @@ export async function commitCommand(opts: CommitOptions = {}): Promise<void> {
     );
   }
 
-  const client = new DeepSeekClient({ apiKey, baseUrl: loadBaseUrl() });
-  const model = opts.model ?? DEFAULT_MODEL;
+  const client = new DeepSeekClient(activeProviderClientOptions({ apiKey }));
+  const model = opts.model ?? loadModel() ?? DEFAULT_MODEL;
   const recentCommits = readRecentCommits();
 
   let message = "";

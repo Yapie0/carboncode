@@ -38,6 +38,8 @@ export interface ChatMessage {
   tool_calls?: ToolCall[];
   /** Must round-trip in tool-loop continuations — thinking mode 400s without it. */
   reasoning_content?: string | null;
+  /** Provider-native Responses items required for stateless tool continuations. */
+  provider_items?: unknown[];
 }
 
 export interface RawUsage {

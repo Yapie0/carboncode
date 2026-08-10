@@ -238,6 +238,13 @@ is an npm option and will not invoke Carbon Code setup.
 Configuration is stored in `~/.carboncode/config.json`. `DEEPSEEK_API_KEY` can
 also be exported for a temporary override.
 
+Desktop model-provider setup supports OpenAI-compatible APIs. Enter the Base URL
+and API key first; Carbon Code discovers the provider model catalog, recommends a
+model, and defaults to adaptive Responses/Chat Completions routing. The selected
+provider is shared by interactive chat, Desktop, ACP, `run`, `commit`, `doctor`,
+and skill subagents. See `docs/OPENAI-COMPATIBLE-PROVIDERS.md` for details and the
+environment-only end-to-end verifier.
+
 Cost visibility:
 
 - The bottom status bar shows the latest turn cost as `turn`.

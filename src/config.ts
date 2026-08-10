@@ -1,5 +1,6 @@
 /** Library reads only DEEPSEEK_API_KEY from env; the CLI bridges config.json → env var. */
 
+import { randomUUID } from "node:crypto";
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
@@ -110,11 +111,59 @@ export interface RateLimitConfig {
   rpm?: number;
 }
 
+export interface DiagnosticsUserConfig {
+  /** Error-only diagnostics. Defaults to true; set false to stop capture and upload. */
+  enabled?: boolean;
+  /** Override for self-hosted collectors and development. */
+  endpoint?: string;
+}
+
+export type ModelProviderKind = "deepseek" | "custom";
+
+/** Wire protocol used by an OpenAI-compatible provider. */
+export type ProviderWireApi = "auto" | "chat_completions" | "responses";
+
+/** Provider reasoning ceiling; `auto` learns from explicit 400/422 validation responses. */
+export type ProviderReasoningEffortMax = "auto" | "none" | "high" | "xhigh" | "max";
+
+export interface ModelProviderConfig {
+  /** Stable identifier used by the desktop UI and session runtime. */
+  id: string;
+  kind: ModelProviderKind;
+  name: string;
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+  /** Agent-capable models discovered from this provider's model catalog. */
+  models?: string[];
+  preset?: PresetName;
+  /** Highest reasoning_effort value accepted by this endpoint. */
+  reasoningEffortMax?: ProviderReasoningEffortMax;
+  /** OpenAI-compatible request protocol. Custom providers default to auto. */
+  wireApi?: ProviderWireApi;
+}
+
+export interface ActiveModelProvider extends ModelProviderConfig {
+  apiKey?: string;
+  baseUrl: string;
+  model?: string;
+  reasoningEffortMax: ProviderReasoningEffortMax;
+  wireApi: ProviderWireApi;
+}
+
 export interface ReasonixConfig {
   apiKey?: string;
   baseUrl?: string;
   /** Explicit chat model pin. When absent, the selected preset supplies the model. */
   model?: string;
+  /** Display label for the currently configured OpenAI-compatible provider. */
+  customProviderName?: string;
+  /** Explicit provider identity; legacy configs are inferred from endpoint and model. */
+  modelProvider?: ModelProviderKind;
+  /** Persisted provider registry. Legacy single-provider fields are migrated on first mutation. */
+  modelProviders?: ModelProviderConfig[];
+  /** Stable id from modelProviders; `deepseek` is the built-in provider. */
+  activeModelProviderId?: string;
   lang?: LanguageCode;
   preset?: PresetName;
   editMode?: EditMode;
@@ -214,6 +263,7 @@ export interface ReasonixConfig {
   /** Prompt context-window overrides for custom or renamed provider models. */
   contextWindowOverride?: Record<string, number>;
   rateLimit?: RateLimitConfig;
+  diagnostics?: DiagnosticsUserConfig;
   /** QQ Bot configuration */
   qq?: QQBotConfig;
 }
@@ -328,6 +378,33 @@ export function writeConfig(cfg: ReasonixConfig, path: string = defaultConfigPat
   } catch {
     /* ignore on platforms without chmod */
   }
+}
+
+export function loadDiagnosticsEnabled(
+  path: string = defaultConfigPath(),
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  const override = env.CARBONCODE_DIAGNOSTICS?.trim().toLowerCase();
+  if (override === "0" || override === "false" || override === "off") return false;
+  if (override === "1" || override === "true" || override === "on") return true;
+  return readConfig(path).diagnostics?.enabled !== false;
+}
+
+export function loadDiagnosticsEndpoint(
+  path: string = defaultConfigPath(),
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const configured =
+    env.CARBONCODE_DIAGNOSTICS_ENDPOINT?.trim() ||
+    readConfig(path).diagnostics?.endpoint?.trim() ||
+    "https://code.ai6666.com/api/v1/client-diagnostics/events";
+  return configured.replace(/\/+$/, "");
+}
+
+export function saveDiagnosticsEnabled(enabled: boolean, path: string = defaultConfigPath()): void {
+  const cfg = readConfig(path);
+  cfg.diagnostics = { ...cfg.diagnostics, enabled };
+  writeConfig(cfg, path);
 }
 
 /** Resolve the language from config file. */
@@ -466,14 +543,297 @@ export function saveLanguage(lang: LanguageCode, path: string = defaultConfigPat
 
 /** Resolve the API key from env var first, then the config file. */
 export function loadApiKey(path: string = defaultConfigPath()): string | undefined {
+  if (Array.isArray(readConfig(path).modelProviders)) {
+    return loadActiveModelProvider(path).apiKey;
+  }
   if (process.env.DEEPSEEK_API_KEY) return process.env.DEEPSEEK_API_KEY;
   return readConfig(path).apiKey;
 }
 
 /** env > config > undefined. Client falls back to api.deepseek.com when undefined. */
 export function loadBaseUrl(path: string = defaultConfigPath()): string | undefined {
+  if (Array.isArray(readConfig(path).modelProviders)) {
+    return loadActiveModelProvider(path).baseUrl;
+  }
   if (process.env.DEEPSEEK_BASE_URL) return process.env.DEEPSEEK_BASE_URL;
   return readConfig(path).baseUrl;
+}
+
+export function loadCustomProviderName(path: string = defaultConfigPath()): string | undefined {
+  const name = readConfig(path).customProviderName;
+  return typeof name === "string" && name.trim() ? name.trim() : undefined;
+}
+
+function isOfficialDeepSeekBaseUrl(value: string | undefined): boolean {
+  if (!value?.trim()) return true;
+  const normalized = value.trim().toLowerCase().replace(/\/+$/, "");
+  return normalized === "https://api.deepseek.com" || normalized === "https://api.deepseek.com/v1";
+}
+
+export const DEEPSEEK_PROVIDER_ID = "deepseek";
+
+function inferLegacyModelProviderKind(
+  cfg: ReasonixConfig,
+  env: NodeJS.ProcessEnv,
+): ModelProviderKind {
+  if (cfg.modelProvider === "deepseek" || cfg.modelProvider === "custom") {
+    return cfg.modelProvider;
+  }
+  if (typeof cfg.customProviderName === "string" && cfg.customProviderName.trim()) return "custom";
+  const baseUrl = env.DEEPSEEK_BASE_URL?.trim() || cfg.baseUrl;
+  if (!isOfficialDeepSeekBaseUrl(baseUrl)) return "custom";
+  const model = cfg.model?.trim();
+  if (
+    model &&
+    !new Set(["deepseek-v4-flash", "deepseek-v4-pro", "deepseek-chat", "deepseek-reasoner"]).has(
+      model,
+    )
+  ) {
+    return "custom";
+  }
+  return "deepseek";
+}
+
+function normalizeModelProvider(value: unknown): ModelProviderConfig | null {
+  if (!isPlainObject(value)) return null;
+  const kind = value.kind === "deepseek" || value.kind === "custom" ? value.kind : null;
+  if (!kind) return null;
+  const id = typeof value.id === "string" ? value.id.trim().slice(0, 80) : "";
+  if (!id) return null;
+  const nameValue = typeof value.name === "string" ? value.name.trim().slice(0, 80) : "";
+  const provider: ModelProviderConfig = {
+    id: kind === "deepseek" ? DEEPSEEK_PROVIDER_ID : id,
+    kind,
+    name: nameValue || (kind === "deepseek" ? "DeepSeek" : "OpenAI compatible"),
+  };
+  if (typeof value.apiKey === "string" && value.apiKey.trim())
+    provider.apiKey = value.apiKey.trim();
+  if (typeof value.baseUrl === "string" && value.baseUrl.trim()) {
+    provider.baseUrl = value.baseUrl.trim().replace(/\/+$/, "");
+  }
+  if (typeof value.model === "string" && value.model.trim()) provider.model = value.model.trim();
+  if (Array.isArray(value.models)) {
+    const models = [
+      ...new Set(
+        value.models
+          .filter((model): model is string => typeof model === "string")
+          .map((model) => model.trim())
+          .filter(Boolean),
+      ),
+    ].slice(0, 500);
+    if (models.length) provider.models = models;
+  }
+  if (kind === "deepseek" && !provider.models?.length) {
+    provider.models = ["deepseek-v4-flash", "deepseek-v4-pro"];
+  }
+  if (typeof value.preset === "string") provider.preset = value.preset as PresetName;
+  if (
+    value.reasoningEffortMax === "auto" ||
+    value.reasoningEffortMax === "none" ||
+    value.reasoningEffortMax === "high" ||
+    value.reasoningEffortMax === "xhigh" ||
+    value.reasoningEffortMax === "max"
+  ) {
+    provider.reasoningEffortMax = value.reasoningEffortMax;
+  }
+  if (
+    value.wireApi === "auto" ||
+    value.wireApi === "chat_completions" ||
+    value.wireApi === "responses"
+  ) {
+    provider.wireApi = value.wireApi;
+  }
+  return provider;
+}
+
+function modelProvidersFromConfig(
+  cfg: ReasonixConfig,
+  env: NodeJS.ProcessEnv,
+): ModelProviderConfig[] {
+  const persisted = Array.isArray(cfg.modelProviders)
+    ? cfg.modelProviders
+        .map(normalizeModelProvider)
+        .filter((item): item is ModelProviderConfig => !!item)
+    : [];
+  const unique = new Map<string, ModelProviderConfig>();
+  for (const provider of persisted) unique.set(provider.id, provider);
+
+  const legacyKind = inferLegacyModelProviderKind(cfg, env);
+  if (!unique.has(DEEPSEEK_PROVIDER_ID)) {
+    unique.set(DEEPSEEK_PROVIDER_ID, {
+      id: DEEPSEEK_PROVIDER_ID,
+      kind: "deepseek",
+      name: "DeepSeek",
+      apiKey: persisted.length === 0 && legacyKind === "deepseek" ? cfg.apiKey : undefined,
+      baseUrl: persisted.length === 0 && legacyKind === "deepseek" ? cfg.baseUrl : undefined,
+      model: persisted.length === 0 && legacyKind === "deepseek" ? cfg.model : undefined,
+      preset: cfg.preset,
+      reasoningEffortMax: "max",
+      wireApi: "chat_completions",
+    });
+  }
+
+  if (persisted.length === 0 && legacyKind === "custom") {
+    unique.set("custom-legacy", {
+      id: "custom-legacy",
+      kind: "custom",
+      name: cfg.customProviderName?.trim() || "OpenAI compatible",
+      apiKey: env.DEEPSEEK_API_KEY?.trim() || cfg.apiKey,
+      baseUrl: env.DEEPSEEK_BASE_URL?.trim() || cfg.baseUrl,
+      model: cfg.model,
+      reasoningEffortMax: "auto",
+      wireApi: "auto",
+    });
+  }
+  return [...unique.values()];
+}
+
+export function loadModelProviders(
+  path: string = defaultConfigPath(),
+  env: NodeJS.ProcessEnv = process.env,
+): ModelProviderConfig[] {
+  return modelProvidersFromConfig(readConfig(path), env);
+}
+
+function activeProviderIdFromConfig(
+  cfg: ReasonixConfig,
+  providers: readonly ModelProviderConfig[],
+  env: NodeJS.ProcessEnv,
+): string {
+  const explicit = cfg.activeModelProviderId?.trim();
+  if (explicit && providers.some((provider) => provider.id === explicit)) return explicit;
+  if (inferLegacyModelProviderKind(cfg, env) === "custom") {
+    return providers.find((provider) => provider.kind === "custom")?.id ?? DEEPSEEK_PROVIDER_ID;
+  }
+  return DEEPSEEK_PROVIDER_ID;
+}
+
+export function loadActiveModelProvider(
+  path: string = defaultConfigPath(),
+  env: NodeJS.ProcessEnv = process.env,
+): ActiveModelProvider {
+  const cfg = readConfig(path);
+  const providers = modelProvidersFromConfig(cfg, env);
+  const activeId = activeProviderIdFromConfig(cfg, providers, env);
+  const provider =
+    providers.find((item) => item.id === activeId) ??
+    providers.find((item) => item.id === DEEPSEEK_PROVIDER_ID)!;
+  const isDeepSeek = provider.kind === "deepseek";
+  return {
+    ...provider,
+    apiKey: isDeepSeek ? env.DEEPSEEK_API_KEY?.trim() || provider.apiKey : provider.apiKey,
+    baseUrl: isDeepSeek
+      ? env.DEEPSEEK_BASE_URL?.trim() || provider.baseUrl || "https://api.deepseek.com"
+      : provider.baseUrl || "",
+    reasoningEffortMax:
+      provider.reasoningEffortMax ?? (provider.kind === "deepseek" ? "max" : "auto"),
+    wireApi: provider.wireApi ?? (provider.kind === "deepseek" ? "chat_completions" : "auto"),
+  };
+}
+
+function syncLegacyProviderFields(
+  cfg: ReasonixConfig,
+  providers: readonly ModelProviderConfig[],
+  activeId: string,
+): void {
+  const active = providers.find((provider) => provider.id === activeId);
+  if (!active) throw new Error(`Unknown model provider: ${activeId}`);
+  cfg.modelProviders = [...providers];
+  cfg.activeModelProviderId = active.id;
+  cfg.apiKey = active.apiKey;
+  cfg.baseUrl = active.baseUrl;
+  cfg.model = active.model;
+  cfg.modelProvider = active.kind;
+  cfg.customProviderName = active.kind === "custom" ? active.name : undefined;
+  if (active.kind === "deepseek" && active.preset) cfg.preset = active.preset;
+}
+
+export function saveModelProvider(
+  input: Omit<ModelProviderConfig, "id"> & { id?: string },
+  path: string = defaultConfigPath(),
+): ModelProviderConfig {
+  const cfg = readConfig(path);
+  const providers = modelProvidersFromConfig(cfg, {});
+  const id =
+    input.kind === "deepseek"
+      ? DEEPSEEK_PROVIDER_ID
+      : input.id?.trim().slice(0, 80) || `custom-${randomUUID()}`;
+  const current = providers.find((provider) => provider.id === id);
+  const next = normalizeModelProvider({
+    ...current,
+    ...input,
+    id,
+    apiKey: input.apiKey?.trim() || current?.apiKey,
+  });
+  if (!next) throw new Error("Invalid model provider configuration.");
+  const updated = providers.filter((provider) => provider.id !== id);
+  updated.push(next);
+  syncLegacyProviderFields(cfg, updated, id);
+  writeConfig(cfg, path);
+  return next;
+}
+
+export function saveModelProviderModels(
+  id: string,
+  models: readonly string[],
+  path: string = defaultConfigPath(),
+): ModelProviderConfig {
+  const cfg = readConfig(path);
+  const providers = modelProvidersFromConfig(cfg, {});
+  const current = providers.find((provider) => provider.id === id);
+  if (!current) throw new Error(`Unknown model provider: ${id}`);
+  const updatedProvider = normalizeModelProvider({ ...current, models });
+  if (!updatedProvider) throw new Error("Invalid model provider catalog.");
+  const updated = providers.map((provider) =>
+    provider.id === updatedProvider.id ? updatedProvider : provider,
+  );
+  const activeId = activeProviderIdFromConfig(cfg, updated, {});
+  syncLegacyProviderFields(cfg, updated, activeId);
+  writeConfig(cfg, path);
+  return updatedProvider;
+}
+
+export function activateModelProvider(
+  id: string,
+  path: string = defaultConfigPath(),
+): ModelProviderConfig {
+  const cfg = readConfig(path);
+  const providers = modelProvidersFromConfig(cfg, {});
+  const provider = providers.find((item) => item.id === id);
+  if (!provider) throw new Error(`Unknown model provider: ${id}`);
+  syncLegacyProviderFields(cfg, providers, provider.id);
+  writeConfig(cfg, path);
+  return provider;
+}
+
+export function deleteModelProvider(id: string, path: string = defaultConfigPath()): void {
+  if (id === DEEPSEEK_PROVIDER_ID)
+    throw new Error("The built-in DeepSeek provider cannot be deleted.");
+  const cfg = readConfig(path);
+  const providers = modelProvidersFromConfig(cfg, {});
+  if (!providers.some((provider) => provider.id === id)) return;
+  const updated = providers.filter((provider) => provider.id !== id);
+  const activeId =
+    cfg.activeModelProviderId === id
+      ? DEEPSEEK_PROVIDER_ID
+      : activeProviderIdFromConfig(cfg, updated, {});
+  syncLegacyProviderFields(cfg, updated, activeId);
+  writeConfig(cfg, path);
+}
+
+export function saveActiveModelProviderApiKey(
+  apiKey: string,
+  path: string = defaultConfigPath(),
+): void {
+  const active = loadActiveModelProvider(path, {});
+  saveModelProvider({ ...active, apiKey }, path);
+}
+
+export function loadModelProviderKind(
+  path: string = defaultConfigPath(),
+  env: NodeJS.ProcessEnv = process.env,
+): ModelProviderKind {
+  return loadActiveModelProvider(path, env).kind;
 }
 
 function isNonNegativeNumber(value: unknown): value is number {
@@ -512,6 +872,22 @@ export function saveBaseUrl(url: string, path: string = defaultConfigPath()): vo
   } else {
     cfg.baseUrl = undefined;
   }
+  writeConfig(cfg, path);
+}
+
+export function saveCustomProviderName(name: string, path: string = defaultConfigPath()): void {
+  const cfg = readConfig(path);
+  const trimmed = name.trim().slice(0, 80);
+  cfg.customProviderName = trimmed || undefined;
+  writeConfig(cfg, path);
+}
+
+export function saveModelProviderKind(
+  kind: ModelProviderKind,
+  path: string = defaultConfigPath(),
+): void {
+  const cfg = readConfig(path);
+  cfg.modelProvider = kind;
   writeConfig(cfg, path);
 }
 

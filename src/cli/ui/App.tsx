@@ -945,6 +945,11 @@ function AppInner({
     const client = new DeepSeekClient({
       apiKey: initialRuntimeConfig?.apiKey,
       baseUrl: initialRuntimeConfig?.baseUrl ?? loadBaseUrl(),
+      providerName: initialRuntimeConfig?.providerName,
+      reasoningEffortMax: initialRuntimeConfig?.reasoningEffortMax,
+      wireApi: initialRuntimeConfig?.wireApi,
+      maxTools: initialRuntimeConfig?.providerKind === "custom" ? null : DEEPSEEK_MAX_TOOLS,
+      sendThinking: initialRuntimeConfig?.providerKind !== "custom",
     });
     // Register run_skill HERE (not in code.tsx / chat.tsx) because
     // subagent-runAs skills need the client + parent registry to
@@ -1295,16 +1300,26 @@ function AppInner({
       if (!next || sameRuntimeConnectionConfig(applied, next)) return;
       if (busyRef.current || loop.inflight.size > 0) return;
       if (!next.apiKey) {
-        log.pushWarning("config reload skipped", "DeepSeek API key is empty.");
+        log.pushWarning("config reload skipped", "The active model provider API key is empty.");
         applied = next;
         return;
       }
       try {
-        loop.replaceClient(new DeepSeekClient({ apiKey: next.apiKey, baseUrl: next.baseUrl }));
+        loop.replaceClient(
+          new DeepSeekClient({
+            apiKey: next.apiKey,
+            baseUrl: next.baseUrl,
+            providerName: next.providerName,
+            reasoningEffortMax: next.reasoningEffortMax,
+            wireApi: next.wireApi,
+            maxTools: next.providerKind === "custom" ? null : DEEPSEEK_MAX_TOOLS,
+            sendThinking: next.providerKind !== "custom",
+          }),
+        );
         applied = next;
         refreshBalance();
         refreshModels();
-        log.pushInfo("config: DeepSeek connection reloaded");
+        log.pushInfo(`config: ${next.providerName ?? "model provider"} connection reloaded`);
       } catch (err) {
         log.pushWarning("config reload failed", (err as Error).message);
       }

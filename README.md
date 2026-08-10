@@ -70,6 +70,28 @@ export DEEPSEEK_API_KEY=sk-...
 `pro` 对应 `deepseek-v4-pro`，`auto` 默认从 Flash 开始，并在困难回合一次性升级
 到 Pro。
 
+桌面端也支持标准 OpenAI 兼容提供方。在“设置 -> 模型 -> 添加模型提供方”中先填写
+Base URL 和 API Key，应用会自动读取 `/models`、推荐模型，并在 Responses API 与
+Chat Completions API 之间安全适配。服务端返回的新模型可以直接使用，不会因为未在
+本地能力表登记而阻断。完整行为、安全边界和验收方式见
+[OpenAI 兼容提供方文档](docs/OPENAI-COMPATIBLE-PROVIDERS.md)。
+
+### 错误诊断
+
+Carbon Code 默认收集并上传经过脱敏的 `error`/`fatal` 错误元数据和堆栈，用于定位发布版本故障。不会上传对话、模型输出、文件内容、完整命令参数、API Key、令牌、Cookie 或环境变量值。网络不可用时，事件会暂存在 `~/.carboncode/diagnostics/pending/`，队列有数量和大小上限。
+
+可在桌面端“设置 -> 通用 -> 错误诊断”中关闭，也可通过配置或环境变量关闭：
+
+```json
+{
+  "diagnostics": { "enabled": false }
+}
+```
+
+```bash
+export CARBONCODE_DIAGNOSTICS=off
+```
+
 初始化已有项目的规则文件：
 
 ```bash

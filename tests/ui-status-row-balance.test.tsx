@@ -289,14 +289,16 @@ describe("StatusRow + SlashSuggestions composition", () => {
     const text = await renderStatusWithSuggestions();
     const lines = text.split(/\r?\n/);
     const statusLine = lines.find((line) => line.includes("cache 0%"));
+    const setupHeaderIndex = lines.findIndex((line) => /^\s*SETUP\s*$/.test(line));
+    const statusBlock = lines.slice(0, setupHeaderIndex).join("\n");
 
     expect(statusLine).toBeDefined();
     expect(statusLine).toContain("auto");
     expect(statusLine).toContain("default · main");
     expect(statusLine).toContain(`v${VERSION}`);
-    expect(statusLine).toContain("/feedback");
+    expect(statusBlock).toContain("/feedback");
     expect(statusLine).not.toContain("SETUP");
     expect(statusLine).not.toContain("commands");
-    expect(lines.some((line) => /^\s*SETUP\s*$/.test(line))).toBe(true);
+    expect(setupHeaderIndex).toBeGreaterThanOrEqual(0);
   });
 });

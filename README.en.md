@@ -86,6 +86,30 @@ Model presets use the current DeepSeek V4 API IDs: `flash` maps to
 `deepseek-v4-flash`, `pro` maps to `deepseek-v4-pro`, and `auto` starts on Flash
 with one-turn Pro escalation for harder turns.
 
+Desktop also supports standard OpenAI-compatible providers. Under
+**Settings -> Models -> Add model provider**, enter the Base URL and API key first;
+the app discovers `/models`, recommends an agent model, and safely adapts between
+the Responses and Chat Completions APIs. Newly returned model IDs work without a
+local capability-registry entry. See the
+[OpenAI-compatible provider guide](docs/OPENAI-COMPATIBLE-PROVIDERS.md) for the
+runtime contract, security boundary, and repeatable end-to-end verifier.
+
+### Error diagnostics
+
+Carbon Code collects redacted `error` and `fatal` metadata and stack traces by default to diagnose release failures. It does not upload chats, model output, file contents, full command arguments, API keys, tokens, cookies, or environment values. Offline events are kept in a bounded queue under `~/.carboncode/diagnostics/pending/`.
+
+Disable collection from Desktop under **Settings -> General -> Error diagnostics**, or through configuration/environment:
+
+```json
+{
+  "diagnostics": { "enabled": false }
+}
+```
+
+```bash
+export CARBONCODE_DIAGNOSTICS=off
+```
+
 ## License And Attribution
 
 Carbon Code is MIT licensed.

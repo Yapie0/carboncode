@@ -16,14 +16,22 @@ import { codeSystemPrompt } from "../../code/prompt.js";
 import { buildCodeToolset } from "../../code/setup.js";
 import {
   type EditMode,
+  activateModelProvider,
+  deleteModelProvider,
   isPlausibleKey,
+  loadActiveModelProvider,
   loadApiKey,
   loadBaseUrl,
+  loadCustomProviderName,
   loadDesktopOpenTabs,
+  loadDiagnosticsEnabled,
   loadEditMode,
   loadEditor,
   loadMaxOutputTokens,
+  loadMcpToolProfile,
   loadModel,
+  loadModelProviderKind,
+  loadModelProviders,
   loadPreset,
   loadProviderUserId,
   loadReasoningEffort,
@@ -31,14 +39,15 @@ import {
   loadResolvedSkillPaths,
   loadThinkingMode,
   loadWorkspaceDir,
+  normalizeMcpConfig,
   pushRecentWorkspace,
   readConfig,
-  saveApiKey,
-  saveBaseUrl,
+  saveActiveModelProviderApiKey,
   saveDesktopOpenTabs,
   saveEditMode,
   saveEditor,
-  savePreset,
+  saveModelProvider,
+  saveModelProviderModels,
   saveReasoningEffort,
   saveWorkspaceDir,
   writeConfig,
@@ -54,10 +63,12 @@ import {
   pauseGate,
 } from "../../core/pause-gate.js";
 import { autoResolveVerdict } from "../../core/pause-policy.js";
+import { reportDiagnosticError, setDiagnosticsEnabled } from "../../diagnostics.js";
 import { loadDotenv } from "../../env.js";
 import { CacheFirstLoop, DeepSeekClient, ImmutablePrefix } from "../../index.js";
-import { parseMcpSpec } from "../../mcp/spec.js";
+import { parseMcpSpec, specToRaw } from "../../mcp/spec.js";
 import { McpToolDirectory } from "../../mcp/tool-directory.js";
+import { selectCodeMcpToolProfile } from "../../mcp/tool-profile.js";
 import {
   deleteSession,
   listSessionsForWorkspace,
@@ -69,6 +80,13 @@ import {
 } from "../../memory/session.js";
 import { MemoryStore } from "../../memory/user.js";
 import { DEEPSEEK_MAX_TOOLS, type ThinkingPreference, migrateRetiredModel } from "../../models.js";
+import { providerClientOptions } from "../../provider-client-options.js";
+import {
+  normalizeProviderApiKey,
+  normalizeProviderBaseUrl,
+  probeOpenAICompatibleProvider,
+  providerApiKeyValidationError,
+} from "../../provider-probe.js";
 import { SkillStore } from "../../skills.js";
 import { countTokensBounded } from "../../tokenizer.js";
 import type { ChoiceOption } from "../../tools/choice.js";
@@ -103,15 +121,45 @@ type InMessage = { tabId?: string } & (
   | { cmd: "new_chat" }
   | { cmd: "setup_save_key"; key: string }
   | { cmd: "settings_get" }
+  | { cmd: "provider_probe"; nonce: number; id?: string; baseUrl: string; apiKey?: string }
+  | {
+      cmd: "provider_save";
+      nonce: number;
+      id?: string;
+      kind?: "deepseek" | "custom";
+      name: string;
+      baseUrl: string;
+      model: string;
+      apiKey?: string;
+      preset?: "auto" | "flash" | "pro";
+      reasoningEffortMax?: "auto" | "none" | "high" | "xhigh" | "max";
+      wireApi?: "auto" | "chat_completions" | "responses";
+    }
+  | { cmd: "provider_activate"; id: string }
+  | { cmd: "provider_delete"; id: string }
+  | {
+      cmd: "diagnostic_report";
+      category: string;
+      component: string;
+      errorCode?: string;
+      message?: string;
+      stack?: string;
+      severity?: "error" | "fatal";
+      context?: Record<string, unknown>;
+    }
   | {
       cmd: "settings_save";
       reasoningEffort?: "high" | "max";
       editMode?: EditMode;
       budgetUsd?: number | null;
       baseUrl?: string;
+      model?: string;
+      customProviderName?: string;
+      modelProvider?: "deepseek" | "custom";
       workspaceDir?: string;
       preset?: "auto" | "flash" | "pro";
       editor?: string;
+      diagnosticsEnabled?: boolean;
     }
   | { cmd: "mention_query"; query: string; nonce: number }
   | { cmd: "mention_preview"; path: string; nonce: number }
@@ -140,19 +188,50 @@ interface SettingsEvent {
   budgetUsd: number | null;
   baseUrl?: string;
   apiKeyPrefix?: string;
+  customProviderName?: string;
+  modelProvider: "deepseek" | "custom";
+  activeModelProviderId: string;
+  modelProviders: Array<{
+    id: string;
+    kind: "deepseek" | "custom";
+    name: string;
+    baseUrl?: string;
+    model?: string;
+    models?: string[];
+    preset?: "auto" | "flash" | "pro" | "fast" | "smart" | "max";
+    reasoningEffortMax: "auto" | "none" | "high" | "xhigh" | "max";
+    wireApi: "auto" | "chat_completions" | "responses";
+    apiKeyPrefix?: string;
+  }>;
   workspaceDir: string;
   recentWorkspaces: string[];
   model: string;
   preset: "auto" | "flash" | "pro";
   editor?: string;
+  diagnosticsEnabled: boolean;
   version: string;
 }
 
 interface BalanceEvent {
   type: "$balance";
+  providerBaseUrl: string;
   currency: string;
   total: number;
   isAvailable: boolean;
+}
+
+interface ProviderProbeEvent {
+  type: "$provider_probe";
+  nonce: number;
+  baseUrl: string;
+  ok: boolean;
+  models?: string[];
+  recommendedModel?: string;
+  providerName?: string;
+  wireApi?: "auto" | "chat_completions" | "responses";
+  code?: string;
+  message?: string;
+  saved?: boolean;
 }
 
 interface PlanRequiredEvent {
@@ -394,6 +473,7 @@ type EmittableEvent =
   | NeedsSetupEvent
   | SettingsEvent
   | BalanceEvent
+  | ProviderProbeEvent
   | MentionResultsEvent
   | MentionPreviewEvent
   | TabOpenedEvent
@@ -466,7 +546,23 @@ function buildLoadedMessages(records: ChatMessage[]): LoadedMessage[] {
 }
 
 function emitSettings(tab: Tab): void {
-  const apiKey = loadApiKey();
+  const activeProvider = loadActiveModelProvider();
+  const apiKey = activeProvider.apiKey;
+  const modelProviders = loadModelProviders().map((provider) => ({
+    id: provider.id,
+    kind: provider.kind,
+    name: provider.name,
+    baseUrl: provider.baseUrl,
+    model: provider.model,
+    models: provider.models,
+    preset: provider.preset,
+    reasoningEffortMax:
+      provider.reasoningEffortMax ?? (provider.kind === "deepseek" ? "max" : "auto"),
+    wireApi: provider.wireApi ?? (provider.kind === "deepseek" ? "chat_completions" : "auto"),
+    apiKeyPrefix: provider.apiKey
+      ? `${provider.apiKey.slice(0, 6)}...${provider.apiKey.slice(-3)}`
+      : undefined,
+  }));
   const recent = loadRecentWorkspaces().filter((p) => p !== tab.rootDir);
   emit(
     {
@@ -475,12 +571,17 @@ function emitSettings(tab: Tab): void {
       editMode: loadEditMode(),
       budgetUsd: tab.runtime?.loop.budgetUsd ?? null,
       baseUrl: loadBaseUrl(),
+      customProviderName: loadCustomProviderName(),
+      modelProvider: loadModelProviderKind(),
+      activeModelProviderId: activeProvider.id,
+      modelProviders,
       apiKeyPrefix: apiKey ? `${apiKey.slice(0, 6)}…${apiKey.slice(-3)}` : undefined,
       workspaceDir: tab.rootDir,
       recentWorkspaces: recent,
       model: tab.currentModel,
       preset: tab.currentPreset,
       editor: loadEditor(),
+      diagnosticsEnabled: loadDiagnosticsEnabled(),
       version: VERSION,
     },
     tab.id,
@@ -489,13 +590,15 @@ function emitSettings(tab: Tab): void {
 
 async function emitBalance(tab: Tab): Promise<void> {
   if (!tab.runtime) return;
-  const bal = await tab.runtime.loop.client.getBalance().catch(() => null);
+  const client = tab.runtime.loop.client;
+  const bal = await client.getBalance().catch(() => null);
   if (!bal) return;
   const primary = pickPrimaryBalance(bal.balance_infos);
   if (!primary) return;
   emit(
     {
       type: "$balance",
+      providerBaseUrl: client.baseUrl,
       currency: primary.currency,
       total: Number(primary.total_balance),
       isAvailable: bal.is_available,
@@ -551,15 +654,35 @@ function summarizeMcpSpec(raw: string): McpSpecInfo {
   }
 }
 
+function selectDesktopMcpSpecs(): {
+  configured: string[];
+  active: string[];
+  skipped: string[];
+} {
+  const configured = normalizeMcpConfig(readConfig()).map(specToRaw);
+  const selection = selectCodeMcpToolProfile(configured, loadMcpToolProfile());
+  return { configured, ...selection };
+}
+
 function emitMcpSpecs(tab: Tab): void {
-  const cfg = readConfig();
-  const specs = (cfg.mcp ?? []).map((raw) => {
+  const selection = selectDesktopMcpSpecs();
+  const active = new Set(selection.active);
+  const specs = selection.configured.map((raw) => {
     const base = summarizeMcpSpec(raw);
+    if (!active.has(raw)) {
+      return {
+        ...base,
+        status: "disabled" as const,
+        statusReason: "disabled by the automatic code tool profile",
+      };
+    }
     const live = tab.mcpStatuses.get(raw);
     if (!live) return base;
     return { ...base, status: live.kind, statusReason: live.reason, toolCount: live.toolCount };
   });
-  const bridged = specs.length > 0 && specs.every((s) => s.status === "connected");
+  const enabledSpecs = specs.filter((spec) => spec.status !== "disabled");
+  const bridged =
+    enabledSpecs.length > 0 && enabledSpecs.every((spec) => spec.status === "connected");
   emit({ type: "$mcp_specs", specs, bridged }, tab.id);
 }
 
@@ -669,10 +792,12 @@ function mintSessionFor(rootDir: string): string {
 function buildRuntimeFor(tab: Tab): RuntimeState {
   if (!tab.toolset) throw new Error("buildRuntimeFor called before initTabToolset finished");
   const toolset = tab.toolset;
-  const client = new DeepSeekClient({ baseUrl: loadBaseUrl() });
+  const provider = loadActiveModelProvider();
+  const client = new DeepSeekClient(providerClientOptions(provider));
   const prefix = new ImmutablePrefix({ system: tab.system, toolSpecs: toolset.tools.specs() });
   const reasoningEffort = loadReasoningEffort();
-  const { autoEscalate } = resolvePreset(tab.currentPreset);
+  const { autoEscalate: presetAutoEscalate } = resolvePreset(tab.currentPreset);
+  const autoEscalate = provider.kind === "deepseek" ? presetAutoEscalate : false;
   const loop = new CacheFirstLoop({
     client,
     prefix,
@@ -796,6 +921,7 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
   installDesktopCrashGuards();
 
   const tabs = new Map<string, Tab>();
+  const providerCatalogRefreshes = new Set<string>();
   const tabContext = new AsyncLocalStorage<string>();
 
   function activeRunningTab(): Tab | undefined {
@@ -807,9 +933,12 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
   function createTabSkeleton(initialDir?: string): Tab {
     const dir = resolve(initialDir ?? opts.dir ?? loadWorkspaceDir() ?? process.cwd());
     pushRecentWorkspace(dir);
-    const preset = canonicalPresetName(loadPreset());
+    const activeProvider = loadActiveModelProvider();
+    const preset = canonicalPresetName(activeProvider.preset ?? loadPreset());
     const resolved = resolvePreset(preset);
-    const modelSelection = migrateRetiredModel(opts.model || loadModel() || resolved.model);
+    const modelSelection = migrateRetiredModel(
+      opts.model || activeProvider.model || loadModel() || resolved.model,
+    );
     const model = modelSelection.model;
     const tab: Tab = {
       id: nextTabId(),
@@ -854,14 +983,78 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
       modelId: tab.currentModel,
     });
     if (loadApiKey()) {
-      process.env.DEEPSEEK_API_KEY = loadApiKey();
       tab.runtime = buildRuntimeFor(tab);
       void bridgeTabMcp(tab);
     }
   }
 
+  function applyActiveProviderToTabs(): void {
+    const provider = loadActiveModelProvider();
+    const preset = canonicalPresetName(provider.preset ?? loadPreset());
+    const resolved = resolvePreset(preset);
+    const modelSelection = migrateRetiredModel(provider.model || resolved.model);
+    for (const target of tabs.values()) {
+      abortTurn(target);
+      cancelPendingGates(target);
+      target.currentPreset = preset;
+      target.currentModel = modelSelection.model;
+      target.thinkingMode = modelSelection.thinking ?? loadThinkingMode();
+      if (target.toolset) {
+        target.system = codeSystemPrompt(target.rootDir, {
+          hasSemanticSearch: target.toolset.semantic.enabled,
+          modelId: target.currentModel,
+        });
+        target.runtime = provider.apiKey ? buildRuntimeFor(target) : null;
+      }
+      if (target.runtime) emit({ type: "$ready" }, target.id);
+      else emit({ type: "$needs_setup", reason: "no_api_key" }, target.id);
+      emitSettings(target);
+      void emitBalance(target);
+    }
+  }
+
+  function refreshActiveProviderCatalog(): void {
+    const provider = loadActiveModelProvider();
+    if (
+      provider.kind !== "custom" ||
+      !provider.baseUrl ||
+      !provider.apiKey ||
+      provider.models?.length ||
+      providerCatalogRefreshes.has(provider.id)
+    ) {
+      return;
+    }
+    providerCatalogRefreshes.add(provider.id);
+    void probeOpenAICompatibleProvider({
+      baseUrl: provider.baseUrl,
+      apiKey: provider.apiKey,
+    })
+      .then((result) => {
+        if (!result.ok) return;
+        saveModelProviderModels(provider.id, result.models);
+        for (const target of tabs.values()) emitSettings(target);
+      })
+      .catch(() => undefined)
+      .finally(() => providerCatalogRefreshes.delete(provider.id));
+  }
+
   function bridgeTabMcp(tab: Tab): Promise<void> {
     if (!tab.runtime || !tab.toolset) return Promise.resolve();
+    const selection = selectDesktopMcpSpecs();
+    const active = new Set(selection.active);
+    for (const raw of selection.configured) {
+      if (active.has(raw)) {
+        const current = tab.mcpStatuses.get(raw);
+        if (current?.kind === "disabled" && current.reason === "automatic code tool profile") {
+          tab.mcpStatuses.delete(raw);
+        }
+      } else {
+        tab.mcpStatuses.set(raw, {
+          kind: "disabled",
+          reason: "automatic code tool profile",
+        });
+      }
+    }
     if (tab.mcpRuntime) {
       // Already constructed — reload so new/removed specs settle without restart.
       return tab.mcpRuntime
@@ -871,7 +1064,7 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
           emit({ type: "$error", message: `mcp reload failed: ${(err as Error).message}` }, tab.id);
         });
     }
-    const requested = (readConfig().mcp ?? []).length;
+    const requested = selection.active.length;
     if (requested === 0) return Promise.resolve();
     const runtime = createMcpRuntime({
       getTools: () => {
@@ -879,7 +1072,9 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
         return tab.toolset.tools;
       },
       getMcpPrefix: () => undefined,
-      getRequestedCount: () => requested,
+      getRequestedCount: () => selectDesktopMcpSpecs().active.length,
+      selectConfiguredSpecs: (specs) =>
+        selectCodeMcpToolProfile(specs, loadMcpToolProfile()).active,
       maxTools: DEEPSEEK_MAX_TOOLS,
       getDirectory: () => {
         if (!tab.toolset) return undefined;
@@ -1035,6 +1230,7 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
     if (tab.runtime) tab.runtime = buildRuntimeFor(tab);
     emitSessions(tab);
     emitSettings(tab);
+    refreshActiveProviderCatalog();
     emitSkills(tab);
   }
 
@@ -1371,6 +1567,7 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
     emit({ type: "$tab_opened", workspaceDir: tab.rootDir }, tab.id);
     emitSessions(tab);
     emitSettings(tab);
+    refreshActiveProviderCatalog();
     emitMcpSpecs(tab);
     emitSkills(tab);
     emitMemory(tab);
@@ -1419,6 +1616,20 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
       return;
     }
     lastFrontendSeenAt = Date.now();
+
+    if (msg.cmd === "diagnostic_report") {
+      reportDiagnosticError({
+        source: "desktop",
+        severity: msg.severity,
+        category: msg.category,
+        component: msg.component,
+        errorCode: msg.errorCode,
+        message: msg.message,
+        stack: msg.stack,
+        context: msg.context,
+      });
+      return;
+    }
 
     if (msg.cmd === "runtime_hello") {
       replayRuntimeState();
@@ -1486,8 +1697,7 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
         return;
       }
       try {
-        saveApiKey(key);
-        process.env.DEEPSEEK_API_KEY = key;
+        saveActiveModelProviderApiKey(key);
         for (const tab of tabs.values()) {
           // Skeleton tabs still mid-bootstrap pick up the new key inside
           // initTabToolset's tail when buildCodeToolset settles — don't
@@ -1503,7 +1713,10 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
           void emitBalance(tab);
         }
       } catch (err) {
-        emit({ type: "$error", message: `saveApiKey failed: ${(err as Error).message}` });
+        emit({
+          type: "$error",
+          message: `save provider API key failed: ${(err as Error).message}`,
+        });
       }
       return;
     }
@@ -1594,7 +1807,10 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
     if (msg.cmd === "skill_run") {
       if (!tab.runtime) {
         emit(
-          { type: "$error", message: "Not configured yet — paste your DeepSeek API key first." },
+          {
+            type: "$error",
+            message: "No model provider is configured yet. Open Models settings to connect one.",
+          },
           tab.id,
         );
         return;
@@ -1685,8 +1901,211 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
       emitSettings(tab);
       return;
     }
+    if (msg.cmd === "provider_probe") {
+      const apiKey =
+        msg.apiKey?.trim() ||
+        (msg.id
+          ? loadModelProviders().find((provider) => provider.id === msg.id)?.apiKey
+          : undefined);
+      void probeOpenAICompatibleProvider({ baseUrl: msg.baseUrl, apiKey }).then((result) => {
+        if (result.ok && msg.id) {
+          try {
+            saveModelProviderModels(msg.id, result.models);
+            for (const target of tabs.values()) emitSettings(target);
+          } catch {
+            // The provider may have been deleted while this asynchronous probe was in flight.
+          }
+        }
+        emit(
+          result.ok
+            ? {
+                type: "$provider_probe",
+                nonce: msg.nonce,
+                baseUrl: result.baseUrl,
+                ok: true,
+                models: result.models,
+                recommendedModel: result.recommendedModel,
+                providerName: result.providerName,
+                wireApi: result.wireApi,
+                saved: false,
+              }
+            : {
+                type: "$provider_probe",
+                nonce: msg.nonce,
+                baseUrl: result.baseUrl,
+                ok: false,
+                code: result.code,
+                message: result.message,
+                saved: false,
+              },
+          tab.id,
+        );
+      });
+      return;
+    }
+    if (msg.cmd === "provider_save") {
+      const kind = msg.kind ?? "custom";
+      const existing = msg.id
+        ? loadModelProviders().find((provider) => provider.id === msg.id)
+        : kind === "deepseek"
+          ? loadModelProviders().find((provider) => provider.id === "deepseek")
+          : undefined;
+      const apiKey = normalizeProviderApiKey(msg.apiKey || existing?.apiKey);
+      const model = msg.model.trim();
+      const name = msg.name.trim().slice(0, 80);
+      if (kind === "deepseek") {
+        try {
+          const baseUrl = normalizeProviderBaseUrl(
+            msg.baseUrl.trim() || "https://api.deepseek.com",
+          );
+          if (!baseUrl) throw new Error("Enter a valid HTTP(S) API base URL.");
+          const apiKeyError = providerApiKeyValidationError(apiKey);
+          if (apiKeyError) throw new Error(apiKeyError);
+          saveModelProvider({
+            id: "deepseek",
+            kind: "deepseek",
+            name: "DeepSeek",
+            apiKey,
+            baseUrl,
+            model: model || resolvePreset(msg.preset ?? "auto").model,
+            models: ["deepseek-v4-flash", "deepseek-v4-pro"],
+            preset: msg.preset ?? "auto",
+            reasoningEffortMax: msg.reasoningEffortMax ?? "max",
+            wireApi: "chat_completions",
+          });
+          applyActiveProviderToTabs();
+          emit(
+            {
+              type: "$provider_probe",
+              nonce: msg.nonce,
+              baseUrl,
+              ok: true,
+              models: [model],
+              saved: true,
+            },
+            tab.id,
+          );
+        } catch (error) {
+          emit(
+            {
+              type: "$provider_probe",
+              nonce: msg.nonce,
+              baseUrl: msg.baseUrl.trim() || "https://api.deepseek.com",
+              ok: false,
+              code: "save_failed",
+              message: error instanceof Error ? error.message : String(error),
+              saved: false,
+            },
+            tab.id,
+          );
+        }
+        return;
+      }
+      void probeOpenAICompatibleProvider({ baseUrl: msg.baseUrl, apiKey }).then((result) => {
+        if (!result.ok) {
+          emit(
+            {
+              type: "$provider_probe",
+              nonce: msg.nonce,
+              baseUrl: result.baseUrl,
+              ok: false,
+              code: result.code,
+              message: result.message,
+              saved: false,
+            },
+            tab.id,
+          );
+          return;
+        }
+        if (!model || !result.models.includes(model)) {
+          emit(
+            {
+              type: "$provider_probe",
+              nonce: msg.nonce,
+              baseUrl: result.baseUrl,
+              ok: false,
+              code: "model_not_found",
+              message: "Select a model returned by this provider before saving.",
+              models: result.models,
+              saved: false,
+            },
+            tab.id,
+          );
+          return;
+        }
+        try {
+          if (!apiKey) throw new Error("A provider API key is required.");
+          saveModelProvider({
+            id: msg.id,
+            kind: "custom",
+            name: name || result.providerName,
+            apiKey,
+            baseUrl: result.baseUrl,
+            model,
+            models: result.models,
+            reasoningEffortMax: msg.reasoningEffortMax ?? existing?.reasoningEffortMax ?? "auto",
+            wireApi: msg.wireApi ?? existing?.wireApi ?? "auto",
+          });
+          applyActiveProviderToTabs();
+          emit(
+            {
+              type: "$provider_probe",
+              nonce: msg.nonce,
+              baseUrl: result.baseUrl,
+              ok: true,
+              models: result.models,
+              recommendedModel: result.recommendedModel,
+              providerName: result.providerName,
+              wireApi: result.wireApi,
+              saved: true,
+            },
+            tab.id,
+          );
+        } catch (error) {
+          emit(
+            {
+              type: "$provider_probe",
+              nonce: msg.nonce,
+              baseUrl: result.baseUrl,
+              ok: false,
+              code: "save_failed",
+              message: error instanceof Error ? error.message : String(error),
+              saved: false,
+            },
+            tab.id,
+          );
+        }
+      });
+      return;
+    }
+    if (msg.cmd === "provider_activate") {
+      try {
+        activateModelProvider(msg.id);
+        applyActiveProviderToTabs();
+      } catch (error) {
+        emit(
+          { type: "$error", message: `provider activation failed: ${(error as Error).message}` },
+          tab.id,
+        );
+      }
+      return;
+    }
+    if (msg.cmd === "provider_delete") {
+      try {
+        deleteModelProvider(msg.id);
+        applyActiveProviderToTabs();
+      } catch (error) {
+        emit(
+          { type: "$error", message: `provider deletion failed: ${(error as Error).message}` },
+          tab.id,
+        );
+      }
+      return;
+    }
     if (msg.cmd === "settings_save") {
       try {
+        let activeProvider = loadActiveModelProvider();
+        let providerConfigChanged = false;
         if (msg.reasoningEffort !== undefined) {
           saveReasoningEffort(msg.reasoningEffort);
           tab.runtime?.loop.configure({ reasoningEffort: msg.reasoningEffort });
@@ -1696,29 +2115,58 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
           tab.budgetUsd = msg.budgetUsd ?? undefined;
           tab.runtime?.loop.setBudget(msg.budgetUsd);
         }
-        if (msg.baseUrl !== undefined) saveBaseUrl(msg.baseUrl);
+        if (msg.baseUrl !== undefined) {
+          activeProvider = { ...activeProvider, baseUrl: msg.baseUrl.trim() };
+          providerConfigChanged = true;
+        }
+        if (msg.customProviderName !== undefined) {
+          activeProvider = {
+            ...activeProvider,
+            name: msg.customProviderName.trim() || activeProvider.name,
+          };
+          providerConfigChanged = true;
+        }
+        if (msg.modelProvider !== undefined && msg.modelProvider !== activeProvider.kind) {
+          const requested = loadModelProviders().find(
+            (provider) => provider.kind === msg.modelProvider,
+          );
+          if (!requested) throw new Error(`No ${msg.modelProvider} provider is configured.`);
+          activateModelProvider(requested.id);
+          activeProvider = loadActiveModelProvider();
+          providerConfigChanged = true;
+        }
         if (msg.workspaceDir !== undefined) {
           void switchWorkspace(tab, msg.workspaceDir);
           return;
         }
         if (msg.editor !== undefined) saveEditor(msg.editor);
-        if (msg.preset !== undefined) {
-          tab.currentPreset = canonicalPresetName(msg.preset);
-          const resolved = resolvePreset(tab.currentPreset);
-          tab.currentModel = resolved.model;
-          tab.thinkingMode = loadThinkingMode();
-          savePreset(tab.currentPreset);
-          // If the toolset isn't built yet (mid-bootstrap), let initTabToolset
-          // see the updated currentModel and compute system + runtime once.
-          if (tab.toolset) {
-            tab.system = codeSystemPrompt(tab.rootDir, {
-              hasSemanticSearch: tab.toolset.semantic.enabled,
-              modelId: tab.currentModel,
-            });
-            if (tab.runtime) tab.runtime = buildRuntimeFor(tab);
-          }
+        if (msg.diagnosticsEnabled !== undefined) {
+          setDiagnosticsEnabled(msg.diagnosticsEnabled);
         }
-        emitSettings(tab);
+        if (msg.preset !== undefined) {
+          const preset = canonicalPresetName(msg.preset);
+          activeProvider = {
+            ...activeProvider,
+            preset,
+            model:
+              activeProvider.kind === "deepseek"
+                ? resolvePreset(preset).model
+                : activeProvider.model,
+          };
+          providerConfigChanged = true;
+        }
+        if (msg.model !== undefined) {
+          const model = msg.model.trim();
+          if (!model) throw new Error("model must not be empty");
+          activeProvider = { ...activeProvider, model };
+          providerConfigChanged = true;
+        }
+        if (providerConfigChanged) {
+          saveModelProvider(activeProvider);
+          applyActiveProviderToTabs();
+        } else {
+          emitSettings(tab);
+        }
       } catch (err) {
         emit(
           { type: "$error", message: `settings_save failed: ${(err as Error).message}` },
@@ -1809,7 +2257,10 @@ export async function desktopCommand(opts: DesktopOptions): Promise<void> {
     if (msg.cmd === "user_input") {
       if (!tab.runtime) {
         emit(
-          { type: "$error", message: "Not configured yet — paste your DeepSeek API key first." },
+          {
+            type: "$error",
+            message: "No model provider is configured yet. Open Models settings to connect one.",
+          },
           tab.id,
         );
         return;

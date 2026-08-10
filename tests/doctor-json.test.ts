@@ -1,6 +1,7 @@
 /** `reasonix doctor --json` — structured report shape and exit-code semantics. */
 
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -141,6 +142,66 @@ describe("doctorCommand i18n", () => {
       expect(semantic?.label.trim()).toBe("语义索引");
       expect(semantic?.detail).toContain("未启用");
     } finally {
+      rmSync(tmpHome, { recursive: true, force: true });
+      rmSync(tmpCwd, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("doctor custom provider reachability", () => {
+  it("uses the standard model catalog instead of requiring a DeepSeek balance endpoint", async () => {
+    const tmpHome = mkdtempSync(join(tmpdir(), "carboncode-doctor-provider-home-"));
+    const tmpCwd = mkdtempSync(join(tmpdir(), "carboncode-doctor-provider-cwd-"));
+    const server = createServer((request, response) => {
+      if (request.url === "/models") {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ object: "list", data: [{ id: "gpt-test" }] }));
+        return;
+      }
+      response.writeHead(404).end();
+    });
+    try {
+      vi.stubEnv("HOME", tmpHome);
+      vi.stubEnv("USERPROFILE", tmpHome);
+      vi.stubEnv("DEEPSEEK_API_KEY", "");
+      await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+      const address = server.address();
+      if (!address || typeof address === "string") throw new Error("test server did not bind");
+      const configDir = join(tmpHome, ".carboncode");
+      mkdirSync(configDir, { recursive: true });
+      writeFileSync(
+        join(configDir, "config.json"),
+        JSON.stringify({
+          activeModelProviderId: "custom-test",
+          modelProviders: [
+            {
+              id: "deepseek",
+              kind: "deepseek",
+              name: "DeepSeek",
+            },
+            {
+              id: "custom-test",
+              kind: "custom",
+              name: "Test relay",
+              apiKey: "opaque-test-token-1234",
+              baseUrl: `http://127.0.0.1:${address.port}`,
+              model: "gpt-test",
+              wireApi: "auto",
+              reasoningEffortMax: "auto",
+            },
+          ],
+        }),
+        "utf8",
+      );
+
+      const checks = await runDoctorChecks(tmpCwd);
+      expect(checks.find((check) => check.id === "api-reach")).toMatchObject({
+        level: "ok",
+        detail: "Test relay: 1 models available.",
+      });
+    } finally {
+      vi.unstubAllEnvs();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
       rmSync(tmpHome, { recursive: true, force: true });
       rmSync(tmpCwd, { recursive: true, force: true });
     }

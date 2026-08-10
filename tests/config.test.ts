@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  activateModelProvider,
   addProjectPathAllowed,
   addProjectShellAllowed,
   clearProjectPathAllowed,
@@ -10,14 +11,20 @@ import {
   defaultConfigPath,
   editModeHintShown,
   isPlausibleKey,
+  loadActiveModelProvider,
   loadApiKey,
   loadBaseUrl,
+  loadCustomProviderName,
   loadDesktopOpenTabs,
+  loadDiagnosticsEnabled,
+  loadDiagnosticsEndpoint,
   loadEditMode,
   loadIndexConfig,
   loadIndexUserConfig,
   loadMcpToolProfile,
   loadModel,
+  loadModelProviderKind,
+  loadModelProviders,
   loadPricingOverride,
   loadProjectPathAllowed,
   loadProjectShellAllowed,
@@ -36,10 +43,14 @@ import {
   resolveThemePreference,
   saveApiKey,
   saveBaseUrl,
+  saveCustomProviderName,
   saveDesktopOpenTabs,
+  saveDiagnosticsEnabled,
   saveEditMode,
   saveIndexConfig,
   saveModel,
+  saveModelProvider,
+  saveModelProviderKind,
   savePreset,
   saveReasoningEffort,
   saveSemanticEmbeddingConfig,
@@ -93,6 +104,169 @@ describe("config", () => {
     saveModel(" custom-chat-model ", path);
     expect(loadModel(path)).toBe("custom-chat-model");
     expect(readConfig(path).model).toBe("custom-chat-model");
+  });
+
+  it("persists and normalizes the custom provider display name", () => {
+    saveCustomProviderName("  My OpenAI Gateway  ", path);
+    expect(loadCustomProviderName(path)).toBe("My OpenAI Gateway");
+    expect(readConfig(path).customProviderName).toBe("My OpenAI Gateway");
+
+    saveCustomProviderName("", path);
+    expect(loadCustomProviderName(path)).toBeUndefined();
+  });
+
+  it("persists an explicit model provider identity", () => {
+    saveModelProviderKind("custom", path);
+    expect(loadModelProviderKind(path, {})).toBe("custom");
+    expect(readConfig(path).modelProvider).toBe("custom");
+  });
+
+  it("migrates a legacy non-DeepSeek endpoint to a custom provider", () => {
+    writeConfig({ baseUrl: "https://cch.mp9.io", model: "deepseek-v4-flash" }, path);
+    expect(loadModelProviderKind(path, {})).toBe("custom");
+  });
+
+  it("lets an explicit DeepSeek provider use a compatible gateway endpoint", () => {
+    writeConfig(
+      {
+        baseUrl: "https://deepseek-gateway.example/v1",
+        modelProvider: "deepseek",
+      },
+      path,
+    );
+    expect(loadModelProviderKind(path, {})).toBe("deepseek");
+  });
+
+  it("migrates the legacy custom provider into a stable provider registry", () => {
+    writeConfig(
+      {
+        apiKey: "sk-custom-1234567890",
+        baseUrl: "https://gateway.example/v1",
+        model: "gpt-5.4",
+        customProviderName: "Gateway",
+        modelProvider: "custom",
+      },
+      path,
+    );
+
+    const providers = loadModelProviders(path, {});
+    expect(providers.map((provider) => provider.id)).toEqual(["deepseek", "custom-legacy"]);
+    expect(loadActiveModelProvider(path, {})).toMatchObject({
+      id: "custom-legacy",
+      name: "Gateway",
+      baseUrl: "https://gateway.example/v1",
+      model: "gpt-5.4",
+      reasoningEffortMax: "auto",
+      wireApi: "auto",
+    });
+  });
+
+  it("keeps legacy environment-only custom provider credentials during migration", () => {
+    writeConfig({ model: "gpt-5.4" }, path);
+
+    expect(
+      loadActiveModelProvider(path, {
+        DEEPSEEK_API_KEY: "sk-legacy-relay-1234567890",
+        DEEPSEEK_BASE_URL: "https://legacy-relay.example/v1",
+      }),
+    ).toMatchObject({
+      id: "custom-legacy",
+      kind: "custom",
+      apiKey: "sk-legacy-relay-1234567890",
+      baseUrl: "https://legacy-relay.example/v1",
+      model: "gpt-5.4",
+      reasoningEffortMax: "auto",
+      wireApi: "auto",
+    });
+  });
+
+  it("keeps provider credentials isolated while switching active providers", () => {
+    saveModelProvider(
+      {
+        kind: "deepseek",
+        name: "DeepSeek",
+        apiKey: "sk-deepseek-1234567890",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-v4-pro",
+        preset: "pro",
+        reasoningEffortMax: "max",
+      },
+      path,
+    );
+    const custom = saveModelProvider(
+      {
+        kind: "custom",
+        name: "GPT relay",
+        apiKey: "sk-openai-1234567890",
+        baseUrl: "https://relay.example/v1/",
+        model: "gpt-5.4",
+        models: ["gpt-5.4", "gpt-5.5", "gpt-5.4", ""],
+        reasoningEffortMax: "high",
+      },
+      path,
+    );
+
+    expect(loadActiveModelProvider(path, {})).toMatchObject({
+      id: custom.id,
+      apiKey: "sk-openai-1234567890",
+      baseUrl: "https://relay.example/v1",
+      model: "gpt-5.4",
+      models: ["gpt-5.4", "gpt-5.5"],
+    });
+
+    activateModelProvider("deepseek", path);
+    expect(loadActiveModelProvider(path, {})).toMatchObject({
+      id: "deepseek",
+      apiKey: "sk-deepseek-1234567890",
+      baseUrl: "https://api.deepseek.com",
+      model: "deepseek-v4-pro",
+    });
+  });
+
+  it("does not let DeepSeek environment variables override a custom provider", () => {
+    const custom = saveModelProvider(
+      {
+        kind: "custom",
+        name: "GPT relay",
+        apiKey: "sk-openai-1234567890",
+        baseUrl: "https://relay.example/v1",
+        model: "gpt-5.4",
+      },
+      path,
+    );
+    expect(custom.kind).toBe("custom");
+
+    expect(
+      loadActiveModelProvider(path, {
+        DEEPSEEK_API_KEY: "sk-deepseek-env-1234567890",
+        DEEPSEEK_BASE_URL: "https://api.deepseek.com",
+      }),
+    ).toMatchObject({
+      id: custom.id,
+      apiKey: "sk-openai-1234567890",
+      baseUrl: "https://relay.example/v1",
+    });
+  });
+
+  it("defaults error diagnostics on and persists an opt-out", () => {
+    expect(loadDiagnosticsEnabled(path, {})).toBe(true);
+    saveDiagnosticsEnabled(false, path);
+    expect(loadDiagnosticsEnabled(path, {})).toBe(false);
+    expect(readConfig(path).diagnostics?.enabled).toBe(false);
+  });
+
+  it("allows environment overrides for diagnostics", () => {
+    writeConfig(
+      { diagnostics: { enabled: false, endpoint: "https://collector.example/v1/" } },
+      path,
+    );
+    expect(loadDiagnosticsEnabled(path, { CARBONCODE_DIAGNOSTICS: "on" })).toBe(true);
+    expect(loadDiagnosticsEndpoint(path, {})).toBe("https://collector.example/v1");
+    expect(
+      loadDiagnosticsEndpoint(path, {
+        CARBONCODE_DIAGNOSTICS_ENDPOINT: "https://override.example/events/",
+      }),
+    ).toBe("https://override.example/events");
   });
 
   it("clears an explicit model when a preset is selected", () => {

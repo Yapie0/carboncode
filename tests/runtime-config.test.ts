@@ -26,13 +26,13 @@ describe("runtime connection config", () => {
     writeConfig({ apiKey: "sk-old", baseUrl: "https://old.example.com" }, path);
     const source = new RuntimeConnectionConfigSource(path, {});
 
-    expect(source.read()).toEqual({
+    expect(source.read()).toMatchObject({
       apiKey: "sk-old",
       baseUrl: "https://old.example.com",
     });
 
     writeConfig({ apiKey: "sk-new", baseUrl: "https://new.example.com" }, path);
-    expect(source.read()).toEqual({
+    expect(source.read()).toMatchObject({
       apiKey: "sk-new",
       baseUrl: "https://new.example.com",
     });
@@ -58,7 +58,7 @@ describe("runtime connection config", () => {
     });
 
     writeConfig({ apiKey: "sk-new", baseUrl: "https://new.example.com" }, path);
-    expect(source.read()).toEqual({
+    expect(source.read()).toMatchObject({
       apiKey: "sk-env",
       baseUrl: "https://env.example.com",
     });

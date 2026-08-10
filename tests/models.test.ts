@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { loadModel, loadThinkingMode, saveModel, writeConfig } from "../src/config.js";
 import {
   DEEPSEEK_MAX_TOOLS,
+  DEFAULT_CONTEXT_TOKENS,
   FLASH_MODEL_ID,
   PRO_MODEL_ID,
   migrateRetiredModel,
@@ -72,5 +73,10 @@ describe("model capability registry", () => {
     );
     expect(contextTokensFor("custom-model", path)).toBe(777_000);
     expect(pricingFor("custom-model", path)?.output).toBe(3);
+  });
+
+  it("uses silent conservative defaults for unknown compatible models", () => {
+    expect(contextTokensFor("gpt-5.6-luna")).toBe(DEFAULT_CONTEXT_TOKENS);
+    expect(pricingFor("gpt-5.6-luna")).toBeUndefined();
   });
 });

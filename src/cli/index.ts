@@ -5,6 +5,11 @@ import "./heap-limit-launch.js";
 
 import { Command } from "commander";
 import { readConfig } from "../config.js";
+import {
+  flushDiagnostics,
+  installProcessDiagnostics,
+  reportDiagnosticError,
+} from "../diagnostics.js";
 import { t } from "../i18n/index.js";
 import { VERSION } from "../index.js";
 import { listSessions } from "../memory/session.js";
@@ -27,6 +32,7 @@ async function maybeStartCpuProfile(flag: unknown): Promise<boolean> {
 // dispatcher; install before any client (DeepSeek, web tools, dashboard)
 // constructs a fetch closure. Issue #646.
 installProxyIfConfigured();
+installProcessDiagnostics();
 
 markPhase("cli_module_loaded");
 
@@ -365,15 +371,12 @@ program
   .option("--preset <name>", t("ui.presetHintShort"))
   .option("--budget <usd>", t("ui.budgetHintShort"), (v) => Number.parseFloat(v))
   .action(async (opts) => {
-    const defaults = resolveDefaults({
-      model: opts.model,
-      mcp: [],
-      preset: opts.preset,
-      noConfig: false,
-    });
     const { desktopCommand } = await import("./commands/desktop.js");
     await desktopCommand({
-      model: defaults.model,
+      // Keep this undefined unless the internal launcher explicitly passed
+      // --model. desktopCommand resolves the active provider record itself;
+      // pre-resolving here would let a stale legacy top-level model override it.
+      model: opts.model,
       budgetUsd: parseBudgetFlag(opts.budget),
       dir: opts.dir,
     });
@@ -806,6 +809,13 @@ function collectOption(value: string, previous: string[] = []): string[] {
 }
 
 program.parseAsync(process.argv).catch((err) => {
+  reportDiagnosticError({
+    severity: "fatal",
+    category: "process",
+    component: "cli",
+    errorCode: "CLI_COMMAND_FAILED",
+    error: err,
+  });
   console.error(err);
-  process.exit(1);
+  void flushDiagnostics(1_500).finally(() => process.exit(1));
 });

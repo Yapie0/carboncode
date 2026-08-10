@@ -105,6 +105,32 @@ describe("McpToolDirectory", () => {
     expect(client.callTool).not.toHaveBeenCalled();
   });
 
+  it("does not add the directory as a 129th model-facing tool", async () => {
+    const registry = new ToolRegistry();
+    for (let index = 0; index < 128; index++) {
+      registry.register({ name: `native_${index}`, fn: () => "ok" });
+    }
+    const client = {
+      listTools: vi.fn(async () => ({ tools: makeTools(2) })),
+      callTool: vi.fn(),
+    } as unknown as McpClient;
+
+    const bridge = await bridgeMcpTools(client, {
+      registry,
+      maxTools: 128,
+      directory: new McpToolDirectory(registry),
+      serverName: "catalog",
+    });
+
+    expect(registry.visibleSize).toBe(128);
+    expect(registry.has(MCP_DIRECTORY_TOOL_NAME)).toBe(false);
+    expect(bridge.registeredNames).toEqual([]);
+    expect(bridge.skipped).toEqual([
+      { name: "tool_0", reason: "tool budget exhausted (128)" },
+      { name: "tool_1", reason: "tool budget exhausted (128)" },
+    ]);
+  });
+
   it("removes the directory tool after the last catalog entry is unregistered", async () => {
     const registry = new ToolRegistry();
     const directory = new McpToolDirectory(registry);

@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { isAbsolute, parse as parsePath, relative, resolve as resolvePath } from "node:path";
 import { DeepSeekClient } from "../client.js";
 import {
-  loadBaseUrl,
+  loadActiveModelProvider,
   loadEditMode,
   loadProjectShellAllowed,
   loadResolvedSkillPaths,
@@ -13,6 +13,7 @@ import {
   webSearchEngine,
 } from "../config.js";
 import { bootstrapSemanticSearchInCodeMode } from "../index/semantic/tool.js";
+import { providerClientOptions } from "../provider-client-options.js";
 import { ToolRegistry } from "../tools.js";
 import { registerChoiceTool } from "../tools/choice.js";
 import { registerFilesystemTools } from "../tools/filesystem.js";
@@ -103,6 +104,7 @@ export async function buildCodeToolset(opts: CodeToolsetOpts): Promise<CodeTools
   // one. Defer to first subagent dispatch. Declared before applyRoots so the
   // run-skill closure (re-created on every re-root) shares one lazy client.
   let subagentClient: DeepSeekClient | null = null;
+  let subagentProviderSignature: string | null = null;
 
   const applyRoots = (): void => {
     registerFilesystemTools(tools, { rootDir: primaryRoot, additionalRoots });
@@ -125,7 +127,19 @@ export async function buildCodeToolset(opts: CodeToolsetOpts): Promise<CodeTools
       customSkillPaths: loadResolvedSkillPaths(primaryRoot, opts.configPath),
       onSkillInstalled: opts.onSkillInstalled,
       subagentRunner: async (skill, task, signal) => {
-        if (!subagentClient) subagentClient = new DeepSeekClient({ baseUrl: loadBaseUrl() });
+        const provider = loadActiveModelProvider(opts.configPath);
+        const signature = JSON.stringify([
+          provider.id,
+          provider.apiKey,
+          provider.baseUrl,
+          provider.name,
+          provider.reasoningEffortMax,
+          provider.wireApi,
+        ]);
+        if (!subagentClient || subagentProviderSignature !== signature) {
+          subagentClient = new DeepSeekClient(providerClientOptions(provider));
+          subagentProviderSignature = signature;
+        }
         const result = await spawnSubagent({
           client: subagentClient,
           parentRegistry: tools,

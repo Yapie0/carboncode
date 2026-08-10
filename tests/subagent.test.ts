@@ -237,6 +237,19 @@ describe("registerSubagentTool", () => {
         const body = init?.body ? JSON.parse(init.body) : {};
         const tools = (body.tools ?? []) as Array<{ function: { name: string } }>;
         seenToolNames.push(tools.map((t) => t.function.name));
+        if (body.stream === true) {
+          return new Response(
+            [
+              `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: "fine" } }] })}`,
+              "",
+              `data: ${JSON.stringify({ choices: [{ index: 0, delta: {}, finish_reason: "stop" }] })}`,
+              "",
+              "data: [DONE]",
+              "",
+            ].join("\n"),
+            { status: 200, headers: { "Content-Type": "text/event-stream" } },
+          );
+        }
         return new Response(
           JSON.stringify({
             choices: [

@@ -1,6 +1,6 @@
 {
   "name": "@carboncode/cli",
-  "version": "0.2.9",
+  "version": "0.2.14",
   "description": "Chinese-first DeepSeek-powered terminal coding agent for personal developer workflows.",
   "type": "module",
   "bin": {
@@ -37,6 +37,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:mutation": "stryker run",
+    "test:provider-e2e": "tsx scripts/verify-openai-compatible-provider.mts",
+    "verify:provider-matrix": "tsx scripts/verify-provider-model-matrix.mts",
     "lint": "biome check src tests",
     "lint:fix": "biome check --write src tests",
     "format": "biome format --write src tests",

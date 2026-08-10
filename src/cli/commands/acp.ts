@@ -25,7 +25,6 @@ import { codeSystemPrompt } from "../../code/prompt.js";
 import { buildCodeToolset } from "../../code/setup.js";
 import {
   loadApiKey,
-  loadBaseUrl,
   loadMaxOutputTokens,
   loadModel,
   loadPreset,
@@ -49,6 +48,7 @@ import { McpToolDirectory } from "../../mcp/tool-directory.js";
 import { buildTransportFromSpec } from "../../mcp/transport-from-spec.js";
 import { timestampSuffix } from "../../memory/session.js";
 import { DEEPSEEK_MAX_TOOLS, type ThinkingPreference, migrateRetiredModel } from "../../models.js";
+import { activeProviderClientOptions } from "../../provider-client-options.js";
 import { openTranscriptFile, recordFromLoopEvent, writeRecord } from "../../transcript/log.js";
 import { VERSION } from "../../version.js";
 import { formatMcpLifecycleEvent } from "../ui/mcp-lifecycle.js";
@@ -175,7 +175,7 @@ async function buildSession(opts: {
     hasSemanticSearch: toolset.semantic.enabled,
     modelId: model,
   });
-  const client = new DeepSeekClient({ baseUrl: loadBaseUrl() });
+  const client = new DeepSeekClient(activeProviderClientOptions());
   const prefix = new ImmutablePrefix({ system, toolSpecs: toolset.tools.specs() });
   const loop = new CacheFirstLoop({
     client,

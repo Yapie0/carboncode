@@ -63,13 +63,7 @@ import {
   toolResultBudgetForModel,
 } from "./models.js";
 import { type RepairReport, ToolCallRepair } from "./repair/index.js";
-import {
-  SessionStats,
-  type TurnStats,
-  contextTokensFor,
-  hasKnownContextWindow,
-  pricingFor,
-} from "./telemetry/stats.js";
+import { SessionStats, type TurnStats, contextTokensFor } from "./telemetry/stats.js";
 import { ToolRegistry } from "./tools.js";
 import type { ChatMessage, ToolCall } from "./types.js";
 
@@ -168,7 +162,6 @@ export class CacheFirstLoop {
   budgetUsd: number | null;
   /** One-shot 80% warning latch — cleared by setBudget so a bump re-arms at the new boundary. */
   private _budgetWarned = false;
-  private readonly _modelCapabilityWarned = new Set<string>();
   sessionName: string | null;
 
   hooks: ResolvedHook[];
@@ -706,20 +699,6 @@ export class CacheFirstLoop {
       }
     }
     this._turn++;
-    if (
-      !this._modelCapabilityWarned.has(this.model) &&
-      (!hasKnownContextWindow(this.model) || !pricingFor(this.model))
-    ) {
-      this._modelCapabilityWarned.add(this.model);
-      yield {
-        turn: this._turn,
-        role: "warning",
-        content: t("loop.unknownModelCapabilities", {
-          model: this.model,
-          context: contextTokensFor(this.model).toLocaleString(),
-        }),
-      };
-    }
     this.scratch.reset();
     // A fresh user turn is a new intent — don't let StormBreaker's
     // old sliding window of (name, args) signatures keep blocking
@@ -943,6 +922,7 @@ export class CacheFirstLoop {
       let usage: TurnStats["usage"] | null = null;
       let finishReason: string | undefined;
       let malformedFrameCount = 0;
+      let providerItems: unknown[] | undefined;
 
       try {
         if (this.stream) {
@@ -1059,6 +1039,7 @@ export class CacheFirstLoop {
             }
             if (chunk.usage) usage = chunk.usage;
             if (chunk.finishReason) finishReason = chunk.finishReason;
+            if (chunk.providerItems) providerItems = chunk.providerItems;
             if (chunk.malformedFrameCount) malformedFrameCount += chunk.malformedFrameCount;
           }
           toolCalls = [...callBuf.entries()]
@@ -1094,6 +1075,7 @@ export class CacheFirstLoop {
           toolCalls = resp.toolCalls;
           usage = resp.usage;
           finishReason = resp.finishReason;
+          providerItems = resp.providerItems;
         }
       } catch (err) {
         // An aborted signal here is almost always our own doing —
@@ -1248,6 +1230,7 @@ export class CacheFirstLoop {
           this.modelForCurrentCall(),
           reasoningContent,
           this.thinkingMode,
+          providerItems,
         ),
       );
 

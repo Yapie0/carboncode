@@ -217,9 +217,20 @@ export async function bridgeMcpTools(
     directory: opts.directory,
   };
   const listed = await client.listTools();
-  if (
+  const directoryNeedsSlot = Boolean(
     opts.directory &&
-    listed.tools.some((tool) => tool.name && `${prefix}${tool.name}` !== MCP_DIRECTORY_TOOL_NAME) &&
+      listed.tools.some(
+        (tool) => tool.name && `${prefix}${tool.name}` !== MCP_DIRECTORY_TOOL_NAME,
+      ) &&
+      !registry.has(MCP_DIRECTORY_TOOL_NAME),
+  );
+  const directoryBudgetExhausted = Boolean(
+    directoryNeedsSlot && opts.maxTools !== undefined && registry.visibleSize >= opts.maxTools,
+  );
+  if (
+    directoryNeedsSlot &&
+    !directoryBudgetExhausted &&
+    opts.directory &&
     opts.directory.ensureAttached()
   ) {
     result.exposedNames.push(MCP_DIRECTORY_TOOL_NAME);
@@ -227,6 +238,13 @@ export async function bridgeMcpTools(
   for (const mcpTool of listed.tools) {
     if (!mcpTool.name) {
       result.skipped.push({ name: "?", reason: "empty tool name" });
+      continue;
+    }
+    if (directoryBudgetExhausted) {
+      result.skipped.push({
+        name: mcpTool.name,
+        reason: `tool budget exhausted (${opts.maxTools})`,
+      });
       continue;
     }
     const registeredName = `${prefix}${mcpTool.name}`;

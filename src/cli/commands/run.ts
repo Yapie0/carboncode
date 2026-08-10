@@ -5,7 +5,6 @@ import {
   defaultConfigPath,
   isPlausibleKey,
   loadApiKey,
-  loadBaseUrl,
   loadMaxOutputTokens,
   loadProviderUserId,
   loadThinkingMode,
@@ -22,6 +21,7 @@ import { bridgeMcpTools } from "../../mcp/registry.js";
 import { McpToolDirectory } from "../../mcp/tool-directory.js";
 import { buildTransportFromSpec } from "../../mcp/transport-from-spec.js";
 import { DEEPSEEK_MAX_TOOLS, type ThinkingPreference, migrateRetiredModel } from "../../models.js";
+import { activeProviderClientOptions } from "../../provider-client-options.js";
 import { appendUsage } from "../../telemetry/usage.js";
 import { ToolRegistry } from "../../tools.js";
 import { openTranscriptFile, recordFromLoopEvent, writeRecord } from "../../transcript/log.js";
@@ -148,7 +148,7 @@ export async function runCommand(opts: RunOptions): Promise<void> {
 
   const modelSelection = migrateRetiredModel(opts.model);
   const effectiveModel = modelSelection.model;
-  const client = new DeepSeekClient({ baseUrl: loadBaseUrl() });
+  const client = new DeepSeekClient(activeProviderClientOptions());
   const prefix = new ImmutablePrefix({
     system: opts.system,
     toolSpecs: tools?.specs(),

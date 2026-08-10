@@ -34,7 +34,7 @@ export const DEEPSEEK_CONTEXT_TOKENS: Record<string, number> = {
   ),
 };
 
-/** Fallback when the caller's model id isn't in the table — safe lower bound. */
+/** Silent conservative fallback for models absent from local optional metadata. */
 export { DEFAULT_CONTEXT_TOKENS };
 
 export function contextTokensFor(model: string, path?: string): number {
